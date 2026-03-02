@@ -25,7 +25,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "File is required" }, { status: 400 });
     }
 
-    if (!isAllowedFileType(file.name, file.type)) {
+    const maxBytes = maxUploadBytes(Number(process.env.UPLOAD_MAX_MB ?? "10"));
+    if (file.size > maxBytes) {
+      return NextResponse.json(
+        { error: `File too large. Max allowed is ${process.env.UPLOAD_MAX_MB ?? 10}MB.` },
+        { status: 413 },
+      );
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    if (!isAllowedFileType(file.name, file.type, buffer)) {
       return NextResponse.json(
         {
           error:
@@ -34,9 +44,6 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const maxBytes = maxUploadBytes(Number(process.env.UPLOAD_MAX_MB ?? "10"));
 
     if (buffer.length > maxBytes) {
       return NextResponse.json(

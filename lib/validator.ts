@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { PDFParse } from "pdf-parse";
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 function summarizeWorksheetRows(sheet: XLSX.WorkSheet, maxRows = 5): string {
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
@@ -21,16 +21,13 @@ export async function parseValidatorInput(input: {
   const lower = input.filename.toLowerCase();
 
   if (lower.endsWith(".pdf") || input.mimeType === "application/pdf") {
-    const parser = new PDFParse({ data: input.buffer });
-    const parsed = await parser.getText();
-    await parser.destroy();
-
+    const parsed = await pdfParse(input.buffer);
     const text = parsed.text.replace(/\s+/g, " ").trim();
 
     return {
       output: text.slice(0, 8000) || "No text extracted from PDF.",
       meta: {
-        pages: parsed.total,
+        pages: parsed.numpages,
         words: text.length ? text.split(" ").length : 0,
         inputType: "pdf",
       },
