@@ -13,10 +13,11 @@ type ControlConfidence = "HIGH" | "MEDIUM" | "LOW";
 
 type InternalControlItem = NonNullable<ValidationReport["controlCalibration"]>["controls"][number] & {
   _sheetRowIndex: number;
+  _responseColumnIndex: number;
 };
 
 const MAX_CONTROLS_IN_API_RESPONSE = 300;
-const MAX_INLINE_REVIEWED_WORKBOOK_BYTES = 2_500_000;
+const MAX_INLINE_EDIT_GUIDE_BYTES = 2_500_000;
 
 const MONTH_PATTERN = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i;
 
@@ -200,6 +201,23 @@ function pickResponse(cells: string[], columns: ColumnHints): string {
   }
 
   return [...new Set(values)].join(" | ");
+}
+
+function pickPrimaryResponseColumn(headers: string[], columns: ColumnHints): number {
+  const normalizedHeaders = headers.map((header) => normalizeHeader(header));
+  const explicitPartnerResponse = columns.response.find((index) =>
+    normalizedHeaders[index]?.includes("partner response"),
+  );
+
+  if (typeof explicitPartnerResponse === "number") {
+    return explicitPartnerResponse;
+  }
+
+  if (columns.response.length > 0) {
+    return columns.response[0];
+  }
+
+  return headers.length >= 4 ? 3 : Math.max(0, headers.length - 1);
 }
 
 function pickControlId(cells: string[], columns: ColumnHints, rowNumber: number): string {
@@ -395,69 +413,53 @@ function evaluateControl(input: {
   };
 }
 
-function setCell(worksheet: XLSX.WorkSheet, row: number, column: number, value: string) {
-  const address = XLSX.utils.encode_cell({ r: row, c: column });
-  worksheet[address] = { t: "s", v: clampCellValue(value) };
-}
-
-function annotateWorksheet(input: {
-  worksheet: XLSX.WorkSheet;
-  headerRowIndex: number;
-  controls: InternalControlItem[];
-}) {
-  const { worksheet, headerRowIndex, controls } = input;
-
-  const range = XLSX.utils.decode_range(worksheet["!ref"] ?? "A1");
-  const statusColumn = range.e.c + 1;
-  const recommendationColumn = statusColumn + 1;
-  const suggestedColumn = recommendationColumn + 1;
-
-  setCell(worksheet, headerRowIndex, statusColumn, "ZoKorp Auto Status");
-  setCell(worksheet, headerRowIndex, recommendationColumn, "ZoKorp Auto Recommendation");
-  setCell(worksheet, headerRowIndex, suggestedColumn, "ZoKorp Suggested Edit (No New Facts)");
-
-  for (const control of controls) {
-    setCell(worksheet, control._sheetRowIndex, statusColumn, control.status);
-    setCell(worksheet, control._sheetRowIndex, recommendationColumn, control.recommendation || "No recommendation.");
-    setCell(worksheet, control._sheetRowIndex, suggestedColumn, control.suggestedEdit || control.response || "");
+function escapeCsv(value: string) {
+  const escaped = value.replaceAll('"', '""');
+  if (/[",\n]/.test(escaped)) {
+    return `"${escaped}"`;
   }
-
-  range.e.c = Math.max(range.e.c, suggestedColumn);
-  worksheet["!ref"] = XLSX.utils.encode_range(range);
+  return escaped;
 }
 
-function buildSummarySheetRows(controls: InternalControlItem[][]) {
+function buildEditGuideCsv(controls: InternalControlItem[]) {
   const rows: string[][] = [
     [
       "Sheet",
       "Row",
+      "Partner Response Cell",
       "Control ID",
       "Status",
       "Confidence",
       "Requirement",
-      "Current Response",
+      "Current Partner Response",
+      "Suggested Partner Response (No New Facts)",
       "Recommendation",
-      "Suggested Edit (No New Facts)",
+      "Missing Signals",
     ],
   ];
 
-  for (const sheetItems of controls) {
-    for (const control of sheetItems) {
-      rows.push([
-        control.sheetName,
-        String(control.rowNumber),
-        control.controlId,
-        control.status,
-        control.confidence,
-        control.requirement,
-        control.response,
-        control.recommendation,
-        control.suggestedEdit,
-      ]);
-    }
+  for (const control of controls) {
+    const responseCell = XLSX.utils.encode_cell({
+      r: control._sheetRowIndex,
+      c: control._responseColumnIndex,
+    });
+
+    rows.push([
+      control.sheetName,
+      String(control.rowNumber),
+      responseCell,
+      control.controlId,
+      control.status,
+      control.confidence,
+      control.requirement,
+      control.response,
+      control.suggestedEdit,
+      control.recommendation,
+      control.missingSignals.join("|"),
+    ]);
   }
 
-  return rows;
+  return rows.map((row) => row.map((value) => escapeCsv(value ?? "")).join(",")).join("\n");
 }
 
 function parseWorksheetControls(input: {
@@ -490,6 +492,7 @@ function parseWorksheetControls(input: {
   const headerRowIndex = detectHeaderRow(rows);
   const headers = rows[headerRowIndex] ?? [];
   const columns = detectColumns(headers);
+  const primaryResponseColumn = pickPrimaryResponseColumn(headers, columns);
 
   const controls: InternalControlItem[] = [];
 
@@ -518,9 +521,11 @@ function parseWorksheetControls(input: {
       sheetName: input.sheetName,
       rowNumber: rowIndex + 1,
       _sheetRowIndex: rowIndex,
+      _responseColumnIndex: primaryResponseColumn,
       controlId,
       requirement,
       response,
+      responseCell: XLSX.utils.encode_cell({ r: rowIndex, c: primaryResponseColumn }),
       status: review.status,
       confidence: review.confidence,
       missingSignals: review.missingSignals,
@@ -538,7 +543,7 @@ function parseWorksheetControls(input: {
 function createReviewedFileName(originalFilename: string) {
   const parsed = path.parse(originalFilename);
   const base = parsed.name || "checklist";
-  return `${base}-zokorp-reviewed.xlsx`;
+  return `${base}-zokorp-edit-guide.csv`;
 }
 
 export function reviewChecklistWorkbook(input: {
@@ -573,12 +578,6 @@ export function reviewChecklistWorkbook(input: {
       continue;
     }
 
-    annotateWorksheet({
-      worksheet,
-      headerRowIndex: parsed.headerRowIndex,
-      controls: parsed.controls,
-    });
-
     controlsBySheet.push(parsed.controls);
   }
 
@@ -600,17 +599,6 @@ export function reviewChecklistWorkbook(input: {
     };
   }
 
-  const summaryRows = buildSummarySheetRows(controlsBySheet);
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-
-  const existingSummaryIndex = workbook.SheetNames.indexOf("ZoKorp Review");
-  if (existingSummaryIndex >= 0) {
-    workbook.SheetNames.splice(existingSummaryIndex, 1);
-    delete workbook.Sheets["ZoKorp Review"];
-  }
-
-  XLSX.utils.book_append_sheet(workbook, summarySheet, "ZoKorp Review");
-
   const counts = flattened.reduce<Record<ValidationCheckStatus, number>>(
     (acc, item) => {
       acc[item.status] += 1;
@@ -619,31 +607,26 @@ export function reviewChecklistWorkbook(input: {
     { PASS: 0, PARTIAL: 0, MISSING: 0 },
   );
 
-  const workbookBase64 = XLSX.write(workbook, {
-    type: "base64",
-    bookType: "xlsx",
-  });
-
-  const workbookBytes = Math.floor((workbookBase64.length * 3) / 4);
-
+  const editGuideCsv = buildEditGuideCsv(flattened);
+  const editGuideBytes = Buffer.byteLength(editGuideCsv, "utf-8");
   let reviewedWorkbookBase64: string | undefined;
   let reviewedWorkbookFileName: string | undefined;
   let reviewedWorkbookMimeType: string | undefined;
 
-  if (workbookBytes <= MAX_INLINE_REVIEWED_WORKBOOK_BYTES) {
-    reviewedWorkbookBase64 = workbookBase64;
+  if (editGuideBytes <= MAX_INLINE_EDIT_GUIDE_BYTES) {
+    reviewedWorkbookBase64 = Buffer.from(editGuideCsv, "utf-8").toString("base64");
     reviewedWorkbookFileName = createReviewedFileName(input.filename);
-    reviewedWorkbookMimeType =
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    reviewedWorkbookMimeType = "text/csv;charset=utf-8";
   } else {
     processingNotes.push(
-      `Reviewed workbook generated but too large for inline download payload (${workbookBytes} bytes).`,
+      `Edit guide generated but too large for inline download payload (${editGuideBytes} bytes).`,
     );
   }
 
   let controls = flattened.map((item) => ({
     sheetName: item.sheetName,
     rowNumber: item.rowNumber,
+    responseCell: item.responseCell,
     controlId: item.controlId,
     requirement: item.requirement,
     response: item.response,
@@ -656,10 +639,14 @@ export function reviewChecklistWorkbook(input: {
 
   if (controls.length > MAX_CONTROLS_IN_API_RESPONSE) {
     processingNotes.push(
-      `Control list truncated to first ${MAX_CONTROLS_IN_API_RESPONSE} rows for UI payload efficiency. Full details are in the reviewed workbook (ZoKorp Review tab).`,
+      `Control list truncated to first ${MAX_CONTROLS_IN_API_RESPONSE} rows for UI payload efficiency. Full details are in the downloadable edit guide CSV.`,
     );
     controls = controls.slice(0, MAX_CONTROLS_IN_API_RESPONSE);
   }
+
+  processingNotes.push(
+    "Original workbook formatting is preserved by design: use the downloadable edit guide CSV to copy suggested Partner Response values into the original file.",
+  );
 
   if (input.target) {
     processingNotes.push(

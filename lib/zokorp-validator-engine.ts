@@ -103,6 +103,7 @@ export type ValidationReport = {
     controls: Array<{
       sheetName: string;
       rowNumber: number;
+      responseCell?: string;
       controlId: string;
       requirement: string;
       response: string;

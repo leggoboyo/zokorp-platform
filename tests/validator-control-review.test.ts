@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import { reviewChecklistWorkbook } from "@/lib/validator-control-review";
 
 describe("validator control review", () => {
-  it("produces control-by-control calibration and reviewed workbook", () => {
+  it("produces control-by-control calibration and downloadable edit guide", () => {
     const workbook = XLSX.utils.book_new();
     const sheet = XLSX.utils.aoa_to_sheet([
       ["Control ID", "Requirement", "Partner Response"],
@@ -41,7 +41,9 @@ describe("validator control review", () => {
     expect(result.controlCalibration.counts.MISSING).toBeGreaterThanOrEqual(1);
     expect(result.controlCalibration.controls.length).toBeGreaterThanOrEqual(3);
     expect(result.controlCalibration.controls[0]?.suggestedEdit.length).toBeGreaterThan(0);
+    expect(result.controlCalibration.controls[0]?.responseCell).toMatch(/^[A-Z]+[0-9]+$/);
     expect(result.reviewedWorkbookBase64).toBeDefined();
-    expect(result.reviewedWorkbookFileName).toContain("zokorp-reviewed.xlsx");
+    expect(result.reviewedWorkbookFileName).toContain("zokorp-edit-guide.csv");
+    expect(result.reviewedWorkbookMimeType).toContain("text/csv");
   });
 });

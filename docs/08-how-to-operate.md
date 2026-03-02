@@ -101,21 +101,24 @@
 - Recommendation:
   - do not upload bank statements or unrelated sensitive documents.
 
-## 11) Control-by-control calibration + reviewed Excel download
+## 11) Control-by-control calibration + edit guide download
 - For `.xlsx/.xls` checklist uploads, validator now performs row-level control calibration:
   - detects control/requirement/response rows
   - evaluates each row (`PASS`, `PARTIAL`, `MISSING`)
   - provides row-level recommendation + suggested edit
   - attempts to fetch selected checklist/calibration material (when URL is reachable) and uses extracted terms for alignment checks
 - Download output:
-  - `Download Reviewed Excel` button returns a reviewed workbook with:
-    - new columns per sheet:
-      - `ZoKorp Auto Status`
-      - `ZoKorp Auto Recommendation`
-      - `ZoKorp Suggested Edit (No New Facts)`
-    - `ZoKorp Review` tab with full control summary
+  - `Download Edit Guide (CSV)` returns:
+    - sheet name
+    - row number
+    - exact `Partner Response` cell reference (example `D5`)
+    - current response
+    - suggested response (no new facts)
+    - recommendation + missing signals
+- Why CSV instead of rewriting the workbook:
+  - preserving exact original checklist formatting/styles is safer by keeping the original workbook untouched.
 - Download note:
-  - very large workbooks may skip inline download in API response size-constrained environments.
+  - very large edit guides may skip inline download in API response size-constrained environments.
 - Safety rule:
   - Suggested edits are deterministic and do not invent claims; they only normalize existing text and add placeholders for missing factual evidence.
   - This does not guarantee “pass”; it highlights missing evidence quality signals so a human can complete factual details.
