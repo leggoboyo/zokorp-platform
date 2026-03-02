@@ -10,6 +10,43 @@ import { getProductBySlug } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
+type DisplayPrice = {
+  id: string;
+  stripePriceId: string;
+  kind: PriceKind;
+  amount: number;
+  currency: string;
+  creditsGranted: number;
+  active?: boolean;
+};
+
+const validatorFallbackPrices: DisplayPrice[] = [
+  {
+    id: "fallback-ftr",
+    stripePriceId: "unconfigured-ftr",
+    kind: PriceKind.CREDIT_PACK,
+    amount: 5000,
+    currency: "usd",
+    creditsGranted: 1,
+  },
+  {
+    id: "fallback-sdp-srp",
+    stripePriceId: "unconfigured-sdp-srp",
+    kind: PriceKind.CREDIT_PACK,
+    amount: 15000,
+    currency: "usd",
+    creditsGranted: 1,
+  },
+  {
+    id: "fallback-competency",
+    stripePriceId: "unconfigured-competency",
+    kind: PriceKind.CREDIT_PACK,
+    amount: 50000,
+    currency: "usd",
+    creditsGranted: 1,
+  },
+];
+
 function formatAmount(amount: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -42,6 +79,7 @@ type Tone = "emerald" | "amber" | "sky";
 function entitlementMessage(input: {
   signedIn: boolean;
   authUnavailable: boolean;
+  billingUnavailable: boolean;
   accessModel: AccessModel;
   entitlementStatus: EntitlementStatus | null;
   remainingUses: number;
@@ -57,6 +95,13 @@ function entitlementMessage(input: {
     return {
       tone: "sky",
       text: "Sign in first, then purchase the correct tier to unlock this tool.",
+    };
+  }
+
+  if (input.billingUnavailable) {
+    return {
+      tone: "amber",
+      text: "You are signed in. Billing is still being finalized in test mode, so checkout is temporarily unavailable.",
     };
   }
 
@@ -87,6 +132,10 @@ const toneStyles = {
   sky: "border-sky-200 bg-sky-50 text-sky-800",
 } satisfies Record<Tone, string>;
 
+function isRealStripePriceId(priceId: string) {
+  return priceId.startsWith("price_");
+}
+
 export default async function SoftwareDetailPage({
   params,
 }: {
@@ -109,6 +158,7 @@ export default async function SoftwareDetailPage({
   const session = await auth();
   const currentEmail = session?.user?.email;
   const signedIn = Boolean(currentEmail);
+  const isValidator = product.slug === "zokorp-validator";
 
   let entitlement: { status: EntitlementStatus; remainingUses: number } | null = null;
   if (currentEmail) {
@@ -128,11 +178,19 @@ export default async function SoftwareDetailPage({
     }
   }
 
+  const pricesFromDb = product.prices.filter((price) => price.active !== false);
+  const displayPrices =
+    pricesFromDb.length > 0 ? pricesFromDb : isValidator ? validatorFallbackPrices : [];
+
   const authUnavailable = !emailAuthConfigured;
-  const isValidator = product.slug === "zokorp-validator";
+  const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY);
+  const hasRealStripePrice = displayPrices.some((price) => isRealStripePriceId(price.stripePriceId));
+  const billingUnavailable = !stripeConfigured || !hasRealStripePrice;
+
   const message = entitlementMessage({
     signedIn,
     authUnavailable,
+    billingUnavailable,
     accessModel: product.accessModel,
     entitlementStatus: entitlement?.status ?? null,
     remainingUses: entitlement?.remainingUses ?? 0,
@@ -161,9 +219,9 @@ export default async function SoftwareDetailPage({
         ) : null}
       </section>
 
-      {product.prices.length > 0 ? (
+      {displayPrices.length > 0 ? (
         <section className="grid gap-4 md:grid-cols-3">
-          {product.prices.map((price) => (
+          {displayPrices.map((price) => (
             <article key={price.id} className="surface rounded-2xl p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 {getPriceTitle(product.slug, price.amount, price.kind)}
@@ -183,12 +241,21 @@ export default async function SoftwareDetailPage({
                   label="Checkout"
                   requiresAuth={!signedIn}
                   authUnavailable={authUnavailable}
+                  billingUnavailable={billingUnavailable || !isRealStripePriceId(price.stripePriceId)}
                 />
               </div>
             </article>
           ))}
         </section>
-      ) : null}
+      ) : (
+        <section className="surface-muted rounded-2xl p-6">
+          <h2 className="font-display text-2xl font-semibold text-slate-900">Pricing availability</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Pricing for this software item is being finalized. Once Stripe prices are mapped, checkout
+            will appear here automatically.
+          </p>
+        </section>
+      )}
 
       {isValidator ? (
         <ValidatorForm requiresAuth={!signedIn} authUnavailable={authUnavailable} />

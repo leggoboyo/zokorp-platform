@@ -9,6 +9,7 @@ type CheckoutButtonProps = {
   label: string;
   requiresAuth?: boolean;
   authUnavailable?: boolean;
+  billingUnavailable?: boolean;
 };
 
 export function CheckoutButton({
@@ -17,6 +18,7 @@ export function CheckoutButton({
   label,
   requiresAuth = false,
   authUnavailable = false,
+  billingUnavailable = false,
 }: CheckoutButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +64,20 @@ export function CheckoutButton({
           className="w-full cursor-not-allowed rounded-md border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500"
         >
           Checkout unavailable until login setup is complete
+        </button>
+      </div>
+    );
+  }
+
+  if (billingUnavailable) {
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          disabled
+          className="w-full cursor-not-allowed rounded-md border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500"
+        >
+          Checkout unavailable while billing setup is being finalized
         </button>
       </div>
     );

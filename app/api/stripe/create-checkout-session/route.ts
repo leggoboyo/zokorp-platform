@@ -13,6 +13,13 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return NextResponse.json(
+        { error: "Billing setup is still in progress. Please try again shortly." },
+        { status: 503 },
+      );
+    }
+
     const user = await requireUser();
     const body = await request.json();
     const parsed = schema.safeParse(body);
@@ -93,6 +100,13 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (error instanceof Error && error.message === "STRIPE_SECRET_KEY is missing") {
+      return NextResponse.json(
+        { error: "Billing setup is still in progress. Please try again shortly." },
+        { status: 503 },
+      );
     }
 
     console.error(error);
