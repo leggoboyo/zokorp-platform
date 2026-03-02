@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { getStripeClient } from "@/lib/stripe";
 
 export async function POST(request: Request) {
@@ -13,16 +14,30 @@ export async function POST(request: Request) {
     }
 
     const user = await requireUser();
-
-    if (!user.stripeCustomerId) {
-      return NextResponse.json({ error: "No Stripe customer exists for this account" }, { status: 400 });
-    }
-
     const stripe = getStripeClient();
     const origin = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin;
+    let customerId = user.stripeCustomerId;
+
+    if (!customerId) {
+      if (!user.email) {
+        return NextResponse.json({ error: "Account email is required for billing." }, { status: 400 });
+      }
+
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: user.name ?? undefined,
+        metadata: { userId: user.id },
+      });
+
+      customerId = customer.id;
+      await db.user.update({
+        where: { id: user.id },
+        data: { stripeCustomerId: customerId },
+      });
+    }
 
     const session = await stripe.billingPortal.sessions.create({
-      customer: user.stripeCustomerId,
+      customer: customerId,
       return_url: `${origin}/account`,
     });
 

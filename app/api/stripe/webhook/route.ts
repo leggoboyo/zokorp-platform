@@ -1,4 +1,4 @@
-import { EntitlementStatus, PriceKind } from "@prisma/client";
+import { EntitlementStatus, PriceKind, Prisma } from "@prisma/client";
 import Stripe from "stripe";
 
 import { db } from "@/lib/db";
@@ -10,6 +10,23 @@ function activeFromSubscriptionStatus(status: Stripe.Subscription.Status): Entit
   }
 
   return EntitlementStatus.EXPIRED;
+}
+
+function isDuplicateCheckoutFulfillmentError(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+    return false;
+  }
+
+  const target = error.meta?.target;
+  if (Array.isArray(target)) {
+    return target.includes("stripeCheckoutSessionId");
+  }
+
+  if (typeof target === "string") {
+    return target.includes("stripeCheckoutSessionId");
+  }
+
+  return false;
 }
 
 export async function POST(request: Request) {
@@ -36,13 +53,15 @@ export async function POST(request: Request) {
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
         const productId = session.metadata?.productId;
         const priceId = session.metadata?.priceId;
+        const checkoutSessionId = session.id;
 
-        if (!userId || !productId || !priceId) {
+        if (!userId || !productId || !priceId || !checkoutSessionId) {
           break;
         }
 
@@ -55,86 +74,104 @@ export async function POST(request: Request) {
           break;
         }
 
-        if (typeof session.customer === "string" && user.stripeCustomerId !== session.customer) {
-          await db.user.update({
-            where: { id: user.id },
-            data: { stripeCustomerId: session.customer },
-          });
+        let validUntil: Date | undefined;
+        if (price.kind === PriceKind.SUBSCRIPTION && typeof session.subscription === "string") {
+          try {
+            const subscription = await getStripeClient().subscriptions.retrieve(session.subscription);
+            const periodEnd = (
+              subscription as Stripe.Subscription & { current_period_end?: number }
+            ).current_period_end;
+            validUntil = periodEnd ? new Date(periodEnd * 1000) : undefined;
+          } catch (error) {
+            console.error("Failed to fetch subscription during webhook fulfillment", error);
+          }
         }
 
-        if (price.kind === PriceKind.SUBSCRIPTION) {
-          let validUntil: Date | undefined;
-          if (typeof session.subscription === "string") {
-            try {
-              const subscription = await getStripeClient().subscriptions.retrieve(
-                session.subscription,
-              );
-              const periodEnd = (
-                subscription as Stripe.Subscription & { current_period_end?: number }
-              ).current_period_end;
-              validUntil = periodEnd ? new Date(periodEnd * 1000) : undefined;
-            } catch (error) {
-              console.error("Failed to fetch subscription during webhook fulfillment", error);
+        try {
+          await db.$transaction(async (tx) => {
+            await tx.checkoutFulfillment.create({
+              data: {
+                stripeCheckoutSessionId: checkoutSessionId,
+                stripeEventId: event.id,
+                userId,
+                productId,
+              },
+            });
+
+            if (typeof session.customer === "string" && user.stripeCustomerId !== session.customer) {
+              await tx.user.update({
+                where: { id: user.id },
+                data: { stripeCustomerId: session.customer },
+              });
             }
+
+            if (price.kind === PriceKind.SUBSCRIPTION) {
+              await tx.entitlement.upsert({
+                where: {
+                  userId_productId: {
+                    userId,
+                    productId,
+                  },
+                },
+                create: {
+                  userId,
+                  productId,
+                  status: EntitlementStatus.ACTIVE,
+                  stripeSubscriptionId:
+                    typeof session.subscription === "string" ? session.subscription : undefined,
+                  validUntil,
+                  remainingUses: 0,
+                },
+                update: {
+                  status: EntitlementStatus.ACTIVE,
+                  stripeSubscriptionId:
+                    typeof session.subscription === "string" ? session.subscription : undefined,
+                  validUntil,
+                },
+              });
+            } else {
+              await tx.entitlement.upsert({
+                where: {
+                  userId_productId: {
+                    userId,
+                    productId,
+                  },
+                },
+                create: {
+                  userId,
+                  productId,
+                  status: EntitlementStatus.ACTIVE,
+                  remainingUses: price.creditsGranted,
+                },
+                update: {
+                  status: EntitlementStatus.ACTIVE,
+                  remainingUses: {
+                    increment: price.creditsGranted,
+                  },
+                },
+              });
+            }
+
+            await tx.auditLog.create({
+              data: {
+                userId,
+                action: "billing.checkout_completed",
+                metadataJson: {
+                  stripeCheckoutSessionId: session.id,
+                  stripePriceId: price.stripePriceId,
+                  mode: session.mode,
+                },
+              },
+            });
+          });
+        } catch (error) {
+          if (isDuplicateCheckoutFulfillmentError(error)) {
+            // Duplicate delivery for the same Checkout Session.
+            return new Response("ok", { status: 200 });
           }
 
-          await db.entitlement.upsert({
-            where: {
-              userId_productId: {
-                userId,
-                productId,
-              },
-            },
-            create: {
-              userId,
-              productId,
-              status: EntitlementStatus.ACTIVE,
-              stripeSubscriptionId:
-                typeof session.subscription === "string" ? session.subscription : undefined,
-              validUntil,
-              remainingUses: 0,
-            },
-            update: {
-              status: EntitlementStatus.ACTIVE,
-              stripeSubscriptionId:
-                typeof session.subscription === "string" ? session.subscription : undefined,
-              validUntil,
-            },
-          });
-        } else {
-          await db.entitlement.upsert({
-            where: {
-              userId_productId: {
-                userId,
-                productId,
-              },
-            },
-            create: {
-              userId,
-              productId,
-              status: EntitlementStatus.ACTIVE,
-              remainingUses: price.creditsGranted,
-            },
-            update: {
-              status: EntitlementStatus.ACTIVE,
-              remainingUses: {
-                increment: price.creditsGranted,
-              },
-            },
-          });
+          throw error;
         }
-
-        await db.auditLog.create({
-          data: {
-            userId,
-            action: "billing.checkout_completed",
-            metadataJson: {
-              stripeCheckoutSessionId: session.id,
-              stripePriceId: price.stripePriceId,
-              mode: session.mode,
-            },
-          },
-        });
 
         break;
       }

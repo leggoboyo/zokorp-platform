@@ -46,6 +46,7 @@ model User {
   sessions       Session[]
   entitlements   Entitlement[]
   auditLogs      AuditLog[]
+  checkoutFulfillments CheckoutFulfillment[]
   usageEvents    UsageEvent[]
 }
 
@@ -61,6 +62,7 @@ model Product {
 
   prices       Price[]
   entitlements Entitlement[]
+  checkoutFulfillments CheckoutFulfillment[]
   usageEvents  UsageEvent[]
 }
 
@@ -94,6 +96,21 @@ model Entitlement {
   product              Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+}
+
+model CheckoutFulfillment {
+  id                      String   @id @default(cuid())
+  stripeCheckoutSessionId String   @unique
+  stripeEventId           String?
+  userId                  String
+  productId               String
+  createdAt               DateTime @default(now())
+
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product                 Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([productId])
 }

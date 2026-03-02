@@ -22,6 +22,14 @@ const createPriceSchema = z.object({
   creditsGranted: z.coerce.number().int().nonnegative().default(1),
 });
 
+function revalidateAdminViews() {
+  revalidatePath("/");
+  revalidatePath("/software");
+  revalidatePath("/software/[slug]", "page");
+  revalidatePath("/admin/products");
+  revalidatePath("/admin/prices");
+}
+
 export async function createProductAction(formData: FormData) {
   await requireAdmin();
 
@@ -46,8 +54,7 @@ export async function createProductAction(formData: FormData) {
     },
   });
 
-  revalidatePath("/software");
-  revalidatePath("/admin/products");
+  revalidateAdminViews();
 }
 
 export async function createPriceAction(formData: FormData) {
@@ -86,6 +93,55 @@ export async function createPriceAction(formData: FormData) {
     },
   });
 
-  revalidatePath("/software");
-  revalidatePath("/admin/prices");
+  revalidateAdminViews();
+}
+
+export async function toggleProductActiveAction(formData: FormData) {
+  await requireAdmin();
+
+  const productId = String(formData.get("productId") ?? "");
+  if (!productId) {
+    throw new Error("Missing product id");
+  }
+
+  const product = await db.product.findUnique({
+    where: { id: productId },
+    select: { active: true },
+  });
+
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  await db.product.update({
+    where: { id: productId },
+    data: { active: !product.active },
+  });
+
+  revalidateAdminViews();
+}
+
+export async function togglePriceActiveAction(formData: FormData) {
+  await requireAdmin();
+
+  const priceId = String(formData.get("priceId") ?? "");
+  if (!priceId) {
+    throw new Error("Missing price id");
+  }
+
+  const price = await db.price.findUnique({
+    where: { id: priceId },
+    select: { active: true },
+  });
+
+  if (!price) {
+    throw new Error("Price not found");
+  }
+
+  await db.price.update({
+    where: { id: priceId },
+    data: { active: !price.active },
+  });
+
+  revalidateAdminViews();
 }

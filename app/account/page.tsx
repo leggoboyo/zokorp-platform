@@ -14,19 +14,7 @@ export default async function AccountPage() {
     redirect("/login?callbackUrl=/account");
   }
 
-  let user:
-    | {
-        email: string | null;
-        entitlements: Array<{
-          id: string;
-          status: string;
-          remainingUses: number;
-          validUntil: Date | null;
-          product: { name: string };
-        }>;
-        auditLogs: Array<{ id: string; action: string; createdAt: Date }>;
-      }
-    | null = null;
+  let user = null;
 
   try {
     user = await db.user.findUnique({
@@ -39,6 +27,13 @@ export default async function AccountPage() {
           orderBy: {
             createdAt: "desc",
           },
+        },
+        checkoutFulfillments: {
+          include: {
+            product: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 20,
         },
         auditLogs: {
           orderBy: { createdAt: "desc" },
@@ -107,6 +102,35 @@ export default async function AccountPage() {
             ))
           )}
         </div>
+      </section>
+
+      <section className="surface rounded-2xl p-6">
+        <h2 className="font-display text-2xl font-semibold text-slate-900">Recent Purchases</h2>
+        <ul className="mt-3 space-y-2 text-sm">
+          {user.checkoutFulfillments.length === 0 ? (
+            <li className="text-slate-600">No completed checkouts yet.</li>
+          ) : (
+            user.checkoutFulfillments.map((purchase) => (
+              <li key={purchase.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-slate-700">
+                <p className="font-medium text-slate-900">{purchase.product.name}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Checkout session: <span className="font-mono">{purchase.stripeCheckoutSessionId}</span>
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <span className="text-xs text-slate-500">
+                    {new Date(purchase.createdAt).toLocaleString()}
+                  </span>
+                  <Link
+                    href={`/software/${purchase.product.slug}`}
+                    className="text-xs font-semibold text-slate-800 underline-offset-2 hover:underline"
+                  >
+                    Open tool
+                  </Link>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
       </section>
 
       <section className="surface rounded-2xl p-6">

@@ -23,7 +23,7 @@ export function PortalButton() {
           return;
         }
         if (response.status === 400) {
-          setError("No billing profile yet. Make a purchase first, then open the portal.");
+          setError(data.error ?? "Billing portal is not available for this account yet.");
           return;
         }
         setError(data.error ?? "Unable to open billing portal.");

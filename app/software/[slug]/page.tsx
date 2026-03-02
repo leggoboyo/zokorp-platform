@@ -138,10 +138,13 @@ function isRealStripePriceId(priceId: string) {
 
 export default async function SoftwareDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ checkout?: string }>;
 }) {
   const { slug } = await params;
+  const query = await searchParams;
   const product = await getProductBySlug(slug);
 
   if (!product || !product.active) {
@@ -186,15 +189,19 @@ export default async function SoftwareDetailPage({
   const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY);
   const hasRealStripePrice = displayPrices.some((price) => isRealStripePriceId(price.stripePriceId));
   const billingUnavailable = !stripeConfigured || !hasRealStripePrice;
+  const requiresBilling = product.accessModel !== AccessModel.FREE;
 
   const message = entitlementMessage({
     signedIn,
     authUnavailable,
-    billingUnavailable,
+    billingUnavailable: requiresBilling ? billingUnavailable : false,
     accessModel: product.accessModel,
     entitlementStatus: entitlement?.status ?? null,
     remainingUses: entitlement?.remainingUses ?? 0,
   });
+
+  const checkoutState =
+    query.checkout === "success" ? "success" : query.checkout === "cancelled" ? "cancelled" : null;
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -206,6 +213,19 @@ export default async function SoftwareDetailPage({
         <div className={`mt-5 rounded-xl border px-4 py-3 text-sm ${toneStyles[message.tone]}`}>
           {message.text}
         </div>
+
+        {checkoutState === "success" ? (
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Checkout completed. If this was your first purchase, your entitlement may take a few seconds
+            to appear.
+          </div>
+        ) : null}
+
+        {checkoutState === "cancelled" ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Checkout was canceled. You can restart checkout whenever you&apos;re ready.
+          </div>
+        ) : null}
 
         {!signedIn && !authUnavailable ? (
           <div className="mt-4">
@@ -241,7 +261,11 @@ export default async function SoftwareDetailPage({
                   label="Checkout"
                   requiresAuth={!signedIn}
                   authUnavailable={authUnavailable}
-                  billingUnavailable={billingUnavailable || !isRealStripePriceId(price.stripePriceId)}
+                  billingUnavailable={
+                    requiresBilling
+                      ? billingUnavailable || !isRealStripePriceId(price.stripePriceId)
+                      : false
+                  }
                 />
               </div>
             </article>
