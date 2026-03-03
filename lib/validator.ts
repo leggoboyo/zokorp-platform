@@ -1,9 +1,9 @@
-import * as XLSX from "xlsx";
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 import { reviewChecklistWorkbook } from "@/lib/validator-control-review";
 import { loadTargetReferenceMaterial } from "@/lib/validator-reference-material";
 import { sanitizeValidatorText } from "@/lib/validator-sanitizer";
+import { readXlsxWorkbookRows } from "@/lib/workbook";
 import {
   buildValidationReport,
   formatValidationReport,
@@ -24,22 +24,12 @@ function normalizeCellValue(value: unknown) {
   return text.length > 220 ? `${text.slice(0, 217)}...` : text;
 }
 
-function summarizeWorksheetRows(sheet: XLSX.WorkSheet, maxRows = 300, maxCols = 30, maxChars = 24000): string {
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-    header: 1,
-    defval: "",
-    raw: false,
-  });
-
+function summarizeWorksheetRows(rows: string[][], maxRows = 300, maxCols = 30, maxChars = 24000): string {
   const lines: string[] = [];
   let totalChars = 0;
 
   for (let rowIndex = 0; rowIndex < rows.length && rowIndex < maxRows; rowIndex += 1) {
     const row = rows[rowIndex];
-    if (!Array.isArray(row)) {
-      continue;
-    }
-
     const cells: string[] = [];
     const columnCount = Math.min(maxCols, row.length);
 
@@ -114,23 +104,31 @@ export async function parseValidatorInput(input: {
     };
   }
 
-  const workbook = XLSX.read(input.buffer, { type: "buffer" });
-  const sheetSummaries = workbook.SheetNames.map((name) => {
-    const sheet = workbook.Sheets[name];
-    const summary = summarizeWorksheetRows(sheet);
-
-    return `Sheet: ${name}\n${summary || "No rows found."}`;
+  let workbookSheets;
+  try {
+    workbookSheets = await readXlsxWorkbookRows(input.buffer);
+  } catch {
+    throw new Error("UNREADABLE_SPREADSHEET");
+  }
+  const sheetSummaries = workbookSheets.map((sheet) => {
+    const summary = summarizeWorksheetRows(sheet.rows);
+    return `Sheet: ${sheet.name}\n${summary || "No rows found."}`;
   });
 
   const output = sheetSummaries.join("\n\n---\n\n").slice(0, 120000);
   const sanitized = sanitizeValidatorText(output);
-  const controlReview = reviewChecklistWorkbook({
-    buffer: input.buffer,
-    filename: input.filename,
-    profile: input.profile,
-    target: input.target,
-    referenceKeywords: referenceMaterial.keywords,
-  });
+  let controlReview;
+  try {
+    controlReview = await reviewChecklistWorkbook({
+      buffer: input.buffer,
+      filename: input.filename,
+      profile: input.profile,
+      target: input.target,
+      referenceKeywords: referenceMaterial.keywords,
+    });
+  } catch {
+    throw new Error("UNREADABLE_SPREADSHEET");
+  }
   const processingNotes = [...referenceMaterial.notes, ...sanitized.notes, ...controlReview.processingNotes];
 
   const report = buildValidationReport({
@@ -140,7 +138,7 @@ export async function parseValidatorInput(input: {
     context: {
       sourceType: "spreadsheet",
       filename: input.filename,
-      sheets: workbook.SheetNames.length,
+      sheets: workbookSheets.length,
       additionalContext: context,
       processingNotes,
     },
@@ -151,7 +149,7 @@ export async function parseValidatorInput(input: {
     output: formatValidationReport(report),
     meta: {
       inputType: "spreadsheet",
-      sheets: workbook.SheetNames.length,
+      sheets: workbookSheets.length,
       profile: input.profile,
       targetId: input.target?.id,
       redactions: sanitized.counts,

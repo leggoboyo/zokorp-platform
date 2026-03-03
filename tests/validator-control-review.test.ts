@@ -1,32 +1,25 @@
+import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
-import * as XLSX from "xlsx";
 
 import { reviewChecklistWorkbook } from "@/lib/validator-control-review";
 
 describe("validator control review", () => {
-  it("produces control-by-control calibration and downloadable edit guide", () => {
-    const workbook = XLSX.utils.book_new();
-    const sheet = XLSX.utils.aoa_to_sheet([
-      ["Control ID", "Requirement", "Partner Response"],
-      [
-        "C-001",
-        "Define in-scope and out-of-scope boundaries.",
-        "Scope includes prod and staging. Owner: platform team. Evidence: https://docs.example.com/ftr/1. Updated 2026-03-02. 95% control coverage.",
-      ],
-      ["C-002", "Document risk register with owner and mitigation.", "Risk register exists."],
-      ["C-003", "Provide incident process and evidence references.", ""],
+  it("produces control-by-control calibration and downloadable edit guide", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Checklist");
+
+    sheet.addRow(["Control ID", "Requirement", "Partner Response"]);
+    sheet.addRow([
+      "C-001",
+      "Define in-scope and out-of-scope boundaries.",
+      "Scope includes prod and staging. Owner: platform team. Evidence: https://docs.example.com/ftr/1. Updated 2026-03-02. 95% control coverage.",
     ]);
+    sheet.addRow(["C-002", "Document risk register with owner and mitigation.", "Risk register exists."]);
+    sheet.addRow(["C-003", "Provide incident process and evidence references.", ""]);
 
-    XLSX.utils.book_append_sheet(workbook, sheet, "Checklist");
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 
-    const buffer = Buffer.from(
-      XLSX.write(workbook, {
-        type: "buffer",
-        bookType: "xlsx",
-      }),
-    );
-
-    const result = reviewChecklistWorkbook({
+    const result = await reviewChecklistWorkbook({
       buffer,
       filename: "sample-checklist.xlsx",
       profile: "FTR",

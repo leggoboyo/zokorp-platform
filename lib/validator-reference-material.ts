@@ -12,6 +12,13 @@ type CachedReferenceMaterial = ReferenceMaterial & {
 const CACHE_MAX_AGE_MS = 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 4500;
 const MAX_TEXT_CHARS = 120000;
+const ALLOWED_REFERENCE_HOST_SUFFIXES = [
+  "aws.amazon.com",
+  "docs.aws.amazon.com",
+  "awsstatic.com",
+  "awspartner.com",
+  "amazonaws.com",
+];
 
 const cache = new Map<string, CachedReferenceMaterial>();
 
@@ -133,6 +140,28 @@ function dedupe(values: string[]) {
   return [...new Set(values.map((value) => value.trim().toLowerCase()).filter(Boolean))];
 }
 
+function isAllowedReferenceUrl(rawUrl: string) {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return false;
+    }
+
+    const host = parsed.hostname.toLowerCase();
+    if (!host) {
+      return false;
+    }
+
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+      return false;
+    }
+
+    return ALLOWED_REFERENCE_HOST_SUFFIXES.some((suffix) => host === suffix || host.endsWith(`.${suffix}`));
+  } catch {
+    return false;
+  }
+}
+
 export async function loadTargetReferenceMaterial(target?: ValidationTargetContext): Promise<ReferenceMaterial> {
   if (!target) {
     return { keywords: [], notes: [] };
@@ -154,17 +183,25 @@ export async function loadTargetReferenceMaterial(target?: ValidationTargetConte
     target.calibrationGuideUrl ?? "",
     target.checklistUrl ?? "",
     ...(target.referenceChecklistUrls ?? []),
-  ]).filter((url) => url.startsWith("http://") || url.startsWith("https://"));
+  ]);
 
-  if (candidateUrls.length === 0) {
+  const allowedUrls = candidateUrls.filter((url) => isAllowedReferenceUrl(url));
+  const blockedCount = candidateUrls.length - allowedUrls.length;
+  if (blockedCount > 0) {
+    notes.push(
+      `${blockedCount} reference URL(s) were skipped because they were outside the allowed domain policy.`,
+    );
+  }
+
+  if (allowedUrls.length === 0) {
     return {
       keywords: [],
-      notes: ["No external checklist/calibration URLs were available for this target."],
+      notes: [...notes, "No external checklist/calibration URLs were available for this target."],
     };
   }
 
   const fetchResults = await Promise.all(
-    candidateUrls.slice(0, 2).map(async (url) => ({ url, fetched: await fetchReferenceText(url) })),
+    allowedUrls.slice(0, 2).map(async (url) => ({ url, fetched: await fetchReferenceText(url) })),
   );
 
   for (const entry of fetchResults) {

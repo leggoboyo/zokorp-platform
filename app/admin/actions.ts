@@ -1,6 +1,6 @@
 "use server";
 
-import { AccessModel, PriceKind } from "@prisma/client";
+import { AccessModel, PriceKind, ServiceRequestStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -22,12 +22,21 @@ const createPriceSchema = z.object({
   creditsGranted: z.coerce.number().int().nonnegative().default(1),
 });
 
+const updateServiceRequestSchema = z.object({
+  requestId: z.string().cuid(),
+  status: z.nativeEnum(ServiceRequestStatus),
+  latestNote: z.string().trim().max(240).optional(),
+});
+
 function revalidateAdminViews() {
   revalidatePath("/");
   revalidatePath("/software");
   revalidatePath("/software/[slug]", "page");
+  revalidatePath("/services");
+  revalidatePath("/account");
   revalidatePath("/admin/products");
   revalidatePath("/admin/prices");
+  revalidatePath("/admin/service-requests");
 }
 
 export async function createProductAction(formData: FormData) {
@@ -141,6 +150,51 @@ export async function togglePriceActiveAction(formData: FormData) {
   await db.price.update({
     where: { id: priceId },
     data: { active: !price.active },
+  });
+
+  revalidateAdminViews();
+}
+
+export async function updateServiceRequestStatusAction(formData: FormData) {
+  await requireAdmin();
+
+  const parsed = updateServiceRequestSchema.safeParse({
+    requestId: formData.get("requestId"),
+    status: formData.get("status"),
+    latestNote: formData.get("latestNote") || undefined,
+  });
+
+  if (!parsed.success) {
+    throw new Error("Invalid service request update values");
+  }
+
+  const existing = await db.serviceRequest.findUnique({
+    where: { id: parsed.data.requestId },
+    select: { id: true, userId: true, trackingCode: true, status: true },
+  });
+
+  if (!existing) {
+    throw new Error("Service request not found");
+  }
+
+  await db.serviceRequest.update({
+    where: { id: parsed.data.requestId },
+    data: {
+      status: parsed.data.status,
+      latestNote: parsed.data.latestNote || null,
+    },
+  });
+
+  await db.auditLog.create({
+    data: {
+      userId: existing.userId,
+      action: "service.request_status_updated",
+      metadataJson: {
+        trackingCode: existing.trackingCode,
+        previousStatus: existing.status,
+        nextStatus: parsed.data.status,
+      },
+    },
   });
 
   revalidateAdminViews();

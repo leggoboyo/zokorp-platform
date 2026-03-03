@@ -1,14 +1,7 @@
 import { AccessModel, CreditTier, EntitlementStatus, Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
-
-function isSchemaDriftError(error: unknown) {
-  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
-    return false;
-  }
-
-  return error.code === "P2021" || error.code === "P2022";
-}
+import { isSchemaDriftError } from "@/lib/db-errors";
 
 async function syncEntitlementRemainingUses(tx: Prisma.TransactionClient, userId: string, productId: string) {
   const aggregated = await tx.creditBalance.aggregate({

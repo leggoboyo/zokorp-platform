@@ -23,19 +23,40 @@ async function main() {
     },
   });
 
-  const freeTemplate = await prisma.product.upsert({
-    where: { slug: "free-template-tool" },
+  const freeReviewer = await prisma.product.upsert({
+    where: { slug: "architecture-diagram-reviewer" },
     update: {
-      name: "Free Template Tool",
-      description: "Example free tool slot for upcoming software offerings.",
+      name: "Architecture Diagram Reviewer",
+      description:
+        "Free cloud architecture diagram reviewer that returns practical feedback from uploaded PDF diagrams.",
       accessModel: AccessModel.FREE,
       active: true,
     },
     create: {
-      slug: "free-template-tool",
-      name: "Free Template Tool",
-      description: "Example free tool slot for upcoming software offerings.",
+      slug: "architecture-diagram-reviewer",
+      name: "Architecture Diagram Reviewer",
+      description:
+        "Free cloud architecture diagram reviewer that returns practical feedback from uploaded PDF diagrams.",
       accessModel: AccessModel.FREE,
+      active: true,
+    },
+  });
+
+  const mlopsPlatform = await prisma.product.upsert({
+    where: { slug: "mlops-foundation-platform" },
+    update: {
+      name: "ZoKorp MLOps Foundation Platform",
+      description:
+        "Subscription SaaS for SMB teams needing streamlined MLOps workflows, governance checks, and delivery visibility.",
+      accessModel: AccessModel.SUBSCRIPTION,
+      active: true,
+    },
+    create: {
+      slug: "mlops-foundation-platform",
+      name: "ZoKorp MLOps Foundation Platform",
+      description:
+        "Subscription SaaS for SMB teams needing streamlined MLOps workflows, governance checks, and delivery visibility.",
+      accessModel: AccessModel.SUBSCRIPTION,
       active: true,
     },
   });
@@ -91,7 +112,10 @@ async function main() {
         creditsGranted: item.creditsGranted,
         creditTier: item.creditTier,
         active: true,
-        productId: validator.id,
+        productId:
+          item.kind === PriceKind.SUBSCRIPTION
+            ? mlopsPlatform.id
+            : validator.id,
       },
       create: {
         stripePriceId: item.envVar,
@@ -101,12 +125,15 @@ async function main() {
         creditsGranted: item.creditsGranted,
         creditTier: item.creditTier,
         active: true,
-        productId: validator.id,
+        productId:
+          item.kind === PriceKind.SUBSCRIPTION
+            ? mlopsPlatform.id
+            : validator.id,
       },
     });
   }
 
-  console.log(`Seeded products: ${validator.slug}, ${freeTemplate.slug}`);
+  console.log(`Seeded products: ${validator.slug}, ${freeReviewer.slug}, ${mlopsPlatform.slug}`);
 }
 
 main()

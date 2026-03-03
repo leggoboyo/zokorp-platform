@@ -4,38 +4,53 @@ const serviceItems = [
   {
     title: "AWS Consultation",
     description:
-      "Architecture reviews, execution plans, and reliability controls for cloud AI programs that need clean delivery.",
+      "Architecture decisions, execution sequencing, and reliability baselines for practical AI delivery.",
   },
   {
     title: "APN Consulting",
     description:
-      "Partner-readiness support for evidence, process, and technical milestones tied to AWS engagement goals.",
+      "Partner-readiness workflows for evidence quality, control mapping, and validation milestones.",
   },
   {
     title: "Productized Tooling",
     description:
-      "Validation tools that convert repeatable delivery tasks into faster, lower-friction software workflows.",
+      "Software-backed delivery assets that convert repetitive consulting work into scalable workflows.",
   },
 ];
 
-const metrics = [
-  { label: "Primary Focus", value: "AWS AI/ML Delivery" },
-  { label: "Platform Model", value: "Services + Software" },
-  { label: "Billing Models", value: "Free, Credits, Subscription" },
+const hubCapabilities = [
+  {
+    title: "Software Commerce",
+    detail: "One-time purchases, subscriptions, and account-linked access checks.",
+  },
+  {
+    title: "Service Operations",
+    detail: "Consultation and delivery requests with tracking codes and status timelines.",
+  },
+  {
+    title: "Billing Control",
+    detail: "Stripe hosted checkout plus billing portal for invoices and payment management.",
+  },
 ];
 
-const caseStudyTeasers = [
+const productDirections = [
   {
-    title: "Validation Readiness",
-    summary: "Cut checklist preparation overhead by standardizing review steps across teams.",
+    title: "ZoKorpValidator",
+    summary: "Control-level validation for FTR, SDP/SRP, and Competency checklists.",
+    tags: ["Pay per use", "Excel/PDF", "Account-protected"],
+    href: "/software/zokorp-validator",
   },
   {
-    title: "Governed AI Adoption",
-    summary: "Improve throughput while preserving security and operational control boundaries.",
+    title: "MLOps Foundation Platform",
+    summary: "Subscription platform for SMB machine-learning operations and governance workflows.",
+    tags: ["Planned SaaS", "Subdomain-ready", "Usage-aware"],
+    href: "/software/mlops-foundation-platform",
   },
   {
-    title: "Delivery Acceleration",
-    summary: "Move from advisory-only work to reusable software-backed delivery assets.",
+    title: "Architecture Diagram Reviewer",
+    summary: "Free architecture feedback tool for cloud diagram PDF uploads.",
+    tags: ["Free", "Fast feedback", "Lead-in offering"],
+    href: "/software/architecture-diagram-reviewer",
   },
 ];
 
@@ -48,44 +63,44 @@ export default function HomePage() {
 
         <p className="text-sm uppercase tracking-[0.2em] text-slate-100/90">ZoKorp Platform</p>
         <h1 className="font-display mt-4 max-w-4xl text-balance text-4xl font-semibold leading-tight md:text-6xl">
-          Build cloud AI systems that are practical to operate, validate, and scale.
+          The operating hub for AI delivery services and software products.
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-slate-100/95 md:text-lg">
-          ZoKorp combines AWS architecture execution with productized software so teams can deliver
-          outcomes faster without sacrificing governance or reliability.
+          Buy software, request consultations, track delivery, and manage billing in one account-driven
+          platform while your main marketing site remains safely live.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href="/services"
-            className="focus-ring rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-          >
-            Explore Services
-          </Link>
-          <Link
             href="/software"
-            className="focus-ring rounded-md border border-white/45 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+            className="focus-ring rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
           >
             Browse Software
           </Link>
           <Link
-            href="/software/zokorp-validator"
+            href="/services#service-request"
+            className="focus-ring rounded-md border border-white/45 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+          >
+            Request Services
+          </Link>
+          <Link
+            href="/account"
             className="focus-ring pulse-accent rounded-md border border-teal-200/80 bg-teal-500/20 px-5 py-2.5 text-sm font-semibold text-teal-100 transition hover:bg-teal-500/30"
           >
-            Try ZoKorpValidator
+            Open Account Hub
           </Link>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        {metrics.map((metric, index) => (
+        {hubCapabilities.map((metric, index) => (
           <article
-            key={metric.label}
+            key={metric.title}
             className="surface lift-card animate-fade-up rounded-2xl p-5"
             style={{ animationDelay: `${Math.min(index, 3) * 90}ms` }}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{metric.label}</p>
-            <p className="mt-2 font-display text-xl font-semibold text-slate-900">{metric.value}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{metric.title}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">{metric.detail}</p>
           </article>
         ))}
       </section>
@@ -97,7 +112,7 @@ export default function HomePage() {
             <h2 className="font-display mt-1 text-3xl font-semibold text-slate-900">Delivery with depth</h2>
           </div>
           <Link href="/services" className="text-sm font-medium text-slate-700 underline-offset-2 hover:underline">
-            View full services page
+            View services hub
           </Link>
         </div>
 
@@ -111,76 +126,58 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <article className="surface lift-card soft-grid rounded-2xl p-6 md:p-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Featured Software</p>
-          <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">ZoKorpValidator</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-            Upload PDF or Excel validation inputs and receive structured text output. Designed for
-            FTR, SDP/SRP, and Competency review workflows.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <span className="metric-chip">$50 FTR</span>
-            <span className="metric-chip">$150 SDP/SRP</span>
-            <span className="metric-chip">$500 Competency</span>
-          </div>
-          <div className="mt-6">
-            <Link
-              href="/software/zokorp-validator"
-              className="focus-ring inline-flex rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Open ZoKorpValidator
-            </Link>
-          </div>
-        </article>
-
-        <article className="glass-surface lift-card rounded-2xl p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pipeline</p>
-          <h3 className="font-display mt-2 text-2xl font-semibold text-slate-900">What launches next</h3>
-          <ul className="mt-4 space-y-3 text-sm text-slate-700">
-            <li>Unified account billing and invoice visibility via hosted Stripe portal</li>
-            <li>Subscription-tier software tools under authenticated entitlements</li>
-            <li>Usage-based billing hooks for future metered platform products</li>
-          </ul>
-        </article>
-      </section>
-
-      <section className="space-y-4">
+      <section className="surface soft-grid rounded-2xl p-6 md:p-7">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Case Study Themes</p>
-          <Link href="/case-studies" className="text-sm font-medium text-slate-700 underline-offset-2 hover:underline">
-            View case studies page
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Product Direction</p>
+            <h2 className="font-display mt-1 text-3xl font-semibold text-slate-900">Software portfolio trajectory</h2>
+          </div>
+          <Link href="/software" className="text-sm font-medium text-slate-700 underline-offset-2 hover:underline">
+            View software catalog
           </Link>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {caseStudyTeasers.map((item, index) => (
-            <article key={item.title} className="surface lift-card rounded-2xl p-5">
-              <p className="text-xs font-semibold text-teal-700">0{index + 1}</p>
-              <h3 className="font-display mt-2 text-xl font-semibold text-slate-900">{item.title}</h3>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {productDirections.map((item) => (
+            <article key={item.title} className="lift-card rounded-xl border border-slate-200 bg-white p-5">
+              <h3 className="font-display text-xl font-semibold text-slate-900">{item.title}</h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">{item.summary}</p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {item.tags.map((tag) => (
+                  <span key={tag} className="metric-chip">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+              <Link
+                href={item.href}
+                className="focus-ring mt-4 inline-flex rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+              >
+                Open
+              </Link>
             </article>
           ))}
         </div>
       </section>
 
       <section className="hero-surface px-6 py-8 text-white md:px-8">
-        <h2 className="font-display text-3xl font-semibold">Ready to move from concept to validated delivery?</h2>
+        <h2 className="font-display text-3xl font-semibold">Ready to centralize software and service operations?</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200">
-          Start with AWS consultation or directly evaluate ZoKorp software tooling based on your
-          validation workflow needs.
+          Start with ZoKorpValidator, then expand into subscription products and service delivery tracking
+          from the same account framework.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            href="/services"
+            href="/software/zokorp-validator"
             className="focus-ring rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
           >
-            View Services
+            Launch ZoKorpValidator
           </Link>
           <Link
-            href="/software"
+            href="/services#service-request"
             className="focus-ring rounded-md border border-slate-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            View Software
+            Request Consultation
           </Link>
         </div>
       </section>

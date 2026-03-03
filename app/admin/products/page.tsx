@@ -1,4 +1,5 @@
 import { AccessModel } from "@prisma/client";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createProductAction, toggleProductActiveAction } from "@/app/admin/actions";
@@ -38,6 +39,17 @@ export default async function AdminProductsPage() {
   return (
     <div className="space-y-6">
       <h1 className="font-display text-4xl font-semibold text-slate-900">Admin: Products</h1>
+      <nav className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-600">
+        <Link href="/admin/products" className="rounded-full border border-slate-300 bg-white px-3 py-1">
+          Products
+        </Link>
+        <Link href="/admin/prices" className="rounded-full border border-slate-300 bg-white px-3 py-1">
+          Prices
+        </Link>
+        <Link href="/admin/service-requests" className="rounded-full border border-slate-300 bg-white px-3 py-1">
+          Service Requests
+        </Link>
+      </nav>
 
       <section className="surface rounded-2xl p-5">
         <h2 className="text-lg font-semibold">Create Product</h2>

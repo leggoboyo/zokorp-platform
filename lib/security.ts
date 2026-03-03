@@ -3,16 +3,13 @@ const MAX_UPLOAD_MB_FALLBACK = 10;
 export const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-excel",
 ]);
 
-export const ALLOWED_UPLOAD_EXTENSIONS = new Set([".pdf", ".xlsx", ".xls"]);
+export const ALLOWED_UPLOAD_EXTENSIONS = new Set([".pdf", ".xlsx"]);
 
 const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d];
 const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
-const XLS_MAGIC = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
-
-type SupportedUploadKind = "pdf" | "xlsx" | "xls";
+type SupportedUploadKind = "pdf" | "xlsx";
 
 export function parseAdminEmails(raw: string | undefined): Set<string> {
   if (!raw) {
@@ -40,10 +37,6 @@ function detectByMagic(buffer: Buffer): SupportedUploadKind | null {
     return "pdf";
   }
 
-  if (startsWithBytes(buffer, XLS_MAGIC)) {
-    return "xls";
-  }
-
   if (startsWithBytes(buffer, ZIP_MAGIC)) {
     return "xlsx";
   }
@@ -61,10 +54,6 @@ function detectByExtension(filename: string): SupportedUploadKind | null {
     return "xlsx";
   }
 
-  if (lower.endsWith(".xls")) {
-    return "xls";
-  }
-
   return null;
 }
 
@@ -75,10 +64,6 @@ function detectByMime(mimeType: string): SupportedUploadKind | null {
 
   if (mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
     return "xlsx";
-  }
-
-  if (mimeType === "application/vnd.ms-excel") {
-    return "xls";
   }
 
   return null;

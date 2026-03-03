@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { getSiteOriginFromRequest } from "@/lib/site-origin";
 import { getStripeClient } from "@/lib/stripe";
 
@@ -15,6 +16,24 @@ export async function POST(request: Request) {
     }
 
     const user = await requireUser();
+    const limiter = consumeRateLimit({
+      key: `billing-portal:${user.id}:${getRequestFingerprint(request)}`,
+      limit: 15,
+      windowMs: 10 * 60 * 1000,
+    });
+
+    if (!limiter.allowed) {
+      return NextResponse.json(
+        { error: "Too many billing portal requests. Please wait and retry." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limiter.retryAfterSeconds),
+          },
+        },
+      );
+    }
+
     const stripe = getStripeClient();
     const origin = getSiteOriginFromRequest(request);
     let customerId = user.stripeCustomerId;

@@ -1,13 +1,12 @@
 import path from "node:path";
 
-import * as XLSX from "xlsx";
-
 import type {
   ValidationCheckStatus,
   ValidationProfile,
   ValidationTargetContext,
   ValidationReport,
 } from "@/lib/zokorp-validator-engine";
+import { encodeCellReference, readXlsxWorkbookRows } from "@/lib/workbook";
 
 type ControlConfidence = "HIGH" | "MEDIUM" | "LOW";
 
@@ -439,9 +438,9 @@ function buildEditGuideCsv(controls: InternalControlItem[]) {
   ];
 
   for (const control of controls) {
-    const responseCell = XLSX.utils.encode_cell({
-      r: control._sheetRowIndex,
-      c: control._responseColumnIndex,
+    const responseCell = encodeCellReference({
+      rowIndex: control._sheetRowIndex,
+      columnIndex: control._responseColumnIndex,
     });
 
     rows.push([
@@ -463,24 +462,12 @@ function buildEditGuideCsv(controls: InternalControlItem[]) {
 }
 
 function parseWorksheetControls(input: {
-  worksheet: XLSX.WorkSheet;
+  rows: string[][];
   sheetName: string;
   profile: ValidationProfile;
   referenceKeywords?: string[];
 }) {
-  const rowsRaw = XLSX.utils.sheet_to_json<unknown[]>(input.worksheet, {
-    header: 1,
-    defval: "",
-    raw: false,
-  });
-
-  const rows: string[][] = rowsRaw.map((row) => {
-    if (!Array.isArray(row)) {
-      return [];
-    }
-
-    return row.map((cell) => normalizeText(cell));
-  });
+  const rows = input.rows.map((row) => row.map((cell) => normalizeText(cell)));
 
   if (rows.length === 0) {
     return {
@@ -525,7 +512,10 @@ function parseWorksheetControls(input: {
       controlId,
       requirement,
       response,
-      responseCell: XLSX.utils.encode_cell({ r: rowIndex, c: primaryResponseColumn }),
+      responseCell: encodeCellReference({
+        rowIndex,
+        columnIndex: primaryResponseColumn,
+      }),
       status: review.status,
       confidence: review.confidence,
       missingSignals: review.missingSignals,
@@ -546,30 +536,25 @@ function createReviewedFileName(originalFilename: string) {
   return `${base}-zokorp-edit-guide.csv`;
 }
 
-export function reviewChecklistWorkbook(input: {
+export async function reviewChecklistWorkbook(input: {
   buffer: Buffer;
   filename: string;
   profile: ValidationProfile;
   target?: ValidationTargetContext;
   referenceKeywords?: string[];
 }) {
-  const workbook = XLSX.read(input.buffer, { type: "buffer" });
+  const workbookSheets = await readXlsxWorkbookRows(input.buffer);
   const processingNotes: string[] = [];
   const controlsBySheet: InternalControlItem[][] = [];
 
-  for (const sheetName of workbook.SheetNames) {
-    if (sheetName.toLowerCase() === "zokorp review") {
-      continue;
-    }
-
-    const worksheet = workbook.Sheets[sheetName];
-    if (!worksheet) {
+  for (const sheet of workbookSheets) {
+    if (sheet.name.toLowerCase() === "zokorp review") {
       continue;
     }
 
     const parsed = parseWorksheetControls({
-      worksheet,
-      sheetName,
+      rows: sheet.rows,
+      sheetName: sheet.name,
       profile: input.profile,
       referenceKeywords: input.referenceKeywords,
     });

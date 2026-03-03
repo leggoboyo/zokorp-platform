@@ -29,7 +29,7 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/78 backdrop-blur-xl">
       <div className="border-b border-slate-200 bg-gradient-to-r from-[#081f3d] via-[#0f3460] to-[#0a6f87] px-4 py-1.5 text-center text-xs text-slate-100">
-        app.zokorp.com is live-in-progress while main zokorp.com remains on Squarespace.
+        Software, services, and billing are unified here while main zokorp.com remains on Squarespace.
       </div>
 
       <div className="mx-auto w-full max-w-7xl px-4 py-4 md:px-6">
@@ -53,6 +53,14 @@ export async function SiteHeader() {
                   {link.label}
                 </Link>
               ))}
+              {session?.user?.role === "ADMIN" ? (
+                <Link
+                  href="/admin/service-requests"
+                  className="focus-ring rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 font-medium text-amber-800 transition hover:bg-amber-100"
+                >
+                  Admin
+                </Link>
+              ) : null}
             </nav>
           </div>
 

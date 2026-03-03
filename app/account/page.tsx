@@ -1,11 +1,26 @@
 import Link from "next/link";
+import {
+  CreditTier,
+  EntitlementStatus,
+  ServiceRequestStatus,
+  type ServiceRequest,
+} from "@prisma/client";
 import { redirect } from "next/navigation";
-import { CreditTier } from "@prisma/client";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { isSchemaDriftError } from "@/lib/db-errors";
+import {
+  SERVICE_REQUEST_STATUS_LABEL,
+  SERVICE_REQUEST_STATUS_STYLE,
+  SERVICE_REQUEST_TYPE_LABEL,
+} from "@/lib/service-requests";
 
 export const dynamic = "force-dynamic";
+
+function isServiceRequestOpen(status: ServiceRequestStatus) {
+  return status !== ServiceRequestStatus.DELIVERED && status !== ServiceRequestStatus.CLOSED;
+}
 
 export default async function AccountPage() {
   const session = await auth();
@@ -16,6 +31,7 @@ export default async function AccountPage() {
   }
 
   let user = null;
+  let serviceRequests: ServiceRequest[] = [];
 
   try {
     user = await db.user.findUnique({
@@ -50,6 +66,24 @@ export default async function AccountPage() {
         },
       },
     });
+
+    if (user) {
+      try {
+        serviceRequests = await db.serviceRequest.findMany({
+          where: {
+            userId: user.id,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 25,
+        });
+      } catch (error) {
+        if (!isSchemaDriftError(error)) {
+          throw error;
+        }
+      }
+    }
   } catch {
     user = null;
   }
@@ -76,18 +110,102 @@ export default async function AccountPage() {
     );
   }
 
+  const activeSubscriptions = user.entitlements.filter(
+    (entitlement) =>
+      (entitlement.product.accessModel === "SUBSCRIPTION" || entitlement.product.accessModel === "METERED") &&
+      entitlement.status === EntitlementStatus.ACTIVE,
+  );
+  const activeCredits = user.creditBalances.filter((wallet) => wallet.status === EntitlementStatus.ACTIVE);
+  const openServiceRequests = serviceRequests.filter((request) => isServiceRequestOpen(request.status));
+
   return (
     <div className="space-y-6">
       <section className="glass-surface animate-fade-up rounded-2xl p-6">
-        <h1 className="font-display text-4xl font-semibold text-slate-900">Account</h1>
-        <p className="mt-2 text-sm text-slate-600">Signed in as {user.email}</p>
-        <div className="mt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Account Hub</p>
+            <h1 className="font-display mt-1 text-4xl font-semibold text-slate-900">Welcome back</h1>
+            <p className="mt-2 text-sm text-slate-600">Signed in as {user.email}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/account/billing"
+              className="focus-ring inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Billing and Invoices
+            </Link>
+            <Link
+              href="/services#service-request"
+              className="focus-ring inline-flex rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              New Service Request
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-4">
+        <article className="surface lift-card rounded-2xl p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Open Requests</p>
+          <p className="font-display mt-1 text-3xl font-semibold text-slate-900">{openServiceRequests.length}</p>
+        </article>
+        <article className="surface lift-card rounded-2xl p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Active Subscriptions</p>
+          <p className="font-display mt-1 text-3xl font-semibold text-slate-900">{activeSubscriptions.length}</p>
+        </article>
+        <article className="surface lift-card rounded-2xl p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Credit Wallets</p>
+          <p className="font-display mt-1 text-3xl font-semibold text-slate-900">{activeCredits.length}</p>
+        </article>
+        <article className="surface lift-card rounded-2xl p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Recent Purchases</p>
+          <p className="font-display mt-1 text-3xl font-semibold text-slate-900">{user.checkoutFulfillments.length}</p>
+        </article>
+      </section>
+
+      <section className="surface lift-card rounded-2xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-2xl font-semibold text-slate-900">Service Requests</h2>
           <Link
-            href="/account/billing"
-            className="focus-ring inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            href="/services#service-request"
+            className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-700 underline-offset-2 hover:underline"
           >
-            Billing and Invoices
+            Submit another request
           </Link>
+        </div>
+        <div className="mt-3 space-y-3">
+          {serviceRequests.length === 0 ? (
+            <p className="text-sm text-slate-600">No service requests yet.</p>
+          ) : (
+            serviceRequests.map((request) => (
+              <article key={request.id} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-900">{request.title}</p>
+                  <span
+                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${SERVICE_REQUEST_STATUS_STYLE[request.status]}`}
+                  >
+                    {SERVICE_REQUEST_STATUS_LABEL[request.status]}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {request.trackingCode} · {SERVICE_REQUEST_TYPE_LABEL[request.type]} · Submitted{" "}
+                  {new Date(request.createdAt).toLocaleDateString("en-US")}
+                </p>
+                <p className="mt-2 text-slate-700">{request.summary}</p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                  {request.preferredStart ? (
+                    <p>Preferred start: {new Date(request.preferredStart).toLocaleDateString("en-US")}</p>
+                  ) : null}
+                  {request.budgetRange ? <p>Budget: {request.budgetRange}</p> : null}
+                </div>
+                {request.latestNote ? (
+                  <p className="mt-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
+                    Latest update: {request.latestNote}
+                  </p>
+                ) : null}
+              </article>
+            ))
+          )}
         </div>
       </section>
 
@@ -103,9 +221,7 @@ export default async function AccountPage() {
                 <p className="text-slate-600">Status: {entitlement.status}</p>
                 <p className="text-slate-600">Remaining uses: {entitlement.remainingUses}</p>
                 {entitlement.validUntil ? (
-                  <p className="text-slate-600">
-                    Valid until: {entitlement.validUntil.toLocaleDateString("en-US")}
-                  </p>
+                  <p className="text-slate-600">Valid until: {entitlement.validUntil.toLocaleDateString("en-US")}</p>
                 ) : null}
               </div>
             ))
@@ -150,9 +266,7 @@ export default async function AccountPage() {
                   Checkout session: <span className="font-mono">{purchase.stripeCheckoutSessionId}</span>
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <span className="text-xs text-slate-500">
-                    {new Date(purchase.createdAt).toLocaleString()}
-                  </span>
+                  <span className="text-xs text-slate-500">{new Date(purchase.createdAt).toLocaleString()}</span>
                   <Link
                     href={`/software/${purchase.product.slug}`}
                     className="text-xs font-semibold text-slate-800 underline-offset-2 hover:underline"

@@ -38,6 +38,23 @@ enum EntitlementStatus {
   REVOKED
 }
 
+enum ServiceRequestType {
+  CONSULTATION
+  DELIVERY
+  SUPPORT
+}
+
+enum ServiceRequestStatus {
+  SUBMITTED
+  TRIAGED
+  PROPOSAL_SENT
+  SCHEDULED
+  IN_PROGRESS
+  BLOCKED
+  DELIVERED
+  CLOSED
+}
+
 model User {
   id             String         @id @default(cuid())
   name           String?
@@ -56,6 +73,7 @@ model User {
   auditLogs      AuditLog[]
   checkoutFulfillments CheckoutFulfillment[]
   usageEvents    UsageEvent[]
+  serviceRequests ServiceRequest[]
 }
 
 model Product {
@@ -154,6 +172,26 @@ model UsageEvent {
   product             Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([userId, productId])
+}
+
+model ServiceRequest {
+  id             String               @id @default(cuid())
+  userId         String
+  trackingCode   String               @unique
+  type           ServiceRequestType
+  title          String
+  summary        String
+  preferredStart DateTime?
+  budgetRange    String?
+  status         ServiceRequestStatus @default(SUBMITTED)
+  latestNote     String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([createdAt])
 }
 
 model AuditLog {

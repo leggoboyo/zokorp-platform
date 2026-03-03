@@ -135,6 +135,15 @@ function entitlementMessage(input: {
     };
   }
 
+  if (input.accessModel === AccessModel.FREE) {
+    return {
+      tone: "emerald",
+      text: input.signedIn
+        ? "This product is free to use. Sign-in keeps usage history and future account-linked settings."
+        : "This product is free to use. Sign in if you want usage history and account-linked features.",
+    };
+  }
+
   if (input.entitlementStatus === EntitlementStatus.ACTIVE) {
     return { tone: "emerald", text: "Access active for this product." };
   }
@@ -354,10 +363,17 @@ export default async function SoftwareDetailPage({
       ) : (
         <section className="surface-muted rounded-2xl p-6">
           <h2 className="font-display text-2xl font-semibold text-slate-900">Pricing availability</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            Pricing for this software item is being finalized. Once Stripe prices are mapped, checkout
-            will appear here automatically.
-          </p>
+          {product.accessModel === AccessModel.FREE ? (
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              No purchase is required for this product. Sign in for account-linked usage history and
+              access management as this tool evolves.
+            </p>
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Pricing for this software item is being finalized. Once Stripe prices are mapped, checkout
+              will appear here automatically.
+            </p>
+          )}
         </section>
       )}
 
@@ -371,10 +387,17 @@ export default async function SoftwareDetailPage({
       ) : (
         <section className="surface lift-card rounded-2xl p-6">
           <h2 className="font-display text-2xl font-semibold text-slate-900">Product workflow</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            This product is configured for account-based access. Sign in, purchase access, then launch
-            it from your account context.
-          </p>
+          {product.accessModel === AccessModel.FREE ? (
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              This product is free. Sign in to keep usage history and access updates as the feature set
+              expands.
+            </p>
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              This product is configured for account-based access. Sign in, purchase access, then launch
+              it from your account context.
+            </p>
+          )}
         </section>
       )}
     </div>

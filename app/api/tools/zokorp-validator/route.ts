@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { validatorTierForProfile } from "@/lib/credit-tiers";
 import { db } from "@/lib/db";
 import { decrementUsesAtomically, requireEntitlement } from "@/lib/entitlements";
+import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { maxUploadBytes, isAllowedFileType } from "@/lib/security";
 import { parseValidatorInput } from "@/lib/validator";
 import { getValidatorTargetOptions, resolveValidatorTargetContext } from "@/lib/validator-library";
@@ -22,6 +23,23 @@ const formSchema = z.object({
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
+    const limiter = consumeRateLimit({
+      key: `validator:${user.id}:${getRequestFingerprint(request)}`,
+      limit: 25,
+      windowMs: 60 * 60 * 1000,
+    });
+
+    if (!limiter.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit reached. Please wait before running another validation." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limiter.retryAfterSeconds),
+          },
+        },
+      );
+    }
 
     const formData = await request.formData();
     const file = formData.get("file");
@@ -89,7 +107,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Unsupported file type. Please upload a PDF or Excel file (.xlsx/.xls).",
+            "Unsupported file type. Please upload a PDF or Excel file (.xlsx).",
         },
         { status: 400 },
       );
@@ -193,6 +211,13 @@ export async function POST(request: Request) {
 
       if (error.message === "ENTITLEMENT_REQUIRED" || error.message === "INSUFFICIENT_USES") {
         return NextResponse.json({ error: "Purchase required before running this tool." }, { status: 402 });
+      }
+
+      if (error.message === "UNREADABLE_SPREADSHEET") {
+        return NextResponse.json(
+          { error: "The spreadsheet could not be parsed. Please upload a valid .xlsx file." },
+          { status: 400 },
+        );
       }
     }
 

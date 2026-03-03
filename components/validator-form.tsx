@@ -243,7 +243,7 @@ export function ValidatorForm({
     <section className="surface animate-fade-up rounded-xl p-5">
       <h3 className="font-display text-2xl font-semibold text-slate-900">Run ZoKorpValidator</h3>
       <p className="mt-2 text-sm text-slate-600">
-        Upload one PDF or Excel file (.pdf, .xlsx, .xls). Processing runs server-side with entitlement checks.
+        Upload one PDF or Excel file (.pdf, .xlsx). Processing runs server-side with entitlement checks.
       </p>
       <p className="mt-1 text-xs text-slate-500">
         Sensitive values like emails, phone numbers, and long account-like numbers are redacted before scoring output.
@@ -290,7 +290,7 @@ export function ValidatorForm({
             <textarea
               name="additionalContext"
               maxLength={1200}
-              placeholder="Examples: “This is a Service Offering FTR for AI/ML advisory.” “Prioritize IAM least privilege, control owners, and evidence links.” “Flag vague answers that need measurable outcomes.”"
+              placeholder="Examples: “Service Offering FTR for AI advisory with 3 consultants and a fixed 6-week scope.” “Prioritize IAM least privilege, evidence references, and owner accountability.” “Flag controls missing measurable outcomes or review dates.”"
               className="focus-ring min-h-24 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
             />
             <p className="text-xs text-slate-500">
@@ -351,7 +351,7 @@ export function ValidatorForm({
             id="validator-file"
             name="file"
             type="file"
-            accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+            accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             required
             className="sr-only"
             onChange={(event) => {

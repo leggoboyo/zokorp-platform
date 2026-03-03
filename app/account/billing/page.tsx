@@ -18,6 +18,9 @@ export default async function BillingPage() {
         Manage subscriptions, invoices, receipts, and payment methods using Stripe&apos;s hosted
         customer portal.
       </p>
+      <p className="text-xs text-slate-500">
+        For consultation or delivery status, use the account hub request timeline.
+      </p>
       <PortalButton />
     </div>
   );

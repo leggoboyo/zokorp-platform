@@ -12,7 +12,8 @@ Production-oriented Next.js platform for `zokorp.com` SaaS migration.
 - Marketing pages: `/`, `/services`, `/case-studies`, `/media`
 - Software catalog: `/software`, `/software/[slug]`
 - Account pages: `/account`, `/account/billing`
-- Admin pages: `/admin/products`, `/admin/prices`
+- Admin pages: `/admin/products`, `/admin/prices`, `/admin/service-requests`
+- Service request workflow: `/services#service-request` (submission) + account timeline tracking
 - First tool: `ZoKorpValidator` (`zokorp-validator`) for PDF/XLSX input and text output
 
 ## Quick start
@@ -24,6 +25,7 @@ Production-oriented Next.js platform for `zokorp.com` SaaS migration.
 3. Prisma setup:
    - `npm run prisma:generate`
    - `npm run prisma:migrate`
+   - production deploys: `npm run prisma:migrate:deploy`
    - `npm run prisma:seed`
 4. Start dev server:
    - `npm run dev`

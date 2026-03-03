@@ -41,11 +41,50 @@ const fallbackCatalog = [
       },
     ],
   },
+  {
+    id: "fallback-architecture-reviewer",
+    slug: "architecture-diagram-reviewer",
+    name: "Architecture Diagram Reviewer",
+    description:
+      "Free cloud architecture diagram reviewer that returns practical feedback from uploaded PDF diagrams.",
+    active: true,
+    accessModel: "FREE" as const,
+    prices: [],
+  },
+  {
+    id: "fallback-mlops-platform",
+    slug: "mlops-foundation-platform",
+    name: "ZoKorp MLOps Foundation Platform",
+    description:
+      "Subscription SaaS for SMB teams needing streamlined MLOps workflows, governance checks, and delivery visibility.",
+    active: true,
+    accessModel: "SUBSCRIPTION" as const,
+    prices: [
+      {
+        id: "fallback-mlops-monthly",
+        stripePriceId: process.env.STRIPE_PRICE_ID_PLATFORM_MONTHLY ?? "price_mlops_monthly_placeholder",
+        kind: "SUBSCRIPTION" as const,
+        currency: "usd",
+        amount: 100,
+        creditsGranted: 0,
+        active: true,
+      },
+      {
+        id: "fallback-mlops-annual",
+        stripePriceId: process.env.STRIPE_PRICE_ID_PLATFORM_ANNUAL ?? "price_mlops_annual_placeholder",
+        kind: "SUBSCRIPTION" as const,
+        currency: "usd",
+        amount: 1000,
+        creditsGranted: 0,
+        active: true,
+      },
+    ],
+  },
 ];
 
 export async function getSoftwareCatalog() {
   try {
-    return await db.product.findMany({
+    const products = await db.product.findMany({
       where: { active: true },
       include: {
         prices: {
@@ -55,6 +94,10 @@ export async function getSoftwareCatalog() {
       },
       orderBy: { name: "asc" },
     });
+
+    const bySlug = new Set(products.map((product) => product.slug));
+    const missingFallback = fallbackCatalog.filter((product) => !bySlug.has(product.slug));
+    return [...products, ...missingFallback].sort((a, b) => a.name.localeCompare(b.name));
   } catch {
     return fallbackCatalog;
   }
@@ -62,7 +105,7 @@ export async function getSoftwareCatalog() {
 
 export async function getProductBySlug(slug: string) {
   try {
-    return await db.product.findUnique({
+    const product = await db.product.findUnique({
       where: { slug },
       include: {
         prices: {
@@ -71,6 +114,8 @@ export async function getProductBySlug(slug: string) {
         },
       },
     });
+
+    return product ?? fallbackCatalog.find((item) => item.slug === slug) ?? null;
   } catch {
     return fallbackCatalog.find((product) => product.slug === slug) ?? null;
   }

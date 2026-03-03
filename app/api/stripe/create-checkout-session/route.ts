@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { getSiteOriginFromRequest } from "@/lib/site-origin";
 import { getStripeClient } from "@/lib/stripe";
 
@@ -27,6 +28,24 @@ export async function POST(request: Request) {
 
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+
+    const limiter = consumeRateLimit({
+      key: `checkout:${user.id}:${parsed.data.productSlug}:${getRequestFingerprint(request)}`,
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+
+    if (!limiter.allowed) {
+      return NextResponse.json(
+        { error: "Too many checkout attempts. Please wait a few minutes and retry." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limiter.retryAfterSeconds),
+          },
+        },
+      );
     }
 
     const price = await db.price.findUnique({

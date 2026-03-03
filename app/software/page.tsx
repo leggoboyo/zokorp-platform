@@ -19,6 +19,25 @@ const accessStyle: Record<AccessModel, string> = {
   METERED: "bg-violet-50 text-violet-700 border-violet-200",
 };
 
+const roadmapItems = [
+  {
+    title: "MLOps Foundation Platform",
+    status: "Planned SaaS",
+    summary:
+      "A subdomain product for SMB teams that need practical MLOps workflows, governance checks, and lightweight deployment operations.",
+    cta: "Track roadmap",
+    href: "/account",
+  },
+  {
+    title: "Architecture Diagram Reviewer",
+    status: "Free tool",
+    summary:
+      "Upload cloud architecture diagram PDFs and receive structured feedback on reliability, security, and operational readiness.",
+    cta: "Open in catalog",
+    href: "/software/architecture-diagram-reviewer",
+  },
+];
+
 function formatAmount(amount: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -28,16 +47,22 @@ function formatAmount(amount: number, currency: string) {
 
 export default async function SoftwarePage() {
   const products = await getSoftwareCatalog();
+  const activeProductCount = products.length;
 
   return (
     <div className="space-y-8">
-      <section className="glass-surface animate-fade-up px-6 py-8 md:px-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Software Catalog</p>
-        <h1 className="font-display mt-2 text-4xl font-semibold text-slate-900">Tools that unlock delivery speed</h1>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-          Browse ZoKorp software with free, one-time, and subscription access models. All paid flows
-          are processed through Stripe-hosted checkout and account-based entitlements.
+      <section className="hero-surface animate-fade-up px-6 py-8 text-white md:px-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Software Hub</p>
+        <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Products, access, and billing in one place</h1>
+        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200 md:text-base">
+          Purchase software, run tools, manage subscriptions, and track usage through a single account
+          and Stripe-backed billing experience.
         </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <span className="metric-chip bg-white/90 text-slate-800">{activeProductCount} active products</span>
+          <span className="metric-chip bg-white/90 text-slate-800">Hosted checkout + portal</span>
+          <span className="metric-chip bg-white/90 text-slate-800">Entitlement-protected access</span>
+        </div>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
@@ -66,7 +91,7 @@ export default async function SoftwarePage() {
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-sm text-slate-600">Pricing is configured in the admin dashboard.</p>
+                <p className="mt-2 text-sm text-slate-600">Pricing is configured per product in the admin dashboard.</p>
               )}
             </div>
 
@@ -75,17 +100,45 @@ export default async function SoftwarePage() {
                 className="focus-ring rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                 href={`/software/${product.slug}`}
               >
-                Open Tool
+                Open product
               </Link>
               <Link
                 className="focus-ring rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 href="/account"
               >
-                View Account Access
+                View account access
               </Link>
             </div>
           </article>
         ))}
+      </section>
+
+      <section className="surface soft-grid rounded-2xl p-6 md:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Roadmap</p>
+            <h2 className="font-display mt-1 text-3xl font-semibold text-slate-900">Upcoming product surfaces</h2>
+          </div>
+          <Link href="/services#service-request" className="text-sm font-semibold text-slate-700 underline-offset-2 hover:underline">
+            Request priority access
+          </Link>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {roadmapItems.map((item) => (
+            <article key={item.title} className="lift-card rounded-xl border border-slate-200 bg-white p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{item.status}</p>
+              <h3 className="font-display mt-2 text-2xl font-semibold text-slate-900">{item.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{item.summary}</p>
+              <Link
+                href={item.href}
+                className="focus-ring mt-4 inline-flex rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                {item.cta}
+              </Link>
+            </article>
+          ))}
+        </div>
       </section>
     </div>
   );

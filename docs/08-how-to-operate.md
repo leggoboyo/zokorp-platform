@@ -102,7 +102,7 @@
   - do not upload bank statements or unrelated sensitive documents.
 
 ## 11) Control-by-control calibration + edit guide download
-- For `.xlsx/.xls` checklist uploads, validator now performs row-level control calibration:
+- For `.xlsx` checklist uploads, validator now performs row-level control calibration:
   - detects control/requirement/response rows
   - evaluates each row (`PASS`, `PARTIAL`, `MISSING`)
   - provides row-level recommendation + suggested edit
@@ -154,3 +154,13 @@
   - `CreditBalance` table
 - Transitional backfill:
   - existing validator entitlement credits are copied into `GENERAL` wallet so prior test credits are preserved.
+
+## 15) Service request tracking (hub workflow)
+- New service request lifecycle:
+  - submit from `/services#service-request`
+  - track by code/status in `/account`
+  - admin updates in `/admin/service-requests`
+- Statuses:
+  - `SUBMITTED`, `TRIAGED`, `PROPOSAL_SENT`, `SCHEDULED`, `IN_PROGRESS`, `BLOCKED`, `DELIVERED`, `CLOSED`
+- Migration:
+  - `0004_service_requests_and_hub` creates `ServiceRequest` table and enums.

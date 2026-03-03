@@ -25,6 +25,7 @@ describe("security helpers", () => {
       ),
     ).toBe(true);
     expect(isAllowedFileType("sheet.xlsx", "application/octet-stream", xlsxBuffer)).toBe(true);
+    expect(isAllowedFileType("legacy.xls", "application/vnd.ms-excel", xlsxBuffer)).toBe(false);
     expect(isAllowedFileType("sheet.xlsx", "application/octet-stream", badBuffer)).toBe(false);
     expect(isAllowedFileType("script.exe", "application/octet-stream", badBuffer)).toBe(false);
   });

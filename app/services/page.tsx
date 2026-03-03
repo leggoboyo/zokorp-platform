@@ -1,5 +1,10 @@
 import Link from "next/link";
 
+import { ServiceRequestPanel } from "@/components/service-request-panel";
+import { auth } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+
 const serviceTracks = [
   {
     title: "AWS Consultation",
@@ -22,7 +27,7 @@ const serviceTracks = [
     ],
   },
   {
-    title: "AWS ML Products",
+    title: "Productized Delivery",
     summary:
       "Reusable software components to reduce repetitive manual validation and reporting work.",
     points: [
@@ -47,21 +52,56 @@ const engagementSteps = [
     detail: "Execute with measurable milestones and reusable tooling.",
   },
   {
-    title: "Scale",
-    detail: "Move repeatable work into software-backed operational workflows.",
+    title: "Track",
+    detail: "Follow request status and delivery updates from your account timeline.",
   },
 ];
 
-export default function ServicesPage() {
+const serviceFaq = [
+  {
+    question: "How are engagements tracked?",
+    answer:
+      "Every request receives a tracking code and lifecycle status. You can view updates from your account page.",
+  },
+  {
+    question: "Can service work connect to software products?",
+    answer:
+      "Yes. Delivery engagements can include setup for ZoKorp software tools and subscription handoff workflows.",
+  },
+  {
+    question: "Do consultations require a subscription?",
+    answer:
+      "No. Consultations are handled as service requests and can be scoped independently from SaaS subscriptions.",
+  },
+];
+
+export default async function ServicesPage() {
+  const session = await auth();
+  const signedIn = Boolean(session?.user?.email);
+
   return (
     <div className="space-y-10">
       <section className="hero-surface animate-fade-up px-6 py-8 text-white md:px-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Services</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Build with confidence, not guesswork</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200 md:text-base">
-          ZoKorp combines architecture depth and delivery execution for teams that need real AWS
-          AI/ML progress with evidence they can trust.
+          ZoKorp combines architecture depth and delivery execution for teams that need real AWS AI/ML
+          progress with evidence they can trust.
         </p>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Link
+            href="#service-request"
+            className="focus-ring inline-flex rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+          >
+            Request service
+          </Link>
+          <Link
+            href="/account"
+            className="focus-ring inline-flex rounded-md border border-slate-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Track in account
+          </Link>
+        </div>
       </section>
 
       <section className="grid gap-5 md:grid-cols-3">
@@ -94,12 +134,14 @@ export default function ServicesPage() {
         </div>
       </section>
 
+      <ServiceRequestPanel signedIn={signedIn} />
+
       <section className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
         <article className="surface lift-card rounded-2xl p-6">
           <h2 className="font-display text-2xl font-semibold text-slate-900">Need software-backed delivery?</h2>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            ZoKorp software tools are designed to support the same delivery patterns used in
-            consulting engagements, starting with validation workflows.
+            ZoKorp software tools support the same delivery patterns used in consulting engagements,
+            starting with validation workflows and account-based usage tracking.
           </p>
           <Link
             href="/software"
@@ -110,12 +152,14 @@ export default function ServicesPage() {
         </article>
 
         <article className="glass-surface lift-card rounded-2xl p-6">
-          <h3 className="font-display text-xl font-semibold text-slate-900">Delivery baseline</h3>
-          <ul className="mt-3 space-y-2 text-sm text-slate-700">
-            <li>Clear scope and measurable success criteria</li>
-            <li>Pragmatic architecture and implementation sequencing</li>
-            <li>Operational documentation for repeatability</li>
-            <li>Governance support and risk-aware execution</li>
+          <h3 className="font-display text-xl font-semibold text-slate-900">Service FAQ</h3>
+          <ul className="mt-3 space-y-3 text-sm text-slate-700">
+            {serviceFaq.map((item) => (
+              <li key={item.question}>
+                <p className="font-semibold text-slate-900">{item.question}</p>
+                <p className="mt-1 text-slate-600">{item.answer}</p>
+              </li>
+            ))}
           </ul>
         </article>
       </section>
