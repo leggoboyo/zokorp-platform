@@ -24,6 +24,18 @@ const envSchema = z.object({
   STRIPE_PRICE_ID_COMPETENCY_REVIEW: z.string().optional(),
   STRIPE_PRICE_ID_PLATFORM_MONTHLY: z.string().optional(),
   STRIPE_PRICE_ID_PLATFORM_ANNUAL: z.string().optional(),
+
+  SUPABASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+
+  STRIPE_PRICE_ID_MLOPS_STARTER_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_ID_MLOPS_STARTER_ANNUAL: z.string().optional(),
+  STRIPE_METER_EVENT_NAME_JOB_UNITS: z.string().optional(),
+
+  MLOPS_DEFAULT_ORG_SLUG: z.string().optional(),
+  MLOPS_RUNNER_KEY_PEPPER: z.string().optional(),
+  MLOPS_ARTIFACT_BUCKET: z.string().default("mlops-artifacts"),
 });
 
 let cachedEnv: z.infer<typeof envSchema> | null = null;

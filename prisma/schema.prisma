@@ -55,58 +55,193 @@ enum ServiceRequestStatus {
   CLOSED
 }
 
-model User {
-  id             String         @id @default(cuid())
-  name           String?
-  email          String?        @unique
-  emailVerified  DateTime?
-  image          String?
-  role           Role           @default(USER)
-  stripeCustomerId String?      @unique
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
 
-  accounts       Account[]
-  sessions       Session[]
-  entitlements   Entitlement[]
-  creditBalances CreditBalance[]
-  auditLogs      AuditLog[]
+enum WorkspacePersona {
+  C_SUITE
+  TECH_LEAD
+  DATA_SCIENTIST
+}
+
+enum OnboardingMode {
+  SELF_SERVE
+  SALES_ASSISTED
+}
+
+enum MlopsBillingPlan {
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+enum MlopsJobType {
+  TRAIN
+  BATCH_SCORE
+  INFERENCE_SMOKE_TEST
+  MONITORING_CHECK
+}
+
+enum MlopsJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum MlopsRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum MlopsModelStage {
+  DEV
+  STAGING
+  PROD
+  ARCHIVED
+}
+
+enum MlopsDeploymentStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  FAILED
+  RETIRED
+}
+
+enum RunnerKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum MlopsUsageKind {
+  JOB_UNITS
+  INFERENCE_UNITS
+  STORAGE_GB_HOURS
+}
+
+model User {
+  id               String    @id @default(cuid())
+  name             String?
+  email            String?   @unique
+  emailVerified    DateTime?
+  image            String?
+  role             Role      @default(USER)
+  stripeCustomerId String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  accounts             Account[]
+  sessions             Session[]
+  entitlements         Entitlement[]
+  creditBalances       CreditBalance[]
+  auditLogs            AuditLog[]
   checkoutFulfillments CheckoutFulfillment[]
-  usageEvents    UsageEvent[]
-  serviceRequests ServiceRequest[]
+  usageEvents          UsageEvent[]
+  serviceRequests      ServiceRequest[]
+
+  createdOrganizations      Organization[]       @relation("OrganizationCreator")
+  organizationMemberships   OrganizationMember[]
+  mlopsProjectsCreated      MlopsProject[]       @relation("MlopsProjectCreator")
+  mlopsJobsCreated          MlopsJob[]           @relation("MlopsJobCreator")
+  mlopsRunsCreated          MlopsRun[]           @relation("MlopsRunCreator")
+  mlopsModelsCreated        MlopsModel[]         @relation("MlopsModelCreator")
+  mlopsModelVersionsCreated MlopsModelVersion[]  @relation("MlopsModelVersionCreator")
+  mlopsDeploymentsCreated   MlopsDeployment[]    @relation("MlopsDeploymentCreator")
+  mlopsRunnerKeysCreated    MlopsRunnerKey[]     @relation("MlopsRunnerKeyCreator")
+  mlopsUsageEventsCreated   MlopsUsageLedger[]   @relation("MlopsUsageLedgerCreator")
+}
+
+model Organization {
+  id                   String           @id @default(cuid())
+  name                 String
+  slug                 String           @unique
+  onboardingMode       OnboardingMode   @default(SELF_SERVE)
+  workspacePersona     WorkspacePersona @default(TECH_LEAD)
+  billingPlan          MlopsBillingPlan @default(STARTER)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  usageMeteringEnabled Boolean          @default(false)
+  createdByUserId      String
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  createdBy         User                   @relation("OrganizationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  members           OrganizationMember[]
+  projects          MlopsProject[]
+  jobs              MlopsJob[]
+  jobLogs           MlopsJobLog[]
+  runs              MlopsRun[]
+  models            MlopsModel[]
+  deployments       MlopsDeployment[]
+  monitoringEvents  MlopsMonitoringEvent[]
+  driftSnapshots    MlopsDriftSnapshot[]
+  runnerKeys        MlopsRunnerKey[]
+  usageLedger       MlopsUsageLedger[]
+  artifacts         MlopsArtifact[]
+  auditLogs         AuditLog[]
+  MlopsModelVersion MlopsModelVersion[]
+
+  @@index([createdByUserId])
+  @@index([createdAt])
+}
+
+model OrganizationMember {
+  id               String           @id @default(cuid())
+  organizationId   String
+  userId           String
+  role             OrganizationRole @default(MEMBER)
+  workspacePersona WorkspacePersona @default(TECH_LEAD)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId, role])
 }
 
 model Product {
-  id           String        @id @default(cuid())
-  slug         String        @unique
-  name         String
-  description  String
-  active       Boolean       @default(true)
-  accessModel  AccessModel
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  name        String
+  description String
+  active      Boolean     @default(true)
+  accessModel AccessModel
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
-  prices       Price[]
-  entitlements Entitlement[]
-  creditBalances CreditBalance[]
+  prices               Price[]
+  entitlements         Entitlement[]
+  creditBalances       CreditBalance[]
   checkoutFulfillments CheckoutFulfillment[]
-  usageEvents  UsageEvent[]
+  usageEvents          UsageEvent[]
 }
 
 model Price {
-  id            String    @id @default(cuid())
-  productId     String
-  stripePriceId String    @unique
-  kind          PriceKind
-  currency      String    @default("usd")
-  amount        Int
-  creditsGranted Int      @default(1)
-  creditTier    CreditTier @default(GENERAL)
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String     @id @default(cuid())
+  productId      String
+  stripePriceId  String     @unique
+  kind           PriceKind
+  currency       String     @default("usd")
+  amount         Int
+  creditsGranted Int        @default(1)
+  creditTier     CreditTier @default(GENERAL)
+  active         Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Entitlement {
@@ -120,8 +255,8 @@ model Entitlement {
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
-  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product              Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
   @@index([userId])
@@ -138,8 +273,8 @@ model CreditBalance {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product       Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId, tier])
   @@index([userId, productId])
@@ -153,23 +288,23 @@ model CheckoutFulfillment {
   productId               String
   createdAt               DateTime @default(now())
 
-  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product                 Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([productId])
 }
 
 model UsageEvent {
-  id                  String   @id @default(cuid())
-  userId              String
-  productId           String
-  quantity            Int      @default(1)
-  stripeMeterEventId  String?
-  createdAt           DateTime @default(now())
+  id                 String   @id @default(cuid())
+  userId             String
+  productId          String
+  quantity           Int      @default(1)
+  stripeMeterEventId String?
+  createdAt          DateTime @default(now())
 
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product             Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([userId, productId])
 }
@@ -188,22 +323,302 @@ model ServiceRequest {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([createdAt])
 }
 
-model AuditLog {
-  id           String   @id @default(cuid())
-  userId       String?
-  action       String
-  metadataJson Json?
-  createdAt    DateTime @default(now())
+model MlopsProject {
+  id              String   @id @default(cuid())
+  organizationId  String
+  createdByUserId String
+  name            String
+  slug            String
+  description     String?
+  archived        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy        User                   @relation("MlopsProjectCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  jobs             MlopsJob[]
+  runs             MlopsRun[]
+  models           MlopsModel[]
+  deployments      MlopsDeployment[]
+  monitoringEvents MlopsMonitoringEvent[]
+  driftSnapshots   MlopsDriftSnapshot[]
+  usageLedger      MlopsUsageLedger[]
+  artifacts        MlopsArtifact[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, createdAt])
+  @@index([createdByUserId])
+}
+
+model MlopsJob {
+  id                  String         @id @default(cuid())
+  organizationId      String
+  projectId           String
+  createdByUserId     String
+  name                String
+  type                MlopsJobType
+  status              MlopsJobStatus @default(QUEUED)
+  containerImage      String
+  commandJson         Json?
+  envJson             Json?
+  inputsJson          Json?
+  outputsJson         Json?
+  errorMessage        String?
+  claimedByRunnerName String?
+  queuedAt            DateTime       @default(now())
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      MlopsProject       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy    User               @relation("MlopsJobCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  logs         MlopsJobLog[]
+  run          MlopsRun?
+  artifacts    MlopsArtifact[]
+  usageLedger  MlopsUsageLedger[]
+
+  @@index([organizationId, status, queuedAt])
+  @@index([projectId, createdAt])
+  @@index([createdByUserId])
+}
+
+model MlopsJobLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  jobId          String
+  sequence       Int
+  level          String   @default("INFO")
+  message        String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job          MlopsJob     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, sequence])
+  @@index([organizationId, createdAt])
+}
+
+model MlopsRun {
+  id              String         @id @default(cuid())
+  organizationId  String
+  projectId       String
+  createdByUserId String
+  jobId           String?        @unique
+  name            String
+  status          MlopsRunStatus @default(QUEUED)
+  parametersJson  Json?
+  metricsJson     Json?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      MlopsProject    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy    User            @relation("MlopsRunCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  job          MlopsJob?       @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  artifacts    MlopsArtifact[]
+
+  @@index([organizationId, status, createdAt])
+  @@index([projectId, createdAt])
+  @@index([createdByUserId])
+}
+
+model MlopsArtifact {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  jobId          String?
+  runId          String?
+  storagePath    String
+  displayName    String
+  contentType    String?
+  sizeBytes      Int?
+  checksumSha256 String?
+  createdAt      DateTime @default(now())
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      MlopsProject       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  job          MlopsJob?          @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  run          MlopsRun?          @relation(fields: [runId], references: [id], onDelete: SetNull)
+  modelVersion MlopsModelVersion?
+
+  @@index([organizationId, createdAt])
+  @@index([projectId])
+  @@index([jobId])
+  @@index([runId])
+}
+
+model MlopsModel {
+  id              String   @id @default(cuid())
+  organizationId  String
+  projectId       String
+  createdByUserId String
+  name            String
+  slug            String
+  description     String?
+  archived        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      MlopsProject        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy    User                @relation("MlopsModelCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  versions     MlopsModelVersion[]
+
+  @@unique([organizationId, projectId, slug])
+  @@index([organizationId, createdAt])
+  @@index([createdByUserId])
+}
+
+model MlopsModelVersion {
+  id              String          @id @default(cuid())
+  organizationId  String
+  modelId         String
+  createdByUserId String
+  artifactId      String?         @unique
+  version         String
+  stage           MlopsModelStage @default(DEV)
+  metricsJson     Json?
+  notes           String?
+  createdAt       DateTime        @default(now())
+  promotedAt      DateTime?
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  model        MlopsModel        @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  createdBy    User              @relation("MlopsModelVersionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  artifact     MlopsArtifact?    @relation(fields: [artifactId], references: [id], onDelete: SetNull)
+  deployments  MlopsDeployment[]
+
+  @@unique([modelId, version])
+  @@index([organizationId, stage, createdAt])
+  @@index([createdByUserId])
+}
+
+model MlopsDeployment {
+  id              String                @id @default(cuid())
+  organizationId  String
+  projectId       String
+  createdByUserId String
+  modelVersionId  String?
+  name            String
+  environment     String
+  status          MlopsDeploymentStatus @default(DRAFT)
+  endpointUrl     String?
+  configJson      Json?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project          MlopsProject           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy        User                   @relation("MlopsDeploymentCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  modelVersion     MlopsModelVersion?     @relation(fields: [modelVersionId], references: [id], onDelete: SetNull)
+  monitoringEvents MlopsMonitoringEvent[]
+  driftSnapshots   MlopsDriftSnapshot[]
+
+  @@unique([organizationId, projectId, name])
+  @@index([organizationId, status, createdAt])
+  @@index([createdByUserId])
+}
+
+model MlopsMonitoringEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  deploymentId   String?
+  metricName     String
+  metricValue    Float
+  dimensionJson  Json?
+  recordedAt     DateTime @default(now())
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      MlopsProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deployment   MlopsDeployment? @relation(fields: [deploymentId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, recordedAt])
+  @@index([deploymentId, recordedAt])
+}
+
+model MlopsDriftSnapshot {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  deploymentId   String?
+  featureName    String
+  baselineJson   Json
+  currentJson    Json
+  driftScore     Float
+  recordedAt     DateTime @default(now())
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      MlopsProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deployment   MlopsDeployment? @relation(fields: [deploymentId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, recordedAt])
+  @@index([deploymentId, recordedAt])
+}
+
+model MlopsRunnerKey {
+  id              String          @id @default(cuid())
+  organizationId  String
+  createdByUserId String
+  name            String
+  keyPrefix       String          @unique
+  keyHash         String
+  status          RunnerKeyStatus @default(ACTIVE)
+  lastUsedAt      DateTime?
+  createdAt       DateTime        @default(now())
+  revokedAt       DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation("MlopsRunnerKeyCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@index([createdByUserId])
+}
+
+model MlopsUsageLedger {
+  id                 String         @id @default(cuid())
+  organizationId     String
+  projectId          String
+  jobId              String?
+  createdByUserId    String?
+  kind               MlopsUsageKind @default(JOB_UNITS)
+  quantity           Int            @default(1)
+  stripeMeterEventId String?
+  recordedAt         DateTime       @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      MlopsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  job          MlopsJob?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  createdBy    User?        @relation("MlopsUsageLedgerCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, recordedAt])
+  @@index([projectId, kind, recordedAt])
+  @@index([jobId])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  userId         String?
+  organizationId String?
+  action         String
+  metadataJson   Json?
+  createdAt      DateTime @default(now())
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([organizationId])
   @@index([action])
 }
 
@@ -233,7 +648,7 @@ model Session {
   userId       String
   expires      DateTime
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
