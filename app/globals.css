@@ -1,15 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #edf2f8;
+  --background: #e8edf5;
   --foreground: #0b1220;
   --surface: #ffffff;
-  --surface-muted: #f8fbff;
-  --border: #d4deea;
+  --surface-muted: #f5f8fc;
+  --border: #cfd8e6;
+  --border-strong: #b7c5da;
   --accent: #0f3460;
   --accent-strong: #081f3d;
-  --teal: #127c95;
+  --teal: #0f8ea9;
   --gold: #ca9c38;
+  --rose: #cf6479;
+  --sky: #4a8fcb;
   --ring: rgba(15, 52, 96, 0.25);
 }
 
@@ -22,11 +25,12 @@
 
 body {
   background:
-    radial-gradient(circle at 12% 12%, rgba(18, 124, 149, 0.1), transparent 32%),
-    radial-gradient(circle at 88% 10%, rgba(202, 156, 56, 0.09), transparent 28%),
-    linear-gradient(180deg, #f2f6fb 0%, #e8eef6 100%);
+    radial-gradient(circle at 7% -2%, rgba(15, 142, 169, 0.2), transparent 30%),
+    radial-gradient(circle at 96% 4%, rgba(202, 156, 56, 0.15), transparent 34%),
+    linear-gradient(180deg, #f1f5fb 0%, #e6edf6 100%);
   color: var(--foreground);
   font-family: var(--font-plus-jakarta), Arial, Helvetica, sans-serif;
+  min-height: 100vh;
 }
 
 h1,
@@ -44,12 +48,88 @@ h3,
 .surface {
   background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: 0 10px 30px rgba(8, 31, 61, 0.06);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 14px 32px rgba(8, 31, 61, 0.06);
+  border-radius: 1.1rem;
 }
 
 .surface-muted {
   background: var(--surface-muted);
   border: 1px solid var(--border);
+  border-radius: 1.1rem;
+}
+
+.glass-surface {
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.78), rgba(243, 248, 255, 0.86));
+  border: 1px solid rgba(183, 197, 218, 0.75);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 18px 34px rgba(8, 31, 61, 0.08);
+  backdrop-filter: blur(8px);
+  border-radius: 1.1rem;
+}
+
+.lift-card {
+  transition:
+    transform 260ms ease,
+    box-shadow 260ms ease,
+    border-color 260ms ease,
+    background-color 260ms ease;
+}
+
+.lift-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-strong);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 18px 38px rgba(8, 31, 61, 0.12);
+}
+
+.hero-surface {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.6rem;
+  border: 1px solid rgba(188, 204, 225, 0.45);
+  background:
+    radial-gradient(circle at 18% 16%, rgba(121, 225, 255, 0.2), transparent 44%),
+    radial-gradient(circle at 82% 10%, rgba(255, 211, 132, 0.2), transparent 42%),
+    linear-gradient(136deg, #07192f 0%, #123762 52%, #0f6e87 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 26px 52px rgba(5, 21, 43, 0.34);
+}
+
+.hero-surface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(112deg, transparent 0%, rgba(255, 255, 255, 0.07) 42%, transparent 62%);
+}
+
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(84, 112, 150, 0.45) 52%, transparent 100%);
+}
+
+.metric-chip {
+  border: 1px solid rgba(167, 181, 202, 0.9);
+  background: linear-gradient(180deg, #f8fbff 0%, #edf3fa 100%);
+  color: #25334b;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.soft-grid {
+  background-image:
+    linear-gradient(rgba(32, 60, 96, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(32, 60, 96, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 .text-balance {
@@ -73,4 +153,56 @@ h3,
 
 .pulse-accent {
   animation: pulseGlow 2.8s ease-out infinite;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes breath {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 560ms cubic-bezier(0.2, 0.65, 0.2, 1) both;
+}
+
+.animate-float-soft {
+  animation: breath 6.5s ease-in-out infinite;
+}
+
+.delay-1 {
+  animation-delay: 90ms;
+}
+
+.delay-2 {
+  animation-delay: 170ms;
+}
+
+.delay-3 {
+  animation-delay: 250ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -39,7 +39,7 @@ const caseStudies = [
 export default function CaseStudiesPage() {
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-slate-300 bg-gradient-to-r from-[#0b1f3a] via-[#123b61] to-[#11607c] px-6 py-9 text-white md:px-8">
+      <section className="hero-surface animate-fade-up px-6 py-9 text-white md:px-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-200">Case Studies</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Delivery outcomes in context</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-100 md:text-base">
@@ -50,7 +50,7 @@ export default function CaseStudiesPage() {
 
       <section className="grid gap-5">
         {caseStudies.map((study) => (
-          <article key={study.title} className="surface rounded-2xl p-6 md:p-7">
+          <article key={study.title} className="surface lift-card rounded-2xl p-6 md:p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{study.sector}</p>
@@ -72,7 +72,7 @@ export default function CaseStudiesPage() {
         ))}
       </section>
 
-      <section className="surface-muted rounded-2xl p-6">
+      <section className="glass-surface rounded-2xl p-6">
         <h2 className="font-display text-2xl font-semibold text-slate-900">Need a software-backed engagement?</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           Explore ZoKorp software tools that turn repeatable service workflows into productized execution.

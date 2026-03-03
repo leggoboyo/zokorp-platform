@@ -27,7 +27,7 @@ const mediaItems = [
 export default function MediaPage() {
   return (
     <div className="space-y-8">
-      <section className="surface rounded-2xl p-6 md:p-8">
+      <section className="glass-surface animate-fade-up rounded-2xl p-6 md:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Media</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold text-slate-900">
           Insights, guides, and platform updates
@@ -39,7 +39,7 @@ export default function MediaPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         {mediaItems.map((item) => (
-          <article key={item.title} className="surface rounded-2xl p-5">
+          <article key={item.title} className="surface lift-card rounded-2xl p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{item.type}</p>
             <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">{item.title}</h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
@@ -50,7 +50,7 @@ export default function MediaPage() {
         ))}
       </section>
 
-      <section className="rounded-2xl border border-slate-300 bg-slate-900 px-6 py-8 text-white md:px-8">
+      <section className="hero-surface px-6 py-8 text-white md:px-8">
         <h2 className="font-display text-3xl font-semibold">Want updates tied to software releases?</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200">
           Sign in and monitor account activity as software capabilities and billing flows continue to

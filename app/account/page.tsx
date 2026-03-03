@@ -78,7 +78,7 @@ export default async function AccountPage() {
 
   return (
     <div className="space-y-6">
-      <section className="surface rounded-2xl p-6">
+      <section className="glass-surface animate-fade-up rounded-2xl p-6">
         <h1 className="font-display text-4xl font-semibold text-slate-900">Account</h1>
         <p className="mt-2 text-sm text-slate-600">Signed in as {user.email}</p>
         <div className="mt-4">
@@ -91,7 +91,7 @@ export default async function AccountPage() {
         </div>
       </section>
 
-      <section className="surface rounded-2xl p-6">
+      <section className="surface lift-card rounded-2xl p-6">
         <h2 className="font-display text-2xl font-semibold text-slate-900">Entitlements</h2>
         <div className="mt-3 space-y-2">
           {user.entitlements.length === 0 ? (
@@ -113,7 +113,7 @@ export default async function AccountPage() {
         </div>
       </section>
 
-      <section className="surface rounded-2xl p-6">
+      <section className="surface lift-card rounded-2xl p-6">
         <h2 className="font-display text-2xl font-semibold text-slate-900">Credit Wallets</h2>
         <div className="mt-3 space-y-2">
           {user.creditBalances.length === 0 ? (
@@ -137,7 +137,7 @@ export default async function AccountPage() {
         </div>
       </section>
 
-      <section className="surface rounded-2xl p-6">
+      <section className="surface lift-card rounded-2xl p-6">
         <h2 className="font-display text-2xl font-semibold text-slate-900">Recent Purchases</h2>
         <ul className="mt-3 space-y-2 text-sm">
           {user.checkoutFulfillments.length === 0 ? (
@@ -166,7 +166,7 @@ export default async function AccountPage() {
         </ul>
       </section>
 
-      <section className="surface rounded-2xl p-6">
+      <section className="surface lift-card rounded-2xl p-6">
         <h2 className="font-display text-2xl font-semibold text-slate-900">Recent Activity</h2>
         <ul className="mt-3 space-y-2 text-sm">
           {user.auditLogs.length === 0 ? (

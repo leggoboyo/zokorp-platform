@@ -27,24 +27,28 @@ export async function SiteHeader() {
   }
 
   return (
-    <header className="border-b border-slate-300 bg-white/90 backdrop-blur">
-      <div className="border-b border-slate-200 bg-slate-900 px-4 py-1.5 text-center text-xs text-slate-200">
-        Building at app.zokorp.com while the main zokorp.com site stays live on Squarespace.
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/78 backdrop-blur-xl">
+      <div className="border-b border-slate-200 bg-gradient-to-r from-[#081f3d] via-[#0f3460] to-[#0a6f87] px-4 py-1.5 text-center text-xs text-slate-100">
+        app.zokorp.com is live-in-progress while main zokorp.com remains on Squarespace.
       </div>
 
-      <div className="mx-auto w-full max-w-6xl px-4 py-4 md:px-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:gap-8">
-            <Link href="/" className="font-display text-2xl font-semibold tracking-tight text-slate-900">
+      <div className="mx-auto w-full max-w-7xl px-4 py-4 md:px-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-8">
+            <Link
+              href="/"
+              className="font-display inline-flex w-fit items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900"
+            >
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-teal-500 shadow-[0_0_0_4px_rgba(15,142,169,0.14)]" />
               ZoKorp Platform
             </Link>
 
-            <nav className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+            <nav className="glass-surface flex flex-wrap items-center gap-1.5 px-2 py-1.5 text-sm text-slate-700">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="focus-ring rounded-full border border-transparent px-3 py-1.5 font-medium transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-950"
+                  className="focus-ring rounded-full border border-transparent px-3 py-1.5 font-medium transition hover:border-slate-300 hover:bg-white hover:text-slate-950"
                 >
                   {link.label}
                 </Link>
@@ -55,12 +59,12 @@ export async function SiteHeader() {
           <div className="text-sm text-slate-700">
             {session?.user?.email ? (
               <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+                <span className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-600">
                   {session.user.email}
                 </span>
                 <Link
                   href="/api/auth/signout?callbackUrl=/"
-                  className="focus-ring rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
+                  className="focus-ring rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-100"
                 >
                   Sign out
                 </Link>

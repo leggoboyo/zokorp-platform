@@ -42,9 +42,9 @@ const caseStudyTeasers = [
 export default function HomePage() {
   return (
     <div className="space-y-10 md:space-y-12">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-300 bg-gradient-to-br from-[#091b36] via-[#103059] to-[#176d88] px-6 py-12 text-white shadow-2xl md:px-10 md:py-14">
-        <div className="pointer-events-none absolute -right-14 -top-20 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 left-8 h-44 w-44 rounded-full bg-amber-300/25 blur-3xl" />
+      <section className="hero-surface animate-fade-up px-6 py-12 text-white md:px-10 md:py-14">
+        <div className="pointer-events-none absolute -right-8 top-4 h-36 w-36 rounded-full border border-white/15 bg-white/10 blur-md animate-float-soft" />
+        <div className="pointer-events-none absolute -bottom-16 left-8 h-44 w-44 rounded-full bg-amber-300/25 blur-3xl" />
 
         <p className="text-sm uppercase tracking-[0.2em] text-slate-100/90">ZoKorp Platform</p>
         <h1 className="font-display mt-4 max-w-4xl text-balance text-4xl font-semibold leading-tight md:text-6xl">
@@ -78,8 +78,12 @@ export default function HomePage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        {metrics.map((metric) => (
-          <article key={metric.label} className="surface rounded-2xl p-5">
+        {metrics.map((metric, index) => (
+          <article
+            key={metric.label}
+            className="surface lift-card animate-fade-up rounded-2xl p-5"
+            style={{ animationDelay: `${Math.min(index, 3) * 90}ms` }}
+          >
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{metric.label}</p>
             <p className="mt-2 font-display text-xl font-semibold text-slate-900">{metric.value}</p>
           </article>
@@ -99,7 +103,7 @@ export default function HomePage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           {serviceItems.map((item) => (
-            <article key={item.title} className="surface rounded-2xl p-6">
+            <article key={item.title} className="surface lift-card rounded-2xl p-6">
               <h3 className="font-display text-xl font-semibold text-slate-900">{item.title}</h3>
               <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
             </article>
@@ -108,7 +112,7 @@ export default function HomePage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <article className="surface rounded-2xl p-6 md:p-7">
+        <article className="surface lift-card soft-grid rounded-2xl p-6 md:p-7">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Featured Software</p>
           <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">ZoKorpValidator</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
@@ -116,9 +120,9 @@ export default function HomePage() {
             FTR, SDP/SRP, and Competency review workflows.
           </p>
           <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <span className="rounded-full bg-slate-100 px-3 py-1">$50 FTR</span>
-            <span className="rounded-full bg-slate-100 px-3 py-1">$150 SDP/SRP</span>
-            <span className="rounded-full bg-slate-100 px-3 py-1">$500 Competency</span>
+            <span className="metric-chip">$50 FTR</span>
+            <span className="metric-chip">$150 SDP/SRP</span>
+            <span className="metric-chip">$500 Competency</span>
           </div>
           <div className="mt-6">
             <Link
@@ -130,7 +134,7 @@ export default function HomePage() {
           </div>
         </article>
 
-        <article className="surface-muted rounded-2xl p-6">
+        <article className="glass-surface lift-card rounded-2xl p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pipeline</p>
           <h3 className="font-display mt-2 text-2xl font-semibold text-slate-900">What launches next</h3>
           <ul className="mt-4 space-y-3 text-sm text-slate-700">
@@ -150,7 +154,7 @@ export default function HomePage() {
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           {caseStudyTeasers.map((item, index) => (
-            <article key={item.title} className="surface rounded-2xl p-5">
+            <article key={item.title} className="surface lift-card rounded-2xl p-5">
               <p className="text-xs font-semibold text-teal-700">0{index + 1}</p>
               <h3 className="font-display mt-2 text-xl font-semibold text-slate-900">{item.title}</h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">{item.summary}</p>
@@ -159,7 +163,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-300 bg-slate-900 px-6 py-8 text-white md:px-8">
+      <section className="hero-surface px-6 py-8 text-white md:px-8">
         <h2 className="font-display text-3xl font-semibold">Ready to move from concept to validated delivery?</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200">
           Start with AWS consultation or directly evaluate ZoKorp software tooling based on your

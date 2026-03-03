@@ -55,7 +55,7 @@ const engagementSteps = [
 export default function ServicesPage() {
   return (
     <div className="space-y-10">
-      <section className="rounded-2xl border border-slate-300 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 px-6 py-8 text-white md:px-8">
+      <section className="hero-surface animate-fade-up px-6 py-8 text-white md:px-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Services</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Build with confidence, not guesswork</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200 md:text-base">
@@ -66,7 +66,7 @@ export default function ServicesPage() {
 
       <section className="grid gap-5 md:grid-cols-3">
         {serviceTracks.map((service) => (
-          <article key={service.title} className="surface rounded-2xl p-6">
+          <article key={service.title} className="surface lift-card rounded-2xl p-6">
             <h2 className="font-display text-2xl font-semibold text-slate-900">{service.title}</h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">{service.summary}</p>
             <ul className="mt-4 space-y-2 text-sm text-slate-700">
@@ -80,12 +80,12 @@ export default function ServicesPage() {
         ))}
       </section>
 
-      <section className="surface rounded-2xl p-6 md:p-8">
+      <section className="surface soft-grid rounded-2xl p-6 md:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Engagement Flow</p>
         <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">How engagements run</h2>
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           {engagementSteps.map((step, index) => (
-            <article key={step.title} className="rounded-xl border border-slate-200 bg-white p-4">
+            <article key={step.title} className="lift-card rounded-xl border border-slate-200 bg-white p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-teal-700">Step 0{index + 1}</p>
               <h3 className="font-display mt-1 text-xl font-semibold text-slate-900">{step.title}</h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">{step.detail}</p>
@@ -95,7 +95,7 @@ export default function ServicesPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
-        <article className="surface rounded-2xl p-6">
+        <article className="surface lift-card rounded-2xl p-6">
           <h2 className="font-display text-2xl font-semibold text-slate-900">Need software-backed delivery?</h2>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             ZoKorp software tools are designed to support the same delivery patterns used in
@@ -109,7 +109,7 @@ export default function ServicesPage() {
           </Link>
         </article>
 
-        <article className="surface-muted rounded-2xl p-6">
+        <article className="glass-surface lift-card rounded-2xl p-6">
           <h3 className="font-display text-xl font-semibold text-slate-900">Delivery baseline</h3>
           <ul className="mt-3 space-y-2 text-sm text-slate-700">
             <li>Clear scope and measurable success criteria</li>

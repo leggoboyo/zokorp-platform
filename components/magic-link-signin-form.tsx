@@ -52,12 +52,12 @@ export function MagicLinkSignInForm({ callbackUrl }: MagicLinkSignInFormProps) {
         required
         autoComplete="email"
         placeholder="consulting@zokorp.com"
-        className="focus-ring block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+        className="focus-ring block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
       />
       <button
         type="submit"
         disabled={isSubmitting}
-        className="focus-ring inline-flex rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        className="focus-ring inline-flex rounded-md bg-gradient-to-r from-slate-900 to-[#153f67] px-4 py-2.5 text-sm font-semibold text-white transition hover:from-slate-800 hover:to-[#174f7f] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Sending link..." : "Send magic sign-in link"}
       </button>

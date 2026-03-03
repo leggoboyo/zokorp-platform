@@ -291,7 +291,7 @@ export default async function SoftwareDetailPage({
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <section className="surface rounded-2xl p-6 md:p-8">
+      <section className="glass-surface animate-fade-up rounded-2xl p-6 md:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Software Tool</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold text-slate-900">{product.name}</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">{product.description}</p>
@@ -317,7 +317,7 @@ export default async function SoftwareDetailPage({
       {displayPrices.length > 0 ? (
         <section className="grid gap-4 md:grid-cols-3">
           {displayPrices.map((price) => (
-            <article key={price.id} className="surface rounded-2xl p-5">
+            <article key={price.id} className="surface lift-card rounded-2xl p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 {getPriceTitle(product.slug, price.amount, price.kind)}
               </p>
@@ -369,7 +369,7 @@ export default async function SoftwareDetailPage({
           profileCredits={validatorProfileCredits}
         />
       ) : (
-        <section className="surface rounded-2xl p-6">
+        <section className="surface lift-card rounded-2xl p-6">
           <h2 className="font-display text-2xl font-semibold text-slate-900">Product workflow</h2>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             This product is configured for account-based access. Sign in, purchase access, then launch

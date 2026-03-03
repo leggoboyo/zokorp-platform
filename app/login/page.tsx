@@ -27,7 +27,7 @@ export default async function LoginPage({
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <section className="surface rounded-2xl p-8">
+      <section className="glass-surface animate-fade-up rounded-2xl p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Account Access</p>
         <h1 className="font-display mt-2 text-4xl font-semibold text-slate-900">Sign in</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
@@ -44,7 +44,7 @@ export default async function LoginPage({
         )}
       </section>
 
-      <section className="surface-muted rounded-2xl p-6">
+      <section className="surface-muted lift-card rounded-2xl p-6">
         <h2 className="font-display text-2xl font-semibold text-slate-900">What happens next?</h2>
         <ul className="mt-3 space-y-2 text-sm text-slate-700">
           <li>Sign in to your account</li>

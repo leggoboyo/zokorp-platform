@@ -31,7 +31,7 @@ export default async function SoftwarePage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-slate-300 bg-white/70 px-6 py-8 backdrop-blur-sm md:px-8">
+      <section className="glass-surface animate-fade-up px-6 py-8 md:px-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Software Catalog</p>
         <h1 className="font-display mt-2 text-4xl font-semibold text-slate-900">Tools that unlock delivery speed</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
@@ -42,7 +42,7 @@ export default async function SoftwarePage() {
 
       <section className="grid gap-5 lg:grid-cols-2">
         {products.map((product) => (
-          <article key={product.id} className="surface rounded-2xl p-6">
+          <article key={product.id} className="surface lift-card rounded-2xl p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-display text-2xl font-semibold text-slate-900">{product.name}</h2>
               <span
@@ -54,7 +54,7 @@ export default async function SoftwarePage() {
 
             <p className="mt-3 text-sm leading-6 text-slate-600">{product.description}</p>
 
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/85 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Pricing</p>
               {product.prices.length > 0 ? (
                 <ul className="mt-2 space-y-1 text-sm text-slate-700">

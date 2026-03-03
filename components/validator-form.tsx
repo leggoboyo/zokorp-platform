@@ -240,7 +240,7 @@ export function ValidatorForm({
   }
 
   return (
-    <section className="surface rounded-xl p-5">
+    <section className="surface animate-fade-up rounded-xl p-5">
       <h3 className="font-display text-2xl font-semibold text-slate-900">Run ZoKorpValidator</h3>
       <p className="mt-2 text-sm text-slate-600">
         Upload one PDF or Excel file (.pdf, .xlsx, .xls). Processing runs server-side with entitlement checks.
@@ -386,7 +386,7 @@ export function ValidatorForm({
       {result?.error ? <p className="mt-3 text-sm text-red-600">{result.error}</p> : null}
 
       {result?.report ? (
-        <div className="mt-4 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-4 space-y-4 rounded-xl border border-slate-200 bg-slate-50/85 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Validation Report</p>
@@ -497,7 +497,7 @@ export function ValidatorForm({
                 {result.report.controlCalibration.controls.map((control) => (
                   <article
                     key={`${control.sheetName}-${control.rowNumber}-${control.controlId}`}
-                    className="rounded-md border border-slate-200 bg-white p-3"
+                    className="lift-card rounded-md border border-slate-200 bg-white p-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-slate-900">
