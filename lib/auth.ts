@@ -30,8 +30,9 @@ function normalizeEmail(input: unknown) {
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   session: {
-    strategy: "database",
+    strategy: "jwt",
   },
+  secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET ?? process.env.ARCH_REVIEW_EML_SECRET,
   providers: [
     CredentialsProvider({
       id: "credentials",
@@ -122,15 +123,35 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
   callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
+    async jwt({ token, user }) {
+      if (user?.id) {
+        token.sub = user.id;
+        token.email = user.email ?? token.email;
+        token.name = user.name ?? token.name;
         const dbUser = await db.user.findUnique({
           where: { id: user.id },
           select: { role: true },
         });
 
-        session.user.id = user.id;
-        session.user.role = dbUser?.role ?? Role.USER;
+        token.role = dbUser?.role ?? Role.USER;
+        return token;
+      }
+
+      if (!token.role && token.sub) {
+        const dbUser = await db.user.findUnique({
+          where: { id: token.sub },
+          select: { role: true },
+        });
+
+        token.role = dbUser?.role ?? Role.USER;
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.sub ?? "";
+        session.user.role = (token.role as Role | undefined) ?? Role.USER;
       }
       return session;
     },
