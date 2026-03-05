@@ -32,13 +32,18 @@ async function refreshWorkDriveAccessToken() {
     client_secret: process.env.ZOHO_WORKDRIVE_CLIENT_SECRET ?? process.env.ZOHO_CLIENT_SECRET!,
   });
 
-  const response = await fetch(`${getAccountsDomain().replace(/\/$/, "")}/oauth/v2/token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${getAccountsDomain().replace(/\/$/, "")}/oauth/v2/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+  } catch {
+    return null;
+  }
 
   if (!response.ok) {
     return null;
@@ -94,13 +99,22 @@ async function uploadFile(input: {
   form.append("override-name-exist", "false");
   form.append("content", new Blob([Buffer.from(input.bytes)], { type: input.mimeType }), input.filename);
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${input.token}`,
-    },
-    body: form,
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${input.token}`,
+      },
+      body: form,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      fileId: null,
+      error: `WORKDRIVE_NETWORK:${error instanceof Error ? error.message : "unknown_error"}`,
+    } as const;
+  }
 
   const bodyText = await response.text();
   let parsedBody: unknown = null;
@@ -136,51 +150,33 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
   userName: string | null;
   paragraphInput: string;
 }) {
-  const folderId = getWorkDriveFolderId();
-  if (!folderId) {
-    return {
-      status: "skipped",
-      diagramFileId: null,
-      reportFileId: null,
-      error: "WORKDRIVE_FOLDER_NOT_CONFIGURED",
-    } as const;
-  }
+  try {
+    const folderId = getWorkDriveFolderId();
+    if (!folderId) {
+      return {
+        status: "skipped",
+        diagramFileId: null,
+        reportFileId: null,
+        error: "WORKDRIVE_FOLDER_NOT_CONFIGURED",
+      } as const;
+    }
 
-  const token = await getWorkDriveAccessToken();
-  if (!token) {
-    return {
-      status: "failed",
-      diagramFileId: null,
-      reportFileId: null,
-      error: "WORKDRIVE_ACCESS_TOKEN_NOT_AVAILABLE",
-    } as const;
-  }
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const emailPart = sanitizeFilenamePart(input.report.userEmail);
-  const diagramName = `${timestamp}_${emailPart}_${sanitizeFilenamePart(input.diagramFileName) || "diagram.png"}`;
-
-  let diagramUpload = await uploadFile({
-    token,
-    folderId,
-    filename: diagramName,
-    mimeType: "image/png",
-    bytes: input.diagramBytes,
-  });
-
-  if (!diagramUpload.ok) {
-    const refreshed = await refreshWorkDriveAccessToken();
-    if (!refreshed) {
+    const token = await getWorkDriveAccessToken();
+    if (!token) {
       return {
         status: "failed",
         diagramFileId: null,
         reportFileId: null,
-        error: diagramUpload.error,
+        error: "WORKDRIVE_ACCESS_TOKEN_NOT_AVAILABLE",
       } as const;
     }
 
-    diagramUpload = await uploadFile({
-      token: refreshed,
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const emailPart = sanitizeFilenamePart(input.report.userEmail);
+    const diagramName = `${timestamp}_${emailPart}_${sanitizeFilenamePart(input.diagramFileName) || "diagram.png"}`;
+
+    let diagramUpload = await uploadFile({
+      token,
       folderId,
       filename: diagramName,
       mimeType: "image/png",
@@ -188,49 +184,72 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
     });
 
     if (!diagramUpload.ok) {
-      return {
-        status: "failed",
-        diagramFileId: null,
-        reportFileId: null,
-        error: diagramUpload.error,
-      } as const;
-    }
-  }
+      const refreshed = await refreshWorkDriveAccessToken();
+      if (!refreshed) {
+        return {
+          status: "failed",
+          diagramFileId: null,
+          reportFileId: null,
+          error: diagramUpload.error,
+        } as const;
+      }
 
-  const reportPayload = {
-    userEmail: input.report.userEmail,
-    userName: input.userName,
-    paragraphInput: input.paragraphInput,
-    report: input.report,
-  };
-  const reportBytes = new TextEncoder().encode(JSON.stringify(reportPayload, null, 2));
-  const reportName = `${timestamp}_${emailPart}_architecture-review.json`;
-
-  let reportUpload = await uploadFile({
-    token,
-    folderId,
-    filename: reportName,
-    mimeType: "application/json",
-    bytes: reportBytes,
-  });
-
-  if (!reportUpload.ok) {
-    const refreshed = await refreshWorkDriveAccessToken();
-    if (refreshed) {
-      reportUpload = await uploadFile({
+      diagramUpload = await uploadFile({
         token: refreshed,
         folderId,
-        filename: reportName,
-        mimeType: "application/json",
-        bytes: reportBytes,
+        filename: diagramName,
+        mimeType: "image/png",
+        bytes: input.diagramBytes,
       });
-    }
-  }
 
-  return {
-    status: reportUpload.ok ? "uploaded" : "partial",
-    diagramFileId: diagramUpload.fileId,
-    reportFileId: reportUpload.fileId,
-    error: reportUpload.ok ? null : reportUpload.error,
-  } as const;
+      if (!diagramUpload.ok) {
+        return {
+          status: "failed",
+          diagramFileId: null,
+          reportFileId: null,
+          error: diagramUpload.error,
+        } as const;
+      }
+    }
+
+    const reportPayload = {
+      userEmail: input.report.userEmail,
+      userName: input.userName,
+      paragraphInput: input.paragraphInput,
+      report: input.report,
+    };
+    const reportBytes = new TextEncoder().encode(JSON.stringify(reportPayload, null, 2));
+    const reportName = `${timestamp}_${emailPart}_architecture-review.json`;
+
+    const reportUpload = await uploadFile({
+      token,
+      folderId,
+      filename: reportName,
+      mimeType: "application/json",
+      bytes: reportBytes,
+    });
+
+    if (!reportUpload.ok) {
+      return {
+        status: "failed",
+        diagramFileId: diagramUpload.fileId,
+        reportFileId: null,
+        error: reportUpload.error,
+      } as const;
+    }
+
+    return {
+      status: "uploaded",
+      diagramFileId: diagramUpload.fileId,
+      reportFileId: reportUpload.fileId,
+      error: null,
+    } as const;
+  } catch (error) {
+    return {
+      status: "failed",
+      diagramFileId: null,
+      reportFileId: null,
+      error: `WORKDRIVE_UNEXPECTED:${error instanceof Error ? error.message : "unknown_error"}`,
+    } as const;
+  }
 }
