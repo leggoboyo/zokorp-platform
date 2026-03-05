@@ -68,9 +68,11 @@ model User {
 
   accounts       Account[]
   sessions       Session[]
+  userAuth       UserAuth?
   entitlements   Entitlement[]
   creditBalances CreditBalance[]
   auditLogs      AuditLog[]
+  leadLogs       LeadLog[]
   checkoutFulfillments CheckoutFulfillment[]
   usageEvents    UsageEvent[]
   serviceRequests ServiceRequest[]
@@ -205,6 +207,50 @@ model AuditLog {
 
   @@index([userId])
   @@index([action])
+}
+
+model LeadLog {
+  id                   String   @id @default(cuid())
+  userId               String?
+  userEmail            String
+  userName             String?
+  architectureProvider String
+  authProvider         String?
+  overallScore         Int
+  topIssues            String
+  inputParagraph       String?
+  reportJson           Json?
+  workdriveDiagramFileId String?
+  workdriveReportFileId  String?
+  workdriveUploadStatus  String?
+  syncedToZohoAt       DateTime?
+  zohoRecordId         String?
+  zohoSyncError        String?
+  createdAt            DateTime @default(now())
+
+  user                 User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userEmail])
+  @@index([syncedToZohoAt])
+}
+
+model UserAuth {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  passwordHash        String
+  passwordUpdatedAt   DateTime @default(now())
+  failedLoginAttempts Int      @default(0)
+  lockedUntil         DateTime?
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lockedUntil])
+  @@index([resetTokenExpiresAt])
 }
 
 model Account {

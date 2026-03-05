@@ -28,7 +28,7 @@ async function main() {
     update: {
       name: "Architecture Diagram Reviewer",
       description:
-        "Free cloud architecture diagram reviewer that returns practical feedback from uploaded PDF diagrams.",
+        "Free cloud architecture diagram reviewer for PNG uploads with deterministic findings delivered by email.",
       accessModel: AccessModel.FREE,
       active: true,
     },
@@ -36,7 +36,7 @@ async function main() {
       slug: "architecture-diagram-reviewer",
       name: "Architecture Diagram Reviewer",
       description:
-        "Free cloud architecture diagram reviewer that returns practical feedback from uploaded PDF diagrams.",
+        "Free cloud architecture diagram reviewer for PNG uploads with deterministic findings delivered by email.",
       accessModel: AccessModel.FREE,
       active: true,
     },

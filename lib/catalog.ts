@@ -46,7 +46,7 @@ const fallbackCatalog = [
     slug: "architecture-diagram-reviewer",
     name: "Architecture Diagram Reviewer",
     description:
-      "Free cloud architecture diagram reviewer that returns practical feedback from uploaded PDF diagrams.",
+      "Free cloud architecture diagram reviewer for PNG uploads with deterministic findings delivered by email.",
     active: true,
     accessModel: "FREE" as const,
     prices: [],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isAllowedFileType, maxUploadBytes, parseAdminEmails } from "@/lib/security";
+import { isAllowedFileType, isBusinessEmail, maxUploadBytes, parseAdminEmails } from "@/lib/security";
 
 describe("security helpers", () => {
   it("parses comma-separated admin emails", () => {
@@ -33,5 +33,11 @@ describe("security helpers", () => {
   it("returns byte limits from configured MB", () => {
     expect(maxUploadBytes(1)).toBe(1024 * 1024);
     expect(maxUploadBytes(undefined)).toBe(10 * 1024 * 1024);
+  });
+
+  it("accepts business domains and blocks common personal domains", () => {
+    expect(isBusinessEmail("architect@zokorp.com")).toBe(true);
+    expect(isBusinessEmail("someone@gmail.com")).toBe(false);
+    expect(isBusinessEmail("someone@outlook.com")).toBe(false);
   });
 });

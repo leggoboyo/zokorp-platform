@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 
 import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutFlashBanner } from "@/components/checkout-flash-banner";
+import { ArchitectureDiagramReviewerForm } from "@/components/architecture-diagram-reviewer/ArchitectureDiagramReviewerForm";
 import { ValidatorForm } from "@/components/validator-form";
 import { auth } from "@/lib/auth";
+import { isPasswordAuthEnabled } from "@/lib/auth-config";
 import { validatorPriceTierFromAmount, validatorProfileCreditsFromTiers, validatorTierLabel } from "@/lib/credit-tiers";
 import { db } from "@/lib/db";
 import { getProductBySlug } from "@/lib/catalog";
@@ -92,6 +94,7 @@ function entitlementMessage(input: {
   entitlementStatus: EntitlementStatus | null;
   remainingUses: number;
   isTieredValidator?: boolean;
+  requiresSignInForFree?: boolean;
 }): { tone: Tone; text: string } {
   if (input.authUnavailable) {
     return {
@@ -136,6 +139,15 @@ function entitlementMessage(input: {
   }
 
   if (input.accessModel === AccessModel.FREE) {
+    if (input.requiresSignInForFree) {
+      return {
+        tone: input.signedIn ? "emerald" : "sky",
+        text: input.signedIn
+          ? "Run the architecture review and the results will be emailed to your signed-in business address."
+          : "Sign in with a business email before running this architecture review.",
+      };
+    }
+
     return {
       tone: "emerald",
       text: input.signedIn
@@ -192,17 +204,11 @@ export default async function SoftwareDetailPage({
     notFound();
   }
 
-  const emailAuthConfigured =
-    Boolean(process.env.EMAIL_SERVER_HOST) &&
-    Boolean(process.env.EMAIL_SERVER_PORT) &&
-    Boolean(process.env.EMAIL_SERVER_USER) &&
-    Boolean(process.env.EMAIL_SERVER_PASSWORD) &&
-    Boolean(process.env.EMAIL_FROM);
-
   const session = await auth();
   const currentEmail = session?.user?.email;
   const signedIn = Boolean(currentEmail);
   const isValidator = product.slug === "zokorp-validator";
+  const isArchitectureReviewer = product.slug === "architecture-diagram-reviewer";
   const validatorTargets = isValidator ? getValidatorTargetOptions() : [];
   let validatorProfileCredits: Record<ValidationProfile, number> = {
     FTR: 0,
@@ -279,7 +285,7 @@ export default async function SoftwareDetailPage({
   const displayPrices =
     pricesFromDb.length > 0 ? pricesFromDb : isValidator ? validatorFallbackPrices : [];
 
-  const authUnavailable = !emailAuthConfigured;
+  const authUnavailable = !isPasswordAuthEnabled();
   const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY);
   const hasRealStripePrice = displayPrices.some((price) => isRealStripePriceId(price.stripePriceId));
   const billingUnavailable = !stripeConfigured || !hasRealStripePrice;
@@ -293,6 +299,7 @@ export default async function SoftwareDetailPage({
     entitlementStatus: entitlement?.status ?? null,
     remainingUses: entitlement?.remainingUses ?? 0,
     isTieredValidator: isValidator,
+    requiresSignInForFree: isArchitectureReviewer,
   });
 
   const checkoutState =
@@ -384,6 +391,8 @@ export default async function SoftwareDetailPage({
           validationTargets={validatorTargets}
           profileCredits={validatorProfileCredits}
         />
+      ) : isArchitectureReviewer ? (
+        <ArchitectureDiagramReviewerForm requiresAuth={!signedIn} authUnavailable={authUnavailable} />
       ) : (
         <section className="surface lift-card rounded-2xl p-6">
           <h2 className="font-display text-2xl font-semibold text-slate-900">Product workflow</h2>

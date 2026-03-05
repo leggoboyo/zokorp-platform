@@ -1,5 +1,27 @@
 const MAX_UPLOAD_MB_FALLBACK = 10;
 
+const FREE_EMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "yahoo.co.uk",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "aol.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "proton.me",
+  "protonmail.com",
+  "pm.me",
+  "gmx.com",
+  "yandex.com",
+  "mail.com",
+  "zoho.com",
+]);
+
 export const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -22,6 +44,24 @@ export function parseAdminEmails(raw: string | undefined): Set<string> {
       .map((email) => email.trim().toLowerCase())
       .filter(Boolean),
   );
+}
+
+export function getEmailDomain(email: string): string | null {
+  const parts = email.trim().toLowerCase().split("@");
+  if (parts.length !== 2 || !parts[1]) {
+    return null;
+  }
+
+  return parts[1];
+}
+
+export function isBusinessEmail(email: string): boolean {
+  const domain = getEmailDomain(email);
+  if (!domain) {
+    return false;
+  }
+
+  return !FREE_EMAIL_DOMAINS.has(domain);
 }
 
 function startsWithBytes(buffer: Buffer, bytes: number[]) {

@@ -4,7 +4,7 @@ Production-oriented Next.js platform for `zokorp.com` SaaS migration.
 
 ## Stack
 - Next.js App Router + TypeScript + Tailwind
-- NextAuth email magic-link authentication
+- NextAuth credentials authentication (business email + password)
 - Prisma + Postgres
 - Stripe Checkout + Webhooks + Customer Portal
 
@@ -39,11 +39,16 @@ Production-oriented Next.js platform for `zokorp.com` SaaS migration.
 - Auth:
   - `NEXTAUTH_SECRET`
   - `NEXTAUTH_URL`
+  - `AUTH_PASSWORD_ENABLED`
+- Email delivery:
+  - `RESEND_API_KEY`
+  - `RESEND_FROM_EMAIL`
   - `EMAIL_SERVER_HOST`
   - `EMAIL_SERVER_PORT`
   - `EMAIL_SERVER_USER`
   - `EMAIL_SERVER_PASSWORD`
   - `EMAIL_FROM`
+  - `ARCH_REVIEW_EML_SECRET`
 - Database:
   - `DATABASE_URL`
 - Stripe:
@@ -57,6 +62,20 @@ Production-oriented Next.js platform for `zokorp.com` SaaS migration.
 - Admin/ops:
   - `ZOKORP_ADMIN_EMAILS`
   - `UPLOAD_MAX_MB`
+  - `ZOHO_SYNC_SECRET`
+  - `ZOHO_CRM_ACCESS_TOKEN`
+  - `ZOHO_CRM_REFRESH_TOKEN`
+  - `ZOHO_CLIENT_ID`
+  - `ZOHO_CLIENT_SECRET`
+  - `ZOHO_CRM_API_DOMAIN`
+  - `ZOHO_ACCOUNTS_DOMAIN`
+  - `ZOHO_WORKDRIVE_FOLDER_ID`
+  - `ZOHO_WORKDRIVE_ACCESS_TOKEN`
+  - `ZOHO_WORKDRIVE_REFRESH_TOKEN`
+  - `ZOHO_WORKDRIVE_CLIENT_ID`
+  - `ZOHO_WORKDRIVE_CLIENT_SECRET`
+  - `ZOHO_WORKDRIVE_BASE_API_URI`
+  - `ZOHO_WORKDRIVE_ACCOUNTS_DOMAIN`
 
 ## Deployment notes
 - MVP deployment target is Vercel preview first.

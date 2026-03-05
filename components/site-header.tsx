@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { auth } from "@/lib/auth";
+import { isPasswordAuthEnabled } from "@/lib/auth-config";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -12,15 +13,7 @@ const navLinks = [
 ];
 
 export async function SiteHeader() {
-  const emailAuthConfigured =
-    Boolean(process.env.EMAIL_SERVER_HOST) &&
-    Boolean(process.env.EMAIL_SERVER_PORT) &&
-    Boolean(process.env.EMAIL_SERVER_USER) &&
-    Boolean(process.env.EMAIL_SERVER_PASSWORD) &&
-    Boolean(process.env.EMAIL_FROM);
-  const magicLinkEnabled = !["0", "false", "off", "no", "disabled"].includes(
-    (process.env.AUTH_MAGIC_LINK_ENABLED ?? "true").trim().toLowerCase(),
-  );
+  const passwordAuthEnabled = isPasswordAuthEnabled();
 
   let session = null;
   try {
@@ -80,20 +73,16 @@ export async function SiteHeader() {
                   Sign out
                 </Link>
               </div>
-            ) : emailAuthConfigured && magicLinkEnabled ? (
+            ) : passwordAuthEnabled ? (
               <Link
                 href="/login"
                 className="focus-ring inline-flex rounded-md bg-slate-900 px-3 py-1.5 font-medium text-white transition hover:bg-slate-800"
               >
                 Sign in
               </Link>
-            ) : emailAuthConfigured ? (
-              <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-amber-900">
-                Login temporarily paused
-              </span>
             ) : (
               <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-amber-900">
-                Login setup pending
+                Auth setup pending
               </span>
             )}
           </div>
