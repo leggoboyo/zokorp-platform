@@ -22,6 +22,16 @@ function parseEnvInt(name: string, fallback: number) {
   return Math.floor(parsed);
 }
 
+function isMagicLinkEnabled() {
+  const raw = process.env.AUTH_MAGIC_LINK_ENABLED;
+  if (!raw) {
+    return true;
+  }
+
+  const value = raw.trim().toLowerCase();
+  return !["0", "false", "off", "no", "disabled"].includes(value);
+}
+
 function normalizeEmail(input: string | null) {
   if (!input) {
     return null;
@@ -50,10 +60,28 @@ function tooManyRequestsResponse(retryAfterSeconds: number) {
   );
 }
 
+function temporarilyDisabledResponse() {
+  return new Response(
+    JSON.stringify({
+      error: "Sign-in email is temporarily paused. Please retry shortly.",
+    }),
+    {
+      status: 503,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
+}
+
 export async function POST(request: Request, context: NextAuthRouteContext) {
   const pathname = new URL(request.url).pathname;
 
   if (pathname.endsWith("/signin/email")) {
+    if (!isMagicLinkEnabled()) {
+      return temporarilyDisabledResponse();
+    }
+
     const ipFingerprint = getRequestFingerprint(request);
     const ipLimiter = consumeRateLimit({
       key: `auth:magic:ip:${ipFingerprint}`,

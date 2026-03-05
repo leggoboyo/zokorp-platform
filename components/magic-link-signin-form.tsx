@@ -5,9 +5,10 @@ import { signIn } from "next-auth/react";
 
 type MagicLinkSignInFormProps = {
   callbackUrl: string;
+  enabled?: boolean;
 };
 
-export function MagicLinkSignInForm({ callbackUrl }: MagicLinkSignInFormProps) {
+export function MagicLinkSignInForm({ callbackUrl, enabled = true }: MagicLinkSignInFormProps) {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -15,6 +16,11 @@ export function MagicLinkSignInForm({ callbackUrl }: MagicLinkSignInFormProps) {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!enabled) {
+      setError("Sign-in email is temporarily paused. Please try again shortly.");
+      return;
+    }
+
     setMessage(null);
     setError(null);
     setIsSubmitting(true);
@@ -27,7 +33,7 @@ export function MagicLinkSignInForm({ callbackUrl }: MagicLinkSignInFormProps) {
       });
 
       if (result?.error) {
-        setError("Could not send sign-in link. Please try again.");
+        setError("Could not send sign-in link right now. Please wait and retry.");
         return;
       }
 
@@ -49,6 +55,7 @@ export function MagicLinkSignInForm({ callbackUrl }: MagicLinkSignInFormProps) {
         type="email"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
+        disabled={!enabled || isSubmitting}
         required
         autoComplete="email"
         placeholder="consulting@zokorp.com"
@@ -56,10 +63,10 @@ export function MagicLinkSignInForm({ callbackUrl }: MagicLinkSignInFormProps) {
       />
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={!enabled || isSubmitting}
         className="focus-ring inline-flex rounded-md bg-gradient-to-r from-slate-900 to-[#153f67] px-4 py-2.5 text-sm font-semibold text-white transition hover:from-slate-800 hover:to-[#174f7f] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? "Sending link..." : "Send magic sign-in link"}
+        {!enabled ? "Sign-in email paused" : isSubmitting ? "Sending link..." : "Send magic sign-in link"}
       </button>
       {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}

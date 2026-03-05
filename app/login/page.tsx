@@ -10,6 +10,16 @@ function sanitizeCallbackUrl(raw: string | undefined) {
   return raw.startsWith("/") ? raw : "/account";
 }
 
+function isMagicLinkEnabled() {
+  const raw = process.env.AUTH_MAGIC_LINK_ENABLED;
+  if (!raw) {
+    return true;
+  }
+
+  const value = raw.trim().toLowerCase();
+  return !["0", "false", "off", "no", "disabled"].includes(value);
+}
+
 export default async function LoginPage({
   searchParams,
 }: {
@@ -24,6 +34,7 @@ export default async function LoginPage({
     Boolean(process.env.EMAIL_SERVER_USER) &&
     Boolean(process.env.EMAIL_SERVER_PASSWORD) &&
     Boolean(process.env.EMAIL_FROM);
+  const magicLinkEnabled = isMagicLinkEnabled();
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
@@ -36,7 +47,14 @@ export default async function LoginPage({
         </p>
 
         {emailAuthConfigured ? (
-          <MagicLinkSignInForm callbackUrl={callbackUrl} />
+          <>
+            {!magicLinkEnabled ? (
+              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Sign-in email is temporarily paused while authentication safeguards are being reviewed.
+              </div>
+            ) : null}
+            <MagicLinkSignInForm callbackUrl={callbackUrl} enabled={magicLinkEnabled} />
+          </>
         ) : (
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             Login will be enabled after email delivery settings are connected.
