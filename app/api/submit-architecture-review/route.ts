@@ -104,11 +104,21 @@ export async function POST(request: Request) {
     });
     const resolvedUserName = user.name?.trim() || user.email.split("@")[0] || "user";
 
-    const latestAccount = await db.account.findFirst({
-      where: { userId: user.id },
-      select: { provider: true },
-      orderBy: { id: "desc" },
-    });
+    const latestAccount = await (async () => {
+      try {
+        return await db.account.findFirst({
+          where: { userId: user.id },
+          select: { provider: true },
+          orderBy: { id: "desc" },
+        });
+      } catch (error) {
+        if (!isSchemaDriftError(error)) {
+          throw error;
+        }
+
+        return null;
+      }
+    })();
 
     const leadData = {
       userId: user.id,
@@ -187,21 +197,27 @@ export async function POST(request: Request) {
       text: emailContent.text,
     });
 
-    await db.auditLog.create({
-      data: {
-        userId: user.id,
-        action: "tool.architecture_review_submit",
-        metadataJson: {
-          provider: finalizedReport.provider,
-          score: finalizedReport.overallScore,
-          findings: finalizedReport.findings.length,
-          emailStatus: sendResult.ok ? "sent" : "fallback",
-          emailProvider: sendResult.provider,
-          emailError: sendResult.error ?? null,
-          workdriveStatus,
+    try {
+      await db.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "tool.architecture_review_submit",
+          metadataJson: {
+            provider: finalizedReport.provider,
+            score: finalizedReport.overallScore,
+            findings: finalizedReport.findings.length,
+            emailStatus: sendResult.ok ? "sent" : "fallback",
+            emailProvider: sendResult.provider,
+            emailError: sendResult.error ?? null,
+            workdriveStatus,
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (!isSchemaDriftError(error)) {
+        throw error;
+      }
+    }
 
     if (sendResult.ok) {
       return NextResponse.json({
