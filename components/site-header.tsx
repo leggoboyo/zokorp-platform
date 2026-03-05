@@ -19,6 +19,9 @@ export async function SiteHeader() {
     Boolean(process.env.EMAIL_SERVER_USER) &&
     Boolean(process.env.EMAIL_SERVER_PASSWORD) &&
     Boolean(process.env.EMAIL_FROM);
+  const magicLinkEnabled = !["0", "false", "off", "no", "disabled"].includes(
+    (process.env.AUTH_MAGIC_LINK_ENABLED ?? "true").trim().toLowerCase(),
+  );
 
   let session = null;
   try {
@@ -78,13 +81,17 @@ export async function SiteHeader() {
                   Sign out
                 </Link>
               </div>
-            ) : emailAuthConfigured ? (
+            ) : emailAuthConfigured && magicLinkEnabled ? (
               <Link
                 href="/login"
                 className="focus-ring inline-flex rounded-md bg-slate-900 px-3 py-1.5 font-medium text-white transition hover:bg-slate-800"
               >
                 Sign in
               </Link>
+            ) : emailAuthConfigured ? (
+              <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-amber-900">
+                Login temporarily paused
+              </span>
             ) : (
               <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-amber-900">
                 Login setup pending
