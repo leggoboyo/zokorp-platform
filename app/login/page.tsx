@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { EmailVerificationResendForm } from "@/components/email-verification-resend-form";
 import { PasswordSignInForm } from "@/components/password-signin-form";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
 
@@ -26,12 +27,13 @@ function getErrorMessage(error: string | undefined) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string; error?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; error?: string; verified?: string }>;
 }) {
   const params = await searchParams;
   const callbackUrl = sanitizeCallbackUrl(params.callbackUrl);
   const passwordAuthEnabled = isPasswordAuthEnabled();
   const errorMessage = getErrorMessage(params.error);
+  const verificationSuccess = params.verified === "1";
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
@@ -45,6 +47,12 @@ export default async function LoginPage({
         {errorMessage ? (
           <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
             {errorMessage}
+          </div>
+        ) : null}
+
+        {verificationSuccess ? (
+          <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            Email verified. You can sign in now.
           </div>
         ) : null}
 
@@ -70,9 +78,14 @@ export default async function LoginPage({
         <h2 className="font-display text-2xl font-semibold text-slate-900">Requirements</h2>
         <ul className="mt-3 space-y-2 text-sm text-slate-700">
           <li>Business email domains only</li>
+          <li>Email verification required before first sign-in</li>
           <li>Strong password required</li>
           <li>Password reset link expires after 30 minutes</li>
         </ul>
+        <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+          <p className="mb-3 text-sm font-medium text-slate-900">Need a new verification email?</p>
+          <EmailVerificationResendForm submitLabel="Resend verification email" />
+        </div>
         <p className="mt-4 text-sm">
           <Link href="/" className="text-slate-700 underline underline-offset-2 hover:text-slate-900">
             Back to home

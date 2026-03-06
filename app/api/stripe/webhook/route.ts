@@ -30,6 +30,24 @@ function isDuplicateCheckoutFulfillmentError(error: unknown) {
   return false;
 }
 
+function shouldFulfillCheckoutSession(input: {
+  session: Stripe.Checkout.Session;
+  priceKind: PriceKind;
+  eventType: Stripe.Event["type"];
+}) {
+  if (input.priceKind === PriceKind.SUBSCRIPTION) {
+    if (input.eventType === "checkout.session.async_payment_succeeded") {
+      return true;
+    }
+
+    return (
+      input.session.payment_status === "paid" || input.session.payment_status === "no_payment_required"
+    );
+  }
+
+  return input.session.payment_status === "paid";
+}
+
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
 
@@ -75,6 +93,16 @@ export async function POST(request: Request) {
         ]);
 
         if (!user || !price) {
+          break;
+        }
+
+        if (
+          !shouldFulfillCheckoutSession({
+            session,
+            priceKind: price.kind,
+            eventType: event.type,
+          })
+        ) {
           break;
         }
 
@@ -202,6 +230,7 @@ export async function POST(request: Request) {
                   stripeCheckoutSessionId: session.id,
                   stripePriceId: price.stripePriceId,
                   mode: session.mode,
+                  paymentStatus: session.payment_status,
                 },
               },
             });

@@ -1,4 +1,9 @@
-import { buildDeterministicNarrative, buildDeterministicReviewFindings, extractServiceTokens } from "@/lib/architecture-review/engine";
+import {
+  buildDeterministicNarrative,
+  buildDeterministicReviewFindings,
+  extractServiceTokens,
+} from "@/lib/architecture-review/engine";
+import { createEvidenceBundle } from "@/lib/architecture-review/evidence";
 import { buildArchitectureReviewReport } from "@/lib/architecture-review/report";
 import type { ArchitectureQuoteContext } from "@/lib/architecture-review/quote";
 import {
@@ -243,49 +248,7 @@ export async function isStrictPngFile(file: File) {
   } as const;
 }
 
-export function createEvidenceBundle(input: {
-  provider: ArchitectureProvider;
-  paragraph: string;
-  ocrText: string;
-  metadata: {
-    diagramFormat?: ArchitectureDiagramFormat;
-    title?: string;
-    owner?: string;
-    lastUpdated?: string;
-    version?: string;
-    legend?: string;
-    workloadCriticality?: ArchitectureEvidenceBundle["metadata"]["workloadCriticality"];
-    regulatoryScope?: ArchitectureEvidenceBundle["metadata"]["regulatoryScope"];
-    environment?: ArchitectureEvidenceBundle["metadata"]["environment"];
-    lifecycleStage?: ArchitectureEvidenceBundle["metadata"]["lifecycleStage"];
-    desiredEngagement?: ArchitectureEvidenceBundle["metadata"]["desiredEngagement"];
-  };
-}) {
-  const normalizedOcrText = input.ocrText.replace(/\s+/g, " ").trim();
-  const serviceTokens = extractServiceTokens(input.provider, normalizedOcrText);
-
-  const bundle: ArchitectureEvidenceBundle = {
-    provider: input.provider,
-    paragraph: input.paragraph.trim(),
-    ocrText: normalizedOcrText,
-    serviceTokens,
-    metadata: {
-      diagramFormat: input.metadata.diagramFormat,
-      title: input.metadata.title?.trim(),
-      owner: input.metadata.owner?.trim(),
-      lastUpdated: input.metadata.lastUpdated?.trim(),
-      version: input.metadata.version?.trim(),
-      legend: input.metadata.legend?.trim(),
-      workloadCriticality: input.metadata.workloadCriticality,
-      regulatoryScope: input.metadata.regulatoryScope,
-      environment: input.metadata.environment,
-      lifecycleStage: input.metadata.lifecycleStage,
-      desiredEngagement: input.metadata.desiredEngagement,
-    },
-  };
-
-  return bundle;
-}
+export { createEvidenceBundle };
 
 function dedupeMergeFindings(
   deterministicFindings: ReturnType<typeof buildDeterministicReviewFindings>,
@@ -342,9 +305,7 @@ export function buildReviewReportFromEvidence(input: {
   const deterministicFindings = buildDeterministicReviewFindings(input.bundle);
   const mergedFindings = dedupeMergeFindings(deterministicFindings, input.llmRefinement ?? null);
 
-  const narrative =
-    input.llmRefinement?.flowNarrative?.trim() ||
-    buildDeterministicNarrative(input.bundle);
+  const narrative = input.llmRefinement?.flowNarrative?.trim() || buildDeterministicNarrative(input.bundle);
 
   return buildArchitectureReviewReport({
     provider: input.bundle.provider,
@@ -353,4 +314,8 @@ export function buildReviewReportFromEvidence(input: {
     userEmail: input.userEmail,
     quoteContext: input.quoteContext,
   });
+}
+
+export function buildServiceTokensFromText(provider: ArchitectureProvider, text: string) {
+  return extractServiceTokens(provider, text);
 }

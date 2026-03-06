@@ -83,6 +83,10 @@ const fallbackCatalog = [
 ];
 
 export async function getSoftwareCatalog() {
+  if (!process.env.DATABASE_URL) {
+    return fallbackCatalog;
+  }
+
   try {
     const products = await db.product.findMany({
       where: { active: true },
@@ -104,6 +108,10 @@ export async function getSoftwareCatalog() {
 }
 
 export async function getProductBySlug(slug: string) {
+  if (!process.env.DATABASE_URL) {
+    return fallbackCatalog.find((product) => product.slug === slug) ?? null;
+  }
+
   try {
     const product = await db.product.findUnique({
       where: { slug },

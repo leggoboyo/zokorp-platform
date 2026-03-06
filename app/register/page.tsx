@@ -24,7 +24,7 @@ export default async function RegisterPage({
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Account Access</p>
         <h1 className="font-display mt-2 text-4xl font-semibold text-slate-900">Create account</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
-          Register with a business email and strong password.
+          Register with a business email and strong password. Email verification is required before sign-in.
         </p>
 
         <PasswordRegisterForm callbackUrl={callbackUrl} />
@@ -35,6 +35,12 @@ export default async function RegisterPage({
           Already have an account?{" "}
           <Link href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`} className="underline">
             Sign in
+          </Link>
+        </p>
+        <p className="mt-3 text-sm text-slate-700">
+          Need a new verification link?{" "}
+          <Link href="/register/verify-email" className="underline">
+            Verify your email
           </Link>
         </p>
       </section>

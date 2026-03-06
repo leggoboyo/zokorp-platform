@@ -5,27 +5,31 @@ import { isPasswordAuthEnabled } from "@/lib/auth-config";
 
 const navLinks = [
   { href: "/", label: "Home" },
+  { href: "/software", label: "Software" },
   { href: "/services", label: "Services" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/case-studies", label: "Case Studies" },
   { href: "/media", label: "Media" },
-  { href: "/software", label: "Software" },
+  { href: "/about", label: "About" },
   { href: "/account", label: "Account" },
 ];
 
 export async function SiteHeader() {
-  const passwordAuthEnabled = isPasswordAuthEnabled();
+  const authRuntimeReady = isPasswordAuthEnabled() && Boolean(process.env.NEXTAUTH_SECRET);
 
   let session = null;
-  try {
-    session = await auth();
-  } catch {
-    session = null;
+  if (authRuntimeReady) {
+    try {
+      session = await auth();
+    } catch {
+      session = null;
+    }
   }
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/78 backdrop-blur-xl">
       <div className="border-b border-slate-200 bg-gradient-to-r from-[#081f3d] via-[#0f3460] to-[#0a6f87] px-4 py-1.5 text-center text-xs text-slate-100">
-        Software, services, and billing are unified here while main zokorp.com remains on Squarespace.
+        Server-validated tools, account-linked billing, and AWS delivery workflows in one platform.
       </div>
 
       <div className="mx-auto w-full max-w-7xl px-4 py-4 md:px-6">
@@ -73,13 +77,21 @@ export async function SiteHeader() {
                   Sign out
                 </Link>
               </div>
-            ) : passwordAuthEnabled ? (
-              <Link
-                href="/login"
-                className="focus-ring inline-flex rounded-md bg-slate-900 px-3 py-1.5 font-medium text-white transition hover:bg-slate-800"
-              >
-                Sign in
-              </Link>
+            ) : authRuntimeReady ? (
+              <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                <Link
+                  href="/login"
+                  className="focus-ring inline-flex rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-800 transition hover:bg-slate-100"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/register"
+                  className="focus-ring inline-flex rounded-md bg-slate-900 px-3 py-1.5 font-medium text-white transition hover:bg-slate-800"
+                >
+                  Create account
+                </Link>
+              </div>
             ) : (
               <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-amber-900">
                 Auth setup pending

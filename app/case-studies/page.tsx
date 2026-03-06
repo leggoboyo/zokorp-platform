@@ -1,37 +1,51 @@
 import Link from "next/link";
 
+import { buildPageMetadata } from "@/lib/site";
+
+export const metadata = buildPageMetadata({
+  title: "Case Studies",
+  description: "Representative delivery patterns showing how ZoKorp combines software and services.",
+  path: "/case-studies",
+});
+
 const caseStudies = [
   {
-    title: "Validation Readiness System",
-    sector: "Cloud Delivery Operations",
+    title: "Validation workflow standardization",
+    label: "Representative delivery pattern",
     summary:
-      "Standardized cross-team evidence workflows and reduced manual checklist friction in recurring delivery reviews.",
+      "A recurring review process was slowed down by ad hoc checklist handling, inconsistent evidence packaging, and unclear review ownership.",
+    response:
+      "ZoKorp-style delivery pairs a software-backed validation path with a review workflow that makes evidence quality visible before milestone deadlines.",
     outcomes: [
-      "Faster checklist completion cycles",
-      "Clearer handoff quality across teams",
-      "Reusable process artifacts for scale",
+      "Clearer handoff quality between contributors and reviewers",
+      "Less manual checklist rework across repeat cycles",
+      "A reusable baseline for future software-backed workflow automation",
     ],
   },
   {
-    title: "Governed AI in Education",
-    sector: "Education",
+    title: "Governed AI rollout planning",
+    label: "Representative delivery pattern",
     summary:
-      "Designed practical adoption pathways for AI systems with governance-aware controls and implementation support.",
+      "A team needed to move quickly on AI adoption without losing sight of ownership, security, and operational guardrails.",
+    response:
+      "ZoKorp-style delivery starts with architecture clarity, identifies the missing control signals, and then converts repeatable review work into structured operating patterns.",
     outcomes: [
-      "Stronger policy alignment for adoption",
-      "Improved team throughput with guardrails",
-      "Operational rollout plan with measurable checkpoints",
+      "Sharper distinction between architecture intent and delivery ownership",
+      "Better readiness for policy and security review",
+      "A clearer path from advisory work to repeatable internal workflows",
     ],
   },
   {
-    title: "Partner Validation Acceleration",
-    sector: "AWS Partner Enablement",
+    title: "Partner-readiness execution support",
+    label: "Representative delivery pattern",
     summary:
-      "Combined consulting execution with productized tooling to shorten partner validation preparation timelines.",
+      "Evidence-heavy milestone work created last-minute pressure because collection, review, and packaging were happening at the same time.",
+    response:
+      "ZoKorp-style delivery separates artifact collection from review and uses software where repetitive checks should no longer stay manual.",
     outcomes: [
-      "Lower prep overhead for milestone evidence",
-      "Repeatable preparation templates",
-      "Improved confidence in readiness reviews",
+      "More predictable readiness preparation cycles",
+      "Cleaner ownership of milestone evidence",
+      "Better alignment between consulting effort and productized tooling",
     ],
   },
 ];
@@ -41,10 +55,10 @@ export default function CaseStudiesPage() {
     <div className="space-y-8">
       <section className="hero-surface animate-fade-up px-6 py-9 text-white md:px-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-200">Case Studies</p>
-        <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Delivery outcomes in context</h1>
+        <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Representative delivery patterns</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-100 md:text-base">
-          Snapshot examples of how ZoKorp combines cloud AI architecture, operational execution, and
-          software-backed workflows to create measurable results.
+          These examples are anonymized platform and delivery patterns that show how ZoKorp connects
+          consulting work, validation tooling, and repeatable workflow design.
         </p>
       </section>
 
@@ -53,14 +67,19 @@ export default function CaseStudiesPage() {
           <article key={study.title} className="surface lift-card rounded-2xl p-6 md:p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{study.sector}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{study.label}</p>
                 <h2 className="font-display mt-1 text-3xl font-semibold text-slate-900">{study.title}</h2>
               </div>
               <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-teal-700">
-                In Progress Portfolio
+                Software + services
               </span>
             </div>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">{study.summary}</p>
+            <p className="mt-4 text-sm leading-7 text-slate-700 md:text-base">
+              <span className="font-semibold text-slate-900">Situation:</span> {study.summary}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-slate-700 md:text-base">
+              <span className="font-semibold text-slate-900">ZoKorp response:</span> {study.response}
+            </p>
             <ul className="mt-4 grid gap-2 md:grid-cols-3">
               {study.outcomes.map((outcome) => (
                 <li key={outcome} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
@@ -73,9 +92,9 @@ export default function CaseStudiesPage() {
       </section>
 
       <section className="glass-surface rounded-2xl p-6">
-        <h2 className="font-display text-2xl font-semibold text-slate-900">Need a software-backed engagement?</h2>
+        <h2 className="font-display text-2xl font-semibold text-slate-900">Need the platform version of this work?</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Explore ZoKorp software tools that turn repeatable service workflows into productized execution.
+          Start with the software catalog or request a scoped service conversation for larger delivery needs.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link

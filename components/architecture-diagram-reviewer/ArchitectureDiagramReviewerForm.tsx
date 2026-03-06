@@ -3,26 +3,18 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  buildReviewReportFromEvidence,
-  createEvidenceBundle,
-  extractSvgEvidence,
-  isStrictDiagramFile,
-  parseLlmRefinement,
-} from "@/lib/architecture-review/client";
+import { extractSvgEvidence, isStrictDiagramFile } from "@/lib/architecture-review/client";
 import {
   generateArchitectureDiagramFromNarrative,
   makeGeneratedDiagramSvgFile,
 } from "@/lib/architecture-review/diagram-generator";
 import type {
-  ArchitectureDiagramFormat,
   ArchitectureEngagementPreference,
   ArchitectureEnvironment,
   ArchitectureLifecycleStage,
   ArchitectureProvider,
   ArchitectureRegulatoryScope,
   ArchitectureWorkloadCriticality,
-  LlmRefinement,
 } from "@/lib/architecture-review/types";
 
 type ArchitectureDiagramReviewerFormProps = {
@@ -44,32 +36,6 @@ type SubmitApiResponse =
       error: string;
     };
 
-type ReviewProgressUpdate = {
-  stage:
-    | "validation"
-    | "dimensions"
-    | "ocr"
-    | "svg-parse"
-    | "rules"
-    | "model-load"
-    | "model-refinement"
-    | "submit";
-  message: string;
-  fraction?: number;
-  etaMs?: number | null;
-  timeoutMs?: number | null;
-  measurable?: boolean;
-};
-
-type ReviewProgressState = {
-  stage: ReviewProgressUpdate["stage"];
-  message: string;
-  percent: number | null;
-  etaMs: number | null;
-  metric: "completion" | "timeout-budget" | "none";
-  timeoutMs: number | null;
-};
-
 type SpeechRecognitionLike = {
   continuous: boolean;
   interimResults: boolean;
@@ -85,338 +51,6 @@ type SpeechWindow = Window & {
   SpeechRecognition?: new () => SpeechRecognitionLike;
   webkitSpeechRecognition?: new () => SpeechRecognitionLike;
 };
-
-const WEBLLM_MODEL_LOAD_TIMEOUT_MS = 3 * 60 * 1000;
-const WEBLLM_REFINEMENT_TIMEOUT_MS = 90 * 1000;
-
-class TimeoutError extends Error {
-  constructor(step: string, timeoutMs: number) {
-    super(`${step} timed out after ${timeoutMs}ms`);
-  }
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, step: string) {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new TimeoutError(step, timeoutMs));
-    }, timeoutMs);
-
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-}
-
-function stripCodeFences(raw: string) {
-  return raw
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```$/i, "")
-    .trim();
-}
-
-function clampFraction(raw: number) {
-  if (!Number.isFinite(raw)) {
-    return 0;
-  }
-
-  if (raw < 0) {
-    return 0;
-  }
-
-  if (raw > 1) {
-    return 1;
-  }
-
-  return raw;
-}
-
-function computeEtaMsFromFraction(startedAtMs: number, fractionRaw: number) {
-  const fraction = clampFraction(fractionRaw);
-  if (fraction <= 0.02 || fraction >= 0.999) {
-    return null;
-  }
-
-  const elapsedMs = Date.now() - startedAtMs;
-  if (elapsedMs < 250) {
-    return null;
-  }
-
-  const etaMs = Math.round(elapsedMs / fraction - elapsedMs);
-  if (!Number.isFinite(etaMs) || etaMs < 0) {
-    return null;
-  }
-
-  return etaMs;
-}
-
-function formatEta(etaMs: number | null) {
-  if (etaMs === null) {
-    return null;
-  }
-
-  const totalSeconds = Math.max(0, Math.ceil(etaMs / 1000));
-  if (totalSeconds <= 1) {
-    return "<1s";
-  }
-
-  if (totalSeconds < 60) {
-    return `${totalSeconds}s`;
-  }
-
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
-}
-
-function buildWebLlmPrompt(input: {
-  provider: ArchitectureProvider;
-  paragraph: string;
-  ocrText: string;
-  serviceTokens: string[];
-  deterministicFindings: Array<{
-    ruleId: string;
-    category: string;
-    pointsDeducted: number;
-    message: string;
-    fix: string;
-    evidence: string;
-  }>;
-}) {
-  const payload = {
-    provider: input.provider,
-    paragraph: input.paragraph,
-    ocrText: input.ocrText.slice(0, 4000),
-    serviceTokens: input.serviceTokens,
-    preliminaryFindings: input.deterministicFindings,
-  };
-
-  return [
-    "Return JSON only. No markdown. No extra keys.",
-    "Schema:",
-    '{"flowNarrative":"string<=2000","findings":[{"ruleId":"string","category":"clarity|security|reliability|operations|performance|cost|sustainability","pointsDeducted":0,"message":"<=120","fix":"<=160","evidence":"<=240"}]}',
-    "Rules:",
-    "- Keep findings imperative and specific.",
-    "- Keep pointsDeducted integer 0-100.",
-    "- Keep 0-point findings only for optional recommendations.",
-    "- Keep 0-20 findings.",
-    "Input JSON:",
-    JSON.stringify(payload),
-  ].join("\n");
-}
-
-function selectWebLlmModelIds(modelIds: string[]) {
-  const smallInstruct = modelIds.filter((id) => /instruct/i.test(id) && /(1b|2b|3b|mini)/i.test(id));
-  if (smallInstruct.length > 0) {
-    return smallInstruct.slice(0, 3);
-  }
-
-  return modelIds.slice(0, 2);
-}
-
-async function safeUnloadEngine(engine: { unload: () => Promise<void> }) {
-  try {
-    await engine.unload();
-  } catch {
-    // no-op: cleanup failures should not break the user flow
-  }
-}
-
-async function runWebLlmRefinement(input: {
-  provider: ArchitectureProvider;
-  paragraph: string;
-  ocrText: string;
-  serviceTokens: string[];
-  deterministicFindings: Array<{
-    ruleId: string;
-    category: string;
-    pointsDeducted: number;
-    message: string;
-    fix: string;
-    evidence: string;
-  }>;
-  onProgress: (update: ReviewProgressUpdate) => void;
-}): Promise<LlmRefinement | null> {
-  if (typeof navigator === "undefined" || !("gpu" in navigator)) {
-    input.onProgress({
-      stage: "model-refinement",
-      message: "WebGPU is unavailable; using deterministic rules only.",
-      measurable: false,
-    });
-    return null;
-  }
-
-  try {
-    const webllm = await import("@mlc-ai/web-llm");
-    const modelIds = selectWebLlmModelIds(webllm.prebuiltAppConfig.model_list.map((model) => model.model_id));
-
-    if (modelIds.length === 0) {
-      input.onProgress({
-        stage: "model-load",
-        message: "No local WebLLM model available; using deterministic rules only.",
-        measurable: false,
-      });
-      return null;
-    }
-
-    let engine: Awaited<ReturnType<typeof webllm.CreateMLCEngine>> | null = null;
-    let loadedModel: string | null = null;
-
-    for (const modelId of modelIds) {
-      try {
-        const modelLoadStartedAt = Date.now();
-        input.onProgress({
-          stage: "model-load",
-          message: `Loading local model (${modelId})...`,
-          measurable: false,
-          timeoutMs: WEBLLM_MODEL_LOAD_TIMEOUT_MS,
-        });
-        engine = await withTimeout(
-          webllm.CreateMLCEngine(modelId, {
-            initProgressCallback(progress) {
-              if (typeof progress.progress === "number") {
-                const normalizedFraction = clampFraction(progress.progress);
-                const percentage = Math.round(normalizedFraction * 100);
-                input.onProgress({
-                  stage: "model-load",
-                  message: `Loading local model (${modelId}) ${percentage}%`,
-                  fraction: normalizedFraction,
-                  etaMs: computeEtaMsFromFraction(modelLoadStartedAt, normalizedFraction),
-                });
-              }
-            },
-          }),
-          WEBLLM_MODEL_LOAD_TIMEOUT_MS,
-          `Model load (${modelId})`,
-        );
-        loadedModel = modelId;
-        break;
-      } catch (error) {
-        if (error instanceof TimeoutError) {
-          input.onProgress({
-            stage: "model-load",
-            message: `Model load timed out for ${modelId}; trying fallback model...`,
-            measurable: false,
-          });
-        }
-        continue;
-      }
-    }
-
-    if (!engine || !loadedModel) {
-      input.onProgress({
-        stage: "model-load",
-        message: "Model load failed; using deterministic rules only.",
-        measurable: false,
-      });
-      return null;
-    }
-
-    const prompt = buildWebLlmPrompt({
-      provider: input.provider,
-      paragraph: input.paragraph,
-      ocrText: input.ocrText,
-      serviceTokens: input.serviceTokens,
-      deterministicFindings: input.deterministicFindings,
-    });
-
-    input.onProgress({
-      stage: "model-refinement",
-      message: "Running local model refinement...",
-      measurable: false,
-      timeoutMs: WEBLLM_REFINEMENT_TIMEOUT_MS,
-    });
-    let completion: Awaited<ReturnType<typeof engine.chat.completions.create>> | null = null;
-    try {
-      completion = await withTimeout(
-        engine.chat.completions.create({
-          model: loadedModel,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a deterministic architecture reviewer assistant. Output strict JSON only, no markdown.",
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0,
-          top_p: 1,
-          max_tokens: 1100,
-          response_format: { type: "json_object" },
-        }),
-        WEBLLM_REFINEMENT_TIMEOUT_MS,
-        "Local model refinement",
-      );
-    } catch (error) {
-      await safeUnloadEngine(engine);
-      if (error instanceof TimeoutError) {
-        input.onProgress({
-          stage: "model-refinement",
-          message: "Local model refinement timed out; using deterministic rules only.",
-          measurable: false,
-        });
-        return null;
-      }
-      throw error;
-    }
-
-    const raw = completion.choices?.[0]?.message?.content;
-    await safeUnloadEngine(engine);
-
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(stripCodeFences(raw));
-    return parseLlmRefinement(parsed);
-  } catch {
-    input.onProgress({
-      stage: "model-refinement",
-      message: "WebLLM refinement failed; using deterministic rules only.",
-      measurable: false,
-    });
-    return null;
-  }
-}
-
-function progressLabelFromOcr(message: { status: string; progress: number }) {
-  const percent = Number.isFinite(message.progress) ? Math.round(message.progress * 100) : 0;
-
-  if (!message.status) {
-    return `Running OCR ${percent}%`;
-  }
-
-  return `OCR ${message.status} ${percent}%`;
-}
-
-async function readPngDimensions(file: File) {
-  const bytes = new Uint8Array(await file.slice(0, 24).arrayBuffer());
-  if (bytes.length < 24) {
-    throw new Error("image-header-too-short");
-  }
-
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const width = view.getUint32(16);
-  const height = view.getUint32(20);
-  if (width <= 0 || height <= 0) {
-    throw new Error("invalid-image-dimensions");
-  }
-
-  return {
-    width,
-    height,
-  };
-}
 
 export function ArchitectureDiagramReviewerForm({
   requiresAuth = false,
@@ -434,7 +68,6 @@ export function ArchitectureDiagramReviewerForm({
     filename: string;
   } | null>(null);
   const [isListening, setIsListening] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(false);
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
@@ -447,12 +80,12 @@ export function ArchitectureDiagramReviewerForm({
   const [desiredEngagement, setDesiredEngagement] = useState<ArchitectureEngagementPreference>("hands-on-remediation");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const [progress, setProgress] = useState<ReviewProgressState | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "running" | "success" | "fallback" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [fallbackMailtoUrl, setFallbackMailtoUrl] = useState<string | null>(null);
   const [fallbackEmlToken, setFallbackEmlToken] = useState<string | null>(null);
-  const stageStartedAtRef = useRef<Partial<Record<ReviewProgressUpdate["stage"], number>>>({});
+
   const generatedDiagramUrlRef = useRef<string | null>(null);
   const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
@@ -461,6 +94,8 @@ export function ArchitectureDiagramReviewerForm({
   const fieldClassName =
     "focus-ring block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-[0_1px_0_rgba(255,255,255,0.65)_inset]";
   const fieldLabelClassName = "text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500";
+
+  const speechSupported = typeof window !== "undefined" && Boolean(((window as SpeechWindow).SpeechRecognition ?? (window as SpeechWindow).webkitSpeechRecognition));
 
   const canSubmit = useMemo(() => {
     if (!selectedFile) {
@@ -474,96 +109,6 @@ export function ArchitectureDiagramReviewerForm({
     return status !== "running";
   }, [paragraphTooLong, paragraphTooShort, selectedFile, status]);
 
-  function applyProgress(update: ReviewProgressUpdate) {
-    const now = Date.now();
-    if (!stageStartedAtRef.current[update.stage]) {
-      stageStartedAtRef.current[update.stage] = now;
-    }
-
-    setProgress((previous) => {
-      const sameStage = previous?.stage === update.stage;
-      const startedAt = stageStartedAtRef.current[update.stage] ?? now;
-
-      if (update.measurable === false || typeof update.fraction !== "number") {
-        if (typeof update.timeoutMs === "number" && update.timeoutMs > 0) {
-          const elapsedMs = Math.max(0, now - startedAt);
-          const normalizedFraction = clampFraction(elapsedMs / update.timeoutMs);
-          return {
-            stage: update.stage,
-            message: update.message,
-            percent: Math.round(normalizedFraction * 100),
-            etaMs: Math.max(0, update.timeoutMs - elapsedMs),
-            metric: "timeout-budget",
-            timeoutMs: update.timeoutMs,
-          };
-        }
-
-        return {
-          stage: update.stage,
-          message: update.message,
-          percent: null,
-          etaMs: null,
-          metric: "none",
-          timeoutMs: null,
-        };
-      }
-
-      const normalizedFraction = clampFraction(update.fraction);
-      const proposedPercent = Math.round(normalizedFraction * 100);
-      const percent =
-        sameStage && typeof previous?.percent === "number"
-          ? Math.max(previous.percent, proposedPercent)
-          : proposedPercent;
-      const etaMs = update.etaMs ?? computeEtaMsFromFraction(startedAt, normalizedFraction);
-
-      return {
-        stage: update.stage,
-        message: update.message,
-        percent,
-        etaMs,
-        metric: "completion",
-        timeoutMs: null,
-      };
-    });
-  }
-
-  useEffect(() => {
-    if (!progress || progress.metric !== "timeout-budget" || progress.timeoutMs === null || status !== "running") {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      setProgress((current) => {
-        if (!current || current.metric !== "timeout-budget" || current.timeoutMs === null) {
-          return current;
-        }
-
-        const startedAt = stageStartedAtRef.current[current.stage];
-        if (!startedAt) {
-          return current;
-        }
-
-        const elapsedMs = Math.max(0, Date.now() - startedAt);
-        const normalizedFraction = clampFraction(elapsedMs / current.timeoutMs);
-        return {
-          ...current,
-          percent: Math.round(normalizedFraction * 100),
-          etaMs: Math.max(0, current.timeoutMs - elapsedMs),
-        };
-      });
-    }, 500);
-
-    return () => window.clearInterval(timer);
-  }, [progress, status]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const ctor = (window as SpeechWindow).SpeechRecognition ?? (window as SpeechWindow).webkitSpeechRecognition;
-    setSpeechSupported(Boolean(ctor));
-  }, []);
 
   useEffect(() => {
     return () => {
@@ -613,8 +158,9 @@ export function ArchitectureDiagramReviewerForm({
     try {
       speechRecognitionRef.current.stop();
     } catch {
-      // no-op: browser can throw when already stopped
+      // browser can throw when already stopped
     }
+
     setIsListening(false);
   }
 
@@ -732,12 +278,7 @@ export function ArchitectureDiagramReviewerForm({
 
     setStatus("running");
     setError(null);
-    stageStartedAtRef.current = {};
-    applyProgress({
-      stage: "validation",
-      message: "Validating diagram...",
-      measurable: false,
-    });
+    setProgress("Validating diagram...");
     setFallbackMailtoUrl(null);
     setFallbackEmlToken(null);
 
@@ -749,211 +290,32 @@ export function ArchitectureDiagramReviewerForm({
       return;
     }
 
-    const diagramFormat: ArchitectureDiagramFormat = diagramValidation.format;
-
-    let ocrText = "";
-
-    if (diagramFormat === "png") {
+    if (diagramValidation.format === "svg") {
       try {
-        applyProgress({
-          stage: "dimensions",
-          message: "Validating image dimensions...",
-          measurable: false,
-        });
-        const dimensions = await readPngDimensions(selectedFile);
-        if (dimensions.width < 600 || dimensions.height < 600) {
-          setStatus("error");
-          setProgress(null);
-          setError("PNG is too small for reliable analysis. Upload a PNG at least 600x600.");
-          return;
-        }
-      } catch {
-        // Continue when dimension parsing is unavailable in the runtime.
-        applyProgress({
-          stage: "dimensions",
-          message: "Image dimension check unavailable; continuing.",
-          measurable: false,
-        });
-      }
-
-      let ocrConfidence: number | null = null;
-
-      try {
-        const ocrStartedAt = Date.now();
-        applyProgress({
-          stage: "ocr",
-          message: "Running OCR in your browser...",
-          measurable: false,
-        });
-        const tesseract = await import("tesseract.js");
-        const result = await tesseract.recognize(selectedFile, "eng", {
-          logger(message) {
-            if (message.status) {
-              const fraction = Number.isFinite(message.progress) ? clampFraction(message.progress) : undefined;
-              applyProgress({
-                stage: "ocr",
-                message: progressLabelFromOcr(message),
-                fraction,
-                etaMs:
-                  typeof fraction === "number" ? computeEtaMsFromFraction(ocrStartedAt, fraction) : null,
-              });
-            }
-          },
-        });
-        ocrText = (result.data.text || "").trim();
-        ocrConfidence = typeof result.data.confidence === "number" ? result.data.confidence : null;
-      } catch {
+        await extractSvgEvidence(selectedFile);
+      } catch (validationError) {
         setStatus("error");
         setProgress(null);
-        setError("OCR failed in browser. Retry with a clearer PNG.");
-        return;
-      }
-
-      if (ocrText.length < 40 || (ocrConfidence !== null && ocrConfidence < 45)) {
-        // Do not hard-fail: some valid architecture diagrams are icon-heavy with tiny labels.
-        applyProgress({
-          stage: "ocr",
-          message: "OCR text quality is low; continuing with paragraph-first analysis.",
-          measurable: false,
-        });
-      }
-    } else {
-      try {
-        applyProgress({
-          stage: "svg-parse",
-          message: "Parsing SVG labels in your browser...",
-          measurable: false,
-        });
-        const svgEvidence = await extractSvgEvidence(selectedFile);
-        if (svgEvidence.dimensions && (svgEvidence.dimensions.width < 400 || svgEvidence.dimensions.height < 400)) {
-          setStatus("error");
-          setProgress(null);
-          setError("SVG canvas is too small for reliable analysis. Upload an SVG at least 400x400.");
-          return;
-        }
-        ocrText = svgEvidence.text;
-      } catch (error) {
-        setStatus("error");
-        setProgress(null);
-        setError(error instanceof Error ? error.message : "SVG parsing failed. Upload a valid SVG diagram.");
-        return;
-      }
-
-      if (ocrText.length < 20) {
-        setStatus("error");
-        setProgress(null);
-        setError("SVG labels are too sparse to review reliably. Add labeled components and flows.");
+        setError(validationError instanceof Error ? validationError.message : "SVG parsing failed. Upload a valid SVG diagram.");
         return;
       }
     }
 
-    const evidenceBundle = createEvidenceBundle({
-      provider,
-      paragraph,
-      ocrText,
-      metadata: {
-        diagramFormat,
-        title,
-        owner,
-        lastUpdated,
-        version,
-        legend,
-        workloadCriticality,
-        regulatoryScope,
-        environment,
-        lifecycleStage,
-        desiredEngagement,
-      },
-    });
-
-    applyProgress({
-      stage: "rules",
-      message: "Running deterministic scoring rules...",
-      measurable: false,
-    });
-
-    const deterministicOnlyReport = buildReviewReportFromEvidence({
-      bundle: evidenceBundle,
-      userEmail: "placeholder@example.com",
-      quoteContext: {
-        tokenCount: evidenceBundle.serviceTokens.length,
-        ocrCharacterCount: evidenceBundle.ocrText.length,
-        mode: "rules-only",
-        workloadCriticality,
-        desiredEngagement,
-      },
-    });
-
-    let llmRefinement: LlmRefinement | null = null;
-    let mode: "rules-only" | "webllm" = "rules-only";
-
-    const detectedNonArchitectureInput = deterministicOnlyReport.findings.some(
-      (finding) => finding.ruleId === "INPUT-NOT-ARCH-DIAGRAM",
-    );
-    if (detectedNonArchitectureInput) {
-      setStatus("error");
-      setProgress(null);
-      setError(
-        "This file does not appear to be an architecture diagram. No report was sent. Upload a system architecture diagram and retry.",
-      );
-      return;
-    }
-
-    llmRefinement = await runWebLlmRefinement({
-      provider,
-      paragraph,
-      ocrText,
-      serviceTokens: evidenceBundle.serviceTokens,
-      deterministicFindings: deterministicOnlyReport.findings.map((finding) => ({
-        ruleId: finding.ruleId,
-        category: finding.category,
-        pointsDeducted: finding.pointsDeducted,
-        message: finding.message,
-        fix: finding.fix,
-        evidence: finding.evidence,
-      })),
-      onProgress: applyProgress,
-    });
-
-    if (llmRefinement) {
-      mode = "webllm";
-    }
-
-    applyProgress({
-      stage: "submit",
-      message: "Finalizing report and sending metadata...",
-      measurable: false,
-    });
-
-    const finalReport = buildReviewReportFromEvidence({
-      bundle: evidenceBundle,
-      userEmail: "placeholder@example.com",
-      llmRefinement,
-      quoteContext: {
-        tokenCount: evidenceBundle.serviceTokens.length,
-        ocrCharacterCount: evidenceBundle.ocrText.length,
-        mode,
-        workloadCriticality,
-        desiredEngagement,
-      },
-    });
+    setProgress("Uploading diagram for server-side analysis...");
 
     try {
       const submitData = new FormData();
-      submitData.append("report", JSON.stringify(finalReport));
       submitData.append(
         "metadata",
         JSON.stringify({
+          provider,
           title: title.trim() || undefined,
           owner: owner.trim() || undefined,
           lastUpdated: lastUpdated.trim() || undefined,
           version: version.trim() || undefined,
           legend: legend.trim() || undefined,
           paragraphInput: paragraph.trim(),
-          diagramFormat,
-          tokenCount: evidenceBundle.serviceTokens.length,
-          ocrCharacterCount: evidenceBundle.ocrText.length,
-          mode,
+          diagramFormat: diagramValidation.format,
           workloadCriticality,
           regulatoryScope,
           environment,
@@ -1040,16 +402,17 @@ export function ArchitectureDiagramReviewerForm({
       <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-slate-900 via-[#123c66] to-[#0f8ea9] px-6 py-6 text-white">
         <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-10 left-10 h-28 w-28 rounded-full bg-amber-200/20 blur-2xl" />
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/80">Browser-Native Analysis</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/80">Server-Validated Review</p>
         <h3 className="font-display mt-2 text-3xl font-semibold">Architecture Diagram Reviewer</h3>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-white/90 md:text-base">
-          Upload a PNG or SVG, select cloud provider, and describe your architecture in one paragraph. The review runs
-          deterministically with optional local model refinement, then emails results to your signed-in address.
+          Upload a PNG or SVG, select cloud provider, and describe your architecture in one paragraph. The server
+          validates the uploaded file and recomputes scoring from the diagram before emailing results to your signed-in address.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/90">
           <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">PNG + SVG</span>
-          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">OCR/parse in browser</span>
-          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">No findings on page</span>
+          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">Server-side analysis</span>
+          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">Trusted scoring</span>
+          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">Optional generated SVG</span>
           <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">Email delivery</span>
         </div>
       </div>
@@ -1118,8 +481,7 @@ export function ArchitectureDiagramReviewerForm({
                   Generated diagram attached: {generatedDiagramSummary.filename}
                 </p>
                 <p className="text-xs text-emerald-800">
-                  {generatedDiagramSummary.title} · {generatedDiagramSummary.nodes} nodes ·{" "}
-                  {generatedDiagramSummary.edges} edges
+                  {generatedDiagramSummary.title} - {generatedDiagramSummary.nodes} nodes - {generatedDiagramSummary.edges} edges
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {generatedDiagramPreviewUrl ? (
@@ -1360,38 +722,7 @@ export function ArchitectureDiagramReviewerForm({
 
         {progress ? (
           <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm text-sky-900">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p>
-                <span className="font-semibold">Processing:</span> {progress.message}
-              </p>
-              {progress.percent !== null ? (
-                <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-sky-900">
-                  {progress.percent}%
-                </span>
-              ) : null}
-            </div>
-
-            {progress.percent !== null ? (
-              <div className="mt-2">
-                <div className="h-2 overflow-hidden rounded-full bg-sky-100">
-                  <div
-                    className="h-full rounded-full bg-sky-500 transition-[width] duration-300 ease-out"
-                    style={{ width: `${progress.percent}%` }}
-                  />
-                </div>
-                <p className="mt-1 text-xs text-sky-800">
-                  {progress.metric === "timeout-budget"
-                    ? formatEta(progress.etaMs)
-                      ? `Timeout budget ETA ${formatEta(progress.etaMs)}`
-                      : "Timeout budget ETA calibrating..."
-                    : formatEta(progress.etaMs)
-                      ? `ETA ${formatEta(progress.etaMs)}`
-                      : "ETA calibrating..."}
-                </p>
-              </div>
-            ) : (
-              <p className="mt-1 text-xs text-sky-800">ETA unavailable for this step.</p>
-            )}
+            <span className="font-semibold">Processing:</span> {progress}
           </div>
         ) : null}
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AccessModel, CreditTier, EntitlementStatus, PriceKind, Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
@@ -11,6 +12,7 @@ import { isPasswordAuthEnabled } from "@/lib/auth-config";
 import { validatorPriceTierFromAmount, validatorProfileCreditsFromTiers, validatorTierLabel } from "@/lib/credit-tiers";
 import { db } from "@/lib/db";
 import { getProductBySlug } from "@/lib/catalog";
+import { buildPageMetadata } from "@/lib/site";
 import { getValidatorTargetOptions } from "@/lib/validator-library";
 import type { ValidationProfile } from "@/lib/zokorp-validator-engine";
 
@@ -196,6 +198,29 @@ function getValidatorPriceTier(price: DisplayPrice): CreditTier {
   return validatorPriceTierFromAmount(price.amount);
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
+
+  if (!product) {
+    return buildPageMetadata({
+      title: "Software",
+      description: "Browse ZoKorp software products, pricing models, and account-linked access paths.",
+      path: "/software",
+    });
+  }
+
+  return buildPageMetadata({
+    title: product.name,
+    description: product.description,
+    path: `/software/${product.slug}`,
+  });
+}
+
 export default async function SoftwareDetailPage({
   params,
   searchParams,
@@ -211,7 +236,15 @@ export default async function SoftwareDetailPage({
     notFound();
   }
 
-  const session = await auth();
+  const authRuntimeReady = isPasswordAuthEnabled() && Boolean(process.env.NEXTAUTH_SECRET);
+  let session = null;
+  if (authRuntimeReady) {
+    try {
+      session = await auth();
+    } catch {
+      session = null;
+    }
+  }
   const currentEmail = session?.user?.email;
   const signedIn = Boolean(currentEmail);
   const isValidator = product.slug === "zokorp-validator";

@@ -2,8 +2,14 @@ import Link from "next/link";
 import { AccessModel } from "@prisma/client";
 
 import { getSoftwareCatalog } from "@/lib/catalog";
+import { buildPageMetadata } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
+export const metadata = buildPageMetadata({
+  title: "Software",
+  description: "Browse ZoKorp software products, pricing models, and account-linked access paths.",
+  path: "/software",
+});
 
 const accessLabel: Record<AccessModel, string> = {
   FREE: "Free",

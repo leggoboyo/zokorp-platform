@@ -1,20 +1,33 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
+import { createEvidenceBundle } from "@/lib/architecture-review/evidence";
 import { buildArchitectureReviewEmailContent, buildMailtoUrl } from "@/lib/architecture-review/email";
 import { createEmlToken } from "@/lib/architecture-review/eml-token";
-import { buildArchitectureReviewReport, summarizeTopIssues } from "@/lib/architecture-review/report";
+import { summarizeTopIssues } from "@/lib/architecture-review/report";
+import { extractOcrTextFromPng, extractSvgEvidenceFromBytes, isOcrTimeoutError } from "@/lib/architecture-review/server";
 import { sendArchitectureReviewEmail } from "@/lib/architecture-review/sender";
-import { submitArchitectureReviewPayloadSchema, type SubmitArchitectureReviewPayload } from "@/lib/architecture-review/types";
+import { buildReviewReportFromEvidence } from "@/lib/architecture-review/client";
+import { submitArchitectureReviewMetadataSchema } from "@/lib/architecture-review/types";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
 import { ensureLeadLogSchemaReady } from "@/lib/lead-log-schema";
+import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
+import { maxUploadBytes } from "@/lib/security";
 import { archiveArchitectureReviewToWorkDrive } from "@/lib/zoho-workdrive";
-import { z } from "zod";
 
 export const runtime = "nodejs";
 
-const MAX_DIAGRAM_FILE_BYTES = 8 * 1024 * 1024;
+const ARCHITECTURE_REVIEW_MAX_MB = Number(process.env.ARCHITECTURE_REVIEW_UPLOAD_MAX_MB ?? "8");
+
+type ParsedDiagram = {
+  filename: string;
+  bytes: Uint8Array;
+  format: "png" | "svg";
+  mimeType: "image/png" | "image/svg+xml";
+  svgEvidence: { text: string; dimensions: { width: number; height: number } | null } | null;
+};
 
 function emlSecret() {
   return process.env.ARCH_REVIEW_EML_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
@@ -29,104 +42,64 @@ function isPngBytes(bytes: Uint8Array) {
   return signature.every((byte, index) => bytes[index] === byte);
 }
 
-function isSafeSvgMarkup(bytes: Uint8Array) {
-  const decoded = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-  if (!/<svg\b/i.test(decoded)) {
-    return false;
-  }
-
-  if (/<script\b/i.test(decoded)) {
-    return false;
-  }
-
-  if (/\son[a-z]+\s*=/i.test(decoded)) {
-    return false;
-  }
-
-  if (/javascript:/i.test(decoded)) {
-    return false;
-  }
-
-  if (/<foreignObject\b/i.test(decoded)) {
-    return false;
-  }
-
-  return true;
-}
-
 async function parsePayloadFromRequest(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    throw new Error("INVALID_PAYLOAD");
+  }
 
-  if (contentType.includes("multipart/form-data")) {
-    const formData = await request.formData();
-    const reportRaw = formData.get("report");
-    const metadataRaw = formData.get("metadata");
-    const diagramRaw = formData.get("diagram");
+  const formData = await request.formData();
+  const metadataRaw = formData.get("metadata");
+  const diagramRaw = formData.get("diagram");
+  const reportRaw = formData.get("report");
 
-    if (typeof reportRaw !== "string" || typeof metadataRaw !== "string") {
-      throw new Error("INVALID_PAYLOAD");
-    }
+  if ((reportRaw !== null && typeof reportRaw !== "string") || typeof metadataRaw !== "string" || !(diagramRaw instanceof File)) {
+    throw new Error("INVALID_PAYLOAD");
+  }
 
-    const payload = submitArchitectureReviewPayloadSchema.parse({
-      report: JSON.parse(reportRaw),
-      metadata: JSON.parse(metadataRaw),
-    });
+  const maxBytes = maxUploadBytes(ARCHITECTURE_REVIEW_MAX_MB);
+  if (diagramRaw.size <= 0 || diagramRaw.size > maxBytes) {
+    throw new Error("DIAGRAM_TOO_LARGE");
+  }
 
-    if (diagramRaw instanceof File) {
-      const bytes = new Uint8Array(await diagramRaw.arrayBuffer());
-      if (bytes.length === 0 || bytes.length > MAX_DIAGRAM_FILE_BYTES) {
-        throw new Error("INVALID_DIAGRAM_FILE");
-      }
+  const metadata = submitArchitectureReviewMetadataSchema.parse(JSON.parse(metadataRaw));
+  const bytes = new Uint8Array(await diagramRaw.arrayBuffer());
+  if (bytes.length > maxBytes) {
+    throw new Error("DIAGRAM_TOO_LARGE");
+  }
 
-      const lowerName = diagramRaw.name.toLowerCase();
-      const isPng = lowerName.endsWith(".png");
-      const isSvg = lowerName.endsWith(".svg");
-      if (!isPng && !isSvg) {
-        throw new Error("INVALID_DIAGRAM_FILE");
-      }
-
-      if (isPng && !isPngBytes(bytes)) {
-        throw new Error("INVALID_DIAGRAM_FILE");
-      }
-
-      if (isSvg && !isSafeSvgMarkup(bytes)) {
-        throw new Error("INVALID_DIAGRAM_FILE");
-      }
-
-      return {
-        payload,
-        diagram: {
-          filename: diagramRaw.name,
-          bytes,
-          mimeType: isSvg ? "image/svg+xml" : "image/png",
-        },
-      } as const;
+  const lowerName = diagramRaw.name.toLowerCase();
+  if (lowerName.endsWith(".png")) {
+    if (!isPngBytes(bytes)) {
+      throw new Error("INVALID_DIAGRAM_FILE");
     }
 
     return {
-      payload,
-      diagram: null,
+      metadata,
+      diagram: {
+        filename: diagramRaw.name,
+        bytes,
+        format: "png",
+        mimeType: "image/png",
+        svgEvidence: null,
+      } satisfies ParsedDiagram,
     } as const;
   }
 
-  const rawBody = await request.json();
-  const payload = submitArchitectureReviewPayloadSchema.parse(rawBody);
+  if (!lowerName.endsWith(".svg")) {
+    throw new Error("INVALID_DIAGRAM_FILE");
+  }
 
   return {
-    payload,
-    diagram: null,
+    metadata,
+    diagram: {
+      filename: diagramRaw.name,
+      bytes,
+      format: "svg",
+      mimeType: "image/svg+xml",
+      svgEvidence: extractSvgEvidenceFromBytes(bytes),
+    } satisfies ParsedDiagram,
   } as const;
-}
-
-function normalizeFindingsForFinalScoring(payload: SubmitArchitectureReviewPayload) {
-  return payload.report.findings.map((finding) => ({
-    ruleId: finding.ruleId,
-    category: finding.category,
-    pointsDeducted: finding.pointsDeducted,
-    message: finding.message,
-    fix: finding.fix,
-    evidence: finding.evidence,
-  }));
 }
 
 export async function POST(request: Request) {
@@ -136,20 +109,58 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Account email is required." }, { status: 400 });
     }
 
-    const { payload, diagram } = await parsePayloadFromRequest(request);
+    const limiter = consumeRateLimit({
+      key: `arch-review:${user.id}:${getRequestFingerprint(request)}`,
+      limit: 8,
+      windowMs: 60 * 60 * 1000,
+    });
 
-    const finalizedReport = buildArchitectureReviewReport({
-      provider: payload.report.provider,
-      flowNarrative: payload.report.flowNarrative,
-      findings: normalizeFindingsForFinalScoring(payload),
+    if (!limiter.allowed) {
+      return NextResponse.json(
+        { error: "Too many architecture review requests. Please retry later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limiter.retryAfterSeconds),
+          },
+        },
+      );
+    }
+
+    const { metadata, diagram } = await parsePayloadFromRequest(request);
+    const extractedText =
+      diagram.format === "png"
+        ? await extractOcrTextFromPng(Buffer.from(diagram.bytes))
+        : (diagram.svgEvidence?.text ?? "");
+
+    const evidenceBundle = createEvidenceBundle({
+      provider: metadata.provider,
+      paragraph: metadata.paragraphInput,
+      ocrText: extractedText,
+      metadata: {
+        diagramFormat: diagram.format,
+        title: metadata.title,
+        owner: metadata.owner,
+        lastUpdated: metadata.lastUpdated,
+        version: metadata.version,
+        legend: metadata.legend,
+        workloadCriticality: metadata.workloadCriticality,
+        regulatoryScope: metadata.regulatoryScope,
+        environment: metadata.environment,
+        lifecycleStage: metadata.lifecycleStage,
+        desiredEngagement: metadata.desiredEngagement,
+      },
+    });
+
+    const finalizedReport = buildReviewReportFromEvidence({
+      bundle: evidenceBundle,
       userEmail: user.email,
-      generatedAtISO: new Date().toISOString(),
       quoteContext: {
-        tokenCount: payload.metadata.tokenCount,
-        ocrCharacterCount: payload.metadata.ocrCharacterCount,
-        mode: payload.metadata.mode,
-        workloadCriticality: payload.metadata.workloadCriticality,
-        desiredEngagement: payload.metadata.desiredEngagement,
+        tokenCount: evidenceBundle.serviceTokens.length,
+        ocrCharacterCount: evidenceBundle.ocrText.length,
+        mode: "rules-only",
+        workloadCriticality: metadata.workloadCriticality,
+        desiredEngagement: metadata.desiredEngagement,
       },
     });
 
@@ -192,9 +203,9 @@ export async function POST(request: Request) {
       authProvider: latestAccount?.provider ?? "credentials",
       overallScore: finalizedReport.overallScore,
       topIssues: summarizeTopIssues(finalizedReport.findings) || "none",
-      inputParagraph: payload.metadata.paragraphInput ?? null,
+      inputParagraph: metadata.paragraphInput ?? null,
       reportJson: finalizedReport,
-      workdriveUploadStatus: diagram ? "pending" : "skipped",
+      workdriveUploadStatus: "pending",
     } as const;
 
     const leadSchemaReady = await ensureLeadLogSchemaReady();
@@ -223,34 +234,30 @@ export async function POST(request: Request) {
         })()
       : null;
 
-    let workdriveStatus = createdLead?.workdriveUploadStatus ?? (diagram ? "pending" : "skipped");
+    const archiveResult = await archiveArchitectureReviewToWorkDrive({
+      diagramFileName: diagram.filename,
+      diagramBytes: diagram.bytes,
+      diagramMimeType: diagram.mimeType,
+      report: finalizedReport,
+      userName: resolvedUserName,
+      paragraphInput: metadata.paragraphInput ?? "",
+    });
 
-    if (diagram) {
-      const archiveResult = await archiveArchitectureReviewToWorkDrive({
-        diagramFileName: diagram.filename,
-        diagramBytes: diagram.bytes,
-        diagramMimeType: diagram.mimeType,
-        report: finalizedReport,
-        userName: resolvedUserName,
-        paragraphInput: payload.metadata.paragraphInput ?? "",
-      });
+    const workdriveStatus = archiveResult.error ? `${archiveResult.status}:${archiveResult.error}` : archiveResult.status;
 
-      workdriveStatus = archiveResult.error ? `${archiveResult.status}:${archiveResult.error}` : archiveResult.status;
-
-      if (createdLead) {
-        try {
-          await db.leadLog.update({
-            where: { id: createdLead.id },
-            data: {
-              workdriveDiagramFileId: archiveResult.diagramFileId,
-              workdriveReportFileId: archiveResult.reportFileId,
-              workdriveUploadStatus: workdriveStatus,
-            },
-          });
-        } catch (error) {
-          if (!isSchemaDriftError(error)) {
-            throw error;
-          }
+    if (createdLead) {
+      try {
+        await db.leadLog.update({
+          where: { id: createdLead.id },
+          data: {
+            workdriveDiagramFileId: archiveResult.diagramFileId,
+            workdriveReportFileId: archiveResult.reportFileId,
+            workdriveUploadStatus: workdriveStatus,
+          },
+        });
+      } catch (error) {
+        if (!isSchemaDriftError(error)) {
+          throw error;
         }
       }
     }
@@ -272,6 +279,7 @@ export async function POST(request: Request) {
             provider: finalizedReport.provider,
             score: finalizedReport.overallScore,
             findings: finalizedReport.findings.length,
+            ocrCharacterCount: evidenceBundle.ocrText.length,
             emailStatus: sendResult.ok ? "sent" : "fallback",
             emailProvider: sendResult.provider,
             emailError: sendResult.error ?? null,
@@ -335,12 +343,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (error instanceof Error && error.message === "INVALID_DIAGRAM_FILE") {
+    if (error instanceof Error && (error.message === "INVALID_DIAGRAM_FILE" || error.message === "INVALID_SVG_FILE")) {
       return NextResponse.json({ error: "Invalid diagram file. Upload a safe PNG or SVG." }, { status: 400 });
+    }
+
+    if (error instanceof Error && error.message === "DIAGRAM_TOO_LARGE") {
+      return NextResponse.json(
+        { error: `Diagram too large. Max allowed is ${ARCHITECTURE_REVIEW_MAX_MB}MB.` },
+        { status: 413 },
+      );
     }
 
     if (error instanceof Error && error.message === "INVALID_PAYLOAD") {
       return NextResponse.json({ error: "Invalid review payload." }, { status: 400 });
+    }
+
+    if (isOcrTimeoutError(error)) {
+      return NextResponse.json(
+        { error: "OCR timed out while processing the diagram. Retry with a clearer or smaller PNG." },
+        { status: 504 },
+      );
     }
 
     if (error instanceof z.ZodError) {

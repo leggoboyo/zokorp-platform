@@ -2,8 +2,15 @@ import Link from "next/link";
 
 import { ServiceRequestPanel } from "@/components/service-request-panel";
 import { auth } from "@/lib/auth";
+import { isPasswordAuthEnabled } from "@/lib/auth-config";
+import { buildPageMetadata } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
+export const metadata = buildPageMetadata({
+  title: "Services",
+  description: "Request AWS consultation, readiness support, or software-backed delivery work from ZoKorp.",
+  path: "/services",
+});
 
 const serviceTracks = [
   {
@@ -76,7 +83,15 @@ const serviceFaq = [
 ];
 
 export default async function ServicesPage() {
-  const session = await auth();
+  const authRuntimeReady = isPasswordAuthEnabled() && Boolean(process.env.NEXTAUTH_SECRET);
+  let session = null;
+  if (authRuntimeReady) {
+    try {
+      session = await auth();
+    } catch {
+      session = null;
+    }
+  }
   const signedIn = Boolean(session?.user?.email);
 
   return (
