@@ -3,6 +3,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
+import * as tesseract from "tesseract.js";
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: { href: string; children: ReactNode }) => (
@@ -193,5 +194,60 @@ describe("ArchitectureDiagramReviewerForm", () => {
     });
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("continues submission when OCR signal is low", async () => {
+    vi.spyOn(architectureReviewClient, "isStrictDiagramFile").mockResolvedValue({
+      ok: true,
+      format: "png",
+      mimeType: "image/png",
+    });
+    vi.mocked(tesseract.recognize).mockResolvedValueOnce({
+      data: {
+        text: "az",
+        confidence: 18,
+      },
+    } as never);
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: "sent",
+      }),
+    });
+
+    render(<ArchitectureDiagramReviewerForm />);
+
+    const pngBytes = createPngHeader(1200, 800);
+    const pngFile = new File([pngBytes], "diagram.png", { type: "image/png" });
+
+    const fileInput = screen.getByLabelText(/diagram file/i);
+    const submitButton = screen.getByRole("button", { name: /run review/i });
+    const form = submitButton.closest("form");
+
+    Object.defineProperty(fileInput, "files", {
+      value: [pngFile],
+      writable: false,
+    });
+    fireEvent.change(fileInput);
+
+    fireEvent.change(screen.getByLabelText(/architecture description/i), {
+      target: {
+        value:
+          "Clients call an ingress endpoint, app tier validates requests, and data is persisted to managed storage.",
+      },
+    });
+
+    if (!form) {
+      throw new Error("Expected form element.");
+    }
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.queryByText(/PNG text is too unclear/i)).toBeNull();
+    expect(screen.getByText(/review complete\. check your email/i)).toBeTruthy();
   });
 });

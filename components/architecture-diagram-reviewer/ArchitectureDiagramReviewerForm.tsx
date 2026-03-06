@@ -387,10 +387,8 @@ export function ArchitectureDiagramReviewerForm({
       }
 
       if (ocrText.length < 40 || (ocrConfidence !== null && ocrConfidence < 45)) {
-        setStatus("error");
-        setProgress(null);
-        setError("PNG text is too unclear to review reliably. Upload a sharper architecture diagram.");
-        return;
+        // Do not hard-fail: some valid architecture diagrams are icon-heavy with tiny labels.
+        setProgress("OCR text quality is low; continuing with paragraph-first analysis.");
       }
     } else {
       try {
