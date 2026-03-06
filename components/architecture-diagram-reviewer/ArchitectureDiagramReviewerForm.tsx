@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
   buildReviewReportFromEvidence,
@@ -40,6 +40,29 @@ type SubmitApiResponse =
       error: string;
     };
 
+type ReviewProgressUpdate = {
+  stage:
+    | "validation"
+    | "dimensions"
+    | "ocr"
+    | "svg-parse"
+    | "rules"
+    | "model-load"
+    | "model-refinement"
+    | "submit";
+  message: string;
+  fraction?: number;
+  etaMs?: number | null;
+  measurable?: boolean;
+};
+
+type ReviewProgressState = {
+  stage: ReviewProgressUpdate["stage"];
+  message: string;
+  percent: number | null;
+  etaMs: number | null;
+};
+
 const WEBLLM_MODEL_LOAD_TIMEOUT_MS = 3 * 60 * 1000;
 const WEBLLM_REFINEMENT_TIMEOUT_MS = 90 * 1000;
 
@@ -74,6 +97,60 @@ function stripCodeFences(raw: string) {
     .replace(/^```\s*/i, "")
     .replace(/```$/i, "")
     .trim();
+}
+
+function clampFraction(raw: number) {
+  if (!Number.isFinite(raw)) {
+    return 0;
+  }
+
+  if (raw < 0) {
+    return 0;
+  }
+
+  if (raw > 1) {
+    return 1;
+  }
+
+  return raw;
+}
+
+function computeEtaMsFromFraction(startedAtMs: number, fractionRaw: number) {
+  const fraction = clampFraction(fractionRaw);
+  if (fraction <= 0.02 || fraction >= 0.999) {
+    return null;
+  }
+
+  const elapsedMs = Date.now() - startedAtMs;
+  if (elapsedMs < 250) {
+    return null;
+  }
+
+  const etaMs = Math.round(elapsedMs / fraction - elapsedMs);
+  if (!Number.isFinite(etaMs) || etaMs < 0) {
+    return null;
+  }
+
+  return etaMs;
+}
+
+function formatEta(etaMs: number | null) {
+  if (etaMs === null) {
+    return null;
+  }
+
+  const totalSeconds = Math.max(0, Math.ceil(etaMs / 1000));
+  if (totalSeconds <= 1) {
+    return "<1s";
+  }
+
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
 }
 
 function buildWebLlmPrompt(input: {
@@ -142,10 +219,14 @@ async function runWebLlmRefinement(input: {
     fix: string;
     evidence: string;
   }>;
-  onProgress: (message: string) => void;
+  onProgress: (update: ReviewProgressUpdate) => void;
 }): Promise<LlmRefinement | null> {
   if (typeof navigator === "undefined" || !("gpu" in navigator)) {
-    input.onProgress("WebGPU is unavailable; using deterministic rules only.");
+    input.onProgress({
+      stage: "model-refinement",
+      message: "WebGPU is unavailable; using deterministic rules only.",
+      measurable: false,
+    });
     return null;
   }
 
@@ -154,7 +235,11 @@ async function runWebLlmRefinement(input: {
     const modelIds = selectWebLlmModelIds(webllm.prebuiltAppConfig.model_list.map((model) => model.model_id));
 
     if (modelIds.length === 0) {
-      input.onProgress("No local WebLLM model available; using deterministic rules only.");
+      input.onProgress({
+        stage: "model-load",
+        message: "No local WebLLM model available; using deterministic rules only.",
+        measurable: false,
+      });
       return null;
     }
 
@@ -163,13 +248,24 @@ async function runWebLlmRefinement(input: {
 
     for (const modelId of modelIds) {
       try {
-        input.onProgress(`Loading local model (${modelId})...`);
+        const modelLoadStartedAt = Date.now();
+        input.onProgress({
+          stage: "model-load",
+          message: `Loading local model (${modelId})...`,
+          measurable: false,
+        });
         engine = await withTimeout(
           webllm.CreateMLCEngine(modelId, {
             initProgressCallback(progress) {
               if (typeof progress.progress === "number") {
-                const percentage = Math.round(progress.progress * 100);
-                input.onProgress(`Loading local model (${modelId}) ${percentage}%`);
+                const normalizedFraction = clampFraction(progress.progress);
+                const percentage = Math.round(normalizedFraction * 100);
+                input.onProgress({
+                  stage: "model-load",
+                  message: `Loading local model (${modelId}) ${percentage}%`,
+                  fraction: normalizedFraction,
+                  etaMs: computeEtaMsFromFraction(modelLoadStartedAt, normalizedFraction),
+                });
               }
             },
           }),
@@ -180,14 +276,22 @@ async function runWebLlmRefinement(input: {
         break;
       } catch (error) {
         if (error instanceof TimeoutError) {
-          input.onProgress(`Model load timed out for ${modelId}; trying fallback model...`);
+          input.onProgress({
+            stage: "model-load",
+            message: `Model load timed out for ${modelId}; trying fallback model...`,
+            measurable: false,
+          });
         }
         continue;
       }
     }
 
     if (!engine || !loadedModel) {
-      input.onProgress("Model load failed; using deterministic rules only.");
+      input.onProgress({
+        stage: "model-load",
+        message: "Model load failed; using deterministic rules only.",
+        measurable: false,
+      });
       return null;
     }
 
@@ -199,7 +303,11 @@ async function runWebLlmRefinement(input: {
       deterministicFindings: input.deterministicFindings,
     });
 
-    input.onProgress("Running local model refinement...");
+    input.onProgress({
+      stage: "model-refinement",
+      message: "Running local model refinement...",
+      measurable: false,
+    });
     let completion: Awaited<ReturnType<typeof engine.chat.completions.create>> | null = null;
     try {
       completion = await withTimeout(
@@ -227,7 +335,11 @@ async function runWebLlmRefinement(input: {
     } catch (error) {
       await safeUnloadEngine(engine);
       if (error instanceof TimeoutError) {
-        input.onProgress("Local model refinement timed out; using deterministic rules only.");
+        input.onProgress({
+          stage: "model-refinement",
+          message: "Local model refinement timed out; using deterministic rules only.",
+          measurable: false,
+        });
         return null;
       }
       throw error;
@@ -243,7 +355,11 @@ async function runWebLlmRefinement(input: {
     const parsed = JSON.parse(stripCodeFences(raw));
     return parseLlmRefinement(parsed);
   } catch {
-    input.onProgress("WebLLM refinement failed; using deterministic rules only.");
+    input.onProgress({
+      stage: "model-refinement",
+      message: "WebLLM refinement failed; using deterministic rules only.",
+      measurable: false,
+    });
     return null;
   }
 }
@@ -295,11 +411,12 @@ export function ArchitectureDiagramReviewerForm({
   const [desiredEngagement, setDesiredEngagement] = useState<ArchitectureEngagementPreference>("hands-on-remediation");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const [progress, setProgress] = useState<string | null>(null);
+  const [progress, setProgress] = useState<ReviewProgressState | null>(null);
   const [status, setStatus] = useState<"idle" | "running" | "success" | "fallback" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [fallbackMailtoUrl, setFallbackMailtoUrl] = useState<string | null>(null);
   const [fallbackEmlToken, setFallbackEmlToken] = useState<string | null>(null);
+  const stageStartedAtRef = useRef<Partial<Record<ReviewProgressUpdate["stage"], number>>>({});
 
   const paragraphTooShort = paragraph.trim().length < 1;
   const paragraphTooLong = paragraph.trim().length > 2000;
@@ -319,6 +436,42 @@ export function ArchitectureDiagramReviewerForm({
     return status !== "running";
   }, [paragraphTooLong, paragraphTooShort, selectedFile, status]);
 
+  function applyProgress(update: ReviewProgressUpdate) {
+    const now = Date.now();
+    if (!stageStartedAtRef.current[update.stage]) {
+      stageStartedAtRef.current[update.stage] = now;
+    }
+
+    setProgress((previous) => {
+      const sameStage = previous?.stage === update.stage;
+
+      if (update.measurable === false || typeof update.fraction !== "number") {
+        return {
+          stage: update.stage,
+          message: update.message,
+          percent: null,
+          etaMs: null,
+        };
+      }
+
+      const normalizedFraction = clampFraction(update.fraction);
+      const proposedPercent = Math.round(normalizedFraction * 100);
+      const percent =
+        sameStage && typeof previous?.percent === "number"
+          ? Math.max(previous.percent, proposedPercent)
+          : proposedPercent;
+      const startedAt = stageStartedAtRef.current[update.stage] ?? now;
+      const etaMs = update.etaMs ?? computeEtaMsFromFraction(startedAt, normalizedFraction);
+
+      return {
+        stage: update.stage,
+        message: update.message,
+        percent,
+        etaMs,
+      };
+    });
+  }
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -334,7 +487,12 @@ export function ArchitectureDiagramReviewerForm({
 
     setStatus("running");
     setError(null);
-    setProgress("Validating diagram...");
+    stageStartedAtRef.current = {};
+    applyProgress({
+      stage: "validation",
+      message: "Validating diagram...",
+      measurable: false,
+    });
     setFallbackMailtoUrl(null);
     setFallbackEmlToken(null);
 
@@ -352,7 +510,11 @@ export function ArchitectureDiagramReviewerForm({
 
     if (diagramFormat === "png") {
       try {
-        setProgress("Validating image dimensions...");
+        applyProgress({
+          stage: "dimensions",
+          message: "Validating image dimensions...",
+          measurable: false,
+        });
         const dimensions = await readPngDimensions(selectedFile);
         if (dimensions.width < 600 || dimensions.height < 600) {
           setStatus("error");
@@ -362,18 +524,34 @@ export function ArchitectureDiagramReviewerForm({
         }
       } catch {
         // Continue when dimension parsing is unavailable in the runtime.
-        setProgress("Image dimension check unavailable; continuing.");
+        applyProgress({
+          stage: "dimensions",
+          message: "Image dimension check unavailable; continuing.",
+          measurable: false,
+        });
       }
 
       let ocrConfidence: number | null = null;
 
       try {
-        setProgress("Running OCR in your browser...");
+        const ocrStartedAt = Date.now();
+        applyProgress({
+          stage: "ocr",
+          message: "Running OCR in your browser...",
+          measurable: false,
+        });
         const tesseract = await import("tesseract.js");
         const result = await tesseract.recognize(selectedFile, "eng", {
           logger(message) {
             if (message.status) {
-              setProgress(progressLabelFromOcr(message));
+              const fraction = Number.isFinite(message.progress) ? clampFraction(message.progress) : undefined;
+              applyProgress({
+                stage: "ocr",
+                message: progressLabelFromOcr(message),
+                fraction,
+                etaMs:
+                  typeof fraction === "number" ? computeEtaMsFromFraction(ocrStartedAt, fraction) : null,
+              });
             }
           },
         });
@@ -388,11 +566,19 @@ export function ArchitectureDiagramReviewerForm({
 
       if (ocrText.length < 40 || (ocrConfidence !== null && ocrConfidence < 45)) {
         // Do not hard-fail: some valid architecture diagrams are icon-heavy with tiny labels.
-        setProgress("OCR text quality is low; continuing with paragraph-first analysis.");
+        applyProgress({
+          stage: "ocr",
+          message: "OCR text quality is low; continuing with paragraph-first analysis.",
+          measurable: false,
+        });
       }
     } else {
       try {
-        setProgress("Parsing SVG labels in your browser...");
+        applyProgress({
+          stage: "svg-parse",
+          message: "Parsing SVG labels in your browser...",
+          measurable: false,
+        });
         const svgEvidence = await extractSvgEvidence(selectedFile);
         if (svgEvidence.dimensions && (svgEvidence.dimensions.width < 400 || svgEvidence.dimensions.height < 400)) {
           setStatus("error");
@@ -435,7 +621,11 @@ export function ArchitectureDiagramReviewerForm({
       },
     });
 
-    setProgress("Running deterministic scoring rules...");
+    applyProgress({
+      stage: "rules",
+      message: "Running deterministic scoring rules...",
+      measurable: false,
+    });
 
     const deterministicOnlyReport = buildReviewReportFromEvidence({
       bundle: evidenceBundle,
@@ -477,14 +667,18 @@ export function ArchitectureDiagramReviewerForm({
         fix: finding.fix,
         evidence: finding.evidence,
       })),
-      onProgress: setProgress,
+      onProgress: applyProgress,
     });
 
     if (llmRefinement) {
       mode = "webllm";
     }
 
-    setProgress("Finalizing report and sending metadata...");
+    applyProgress({
+      stage: "submit",
+      message: "Finalizing report and sending metadata...",
+      measurable: false,
+    });
 
     const finalReport = buildReviewReportFromEvidence({
       bundle: evidenceBundle,
@@ -809,7 +1003,32 @@ export function ArchitectureDiagramReviewerForm({
 
         {progress ? (
           <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm text-sky-900">
-            <span className="font-semibold">Processing:</span> {progress}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p>
+                <span className="font-semibold">Processing:</span> {progress.message}
+              </p>
+              {progress.percent !== null ? (
+                <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-sky-900">
+                  {progress.percent}%
+                </span>
+              ) : null}
+            </div>
+
+            {progress.percent !== null ? (
+              <div className="mt-2">
+                <div className="h-2 overflow-hidden rounded-full bg-sky-100">
+                  <div
+                    className="h-full rounded-full bg-sky-500 transition-[width] duration-300 ease-out"
+                    style={{ width: `${progress.percent}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-sky-800">
+                  {formatEta(progress.etaMs) ? `ETA ${formatEta(progress.etaMs)}` : "ETA calibrating..."}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-1 text-xs text-sky-800">ETA unavailable for this step.</p>
+            )}
           </div>
         ) : null}
 
