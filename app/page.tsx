@@ -27,7 +27,7 @@ const valueProps = [
 const startPoints = [
   {
     title: "Architecture Diagram Reviewer",
-    summary: "A free entry point for architecture feedback with server-validated scoring and email delivery.",
+    summary: "A free entry point for architecture feedback with server-validated scoring and PNG or SVG uploads.",
     cta: "Run the free review",
     href: "/software/architecture-diagram-reviewer",
   },

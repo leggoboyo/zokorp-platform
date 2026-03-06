@@ -236,13 +236,21 @@ export default async function SoftwareDetailPage({
     notFound();
   }
 
-  const session = await auth();
+  const authRuntimeReady = isPasswordAuthEnabled() && Boolean(process.env.NEXTAUTH_SECRET);
+  let session = null;
+  if (authRuntimeReady) {
+    try {
+      session = await auth();
+    } catch {
+      session = null;
+    }
+  }
   const currentEmail = session?.user?.email;
   const signedIn = Boolean(currentEmail);
   const isValidator = product.slug === "zokorp-validator";
   const isArchitectureReviewer = product.slug === "architecture-diagram-reviewer";
   const productDescription = isArchitectureReviewer
-    ? "Free cloud architecture diagram reviewer for PNG uploads with deterministic findings delivered by email."
+    ? "Free cloud architecture diagram reviewer for PNG/SVG uploads with deterministic findings delivered by email."
     : product.description;
   const validatorTargets = isValidator ? getValidatorTargetOptions() : [];
   let validatorProfileCredits: Record<ValidationProfile, number> = {

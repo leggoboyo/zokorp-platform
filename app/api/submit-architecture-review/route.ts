@@ -6,7 +6,7 @@ import { createEvidenceBundle } from "@/lib/architecture-review/evidence";
 import { buildArchitectureReviewEmailContent, buildMailtoUrl } from "@/lib/architecture-review/email";
 import { createEmlToken } from "@/lib/architecture-review/eml-token";
 import { summarizeTopIssues } from "@/lib/architecture-review/report";
-import { extractOcrTextFromPng, isOcrTimeoutError } from "@/lib/architecture-review/server";
+import { extractOcrTextFromPng, extractSvgEvidenceFromBytes, isOcrTimeoutError } from "@/lib/architecture-review/server";
 import { sendArchitectureReviewEmail } from "@/lib/architecture-review/sender";
 import { buildReviewReportFromEvidence } from "@/lib/architecture-review/client";
 import { submitArchitectureReviewMetadataSchema } from "@/lib/architecture-review/types";
@@ -19,7 +19,15 @@ import { archiveArchitectureReviewToWorkDrive } from "@/lib/zoho-workdrive";
 
 export const runtime = "nodejs";
 
-const ARCHITECTURE_REVIEW_MAX_MB = Number(process.env.ARCHITECTURE_REVIEW_UPLOAD_MAX_MB ?? "6");
+const ARCHITECTURE_REVIEW_MAX_MB = Number(process.env.ARCHITECTURE_REVIEW_UPLOAD_MAX_MB ?? "8");
+
+type ParsedDiagram = {
+  filename: string;
+  bytes: Uint8Array;
+  format: "png" | "svg";
+  mimeType: "image/png" | "image/svg+xml";
+  svgEvidence: { text: string; dimensions: { width: number; height: number } | null } | null;
+};
 
 function emlSecret() {
   return process.env.ARCH_REVIEW_EML_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
@@ -43,8 +51,9 @@ async function parsePayloadFromRequest(request: Request) {
   const formData = await request.formData();
   const metadataRaw = formData.get("metadata");
   const diagramRaw = formData.get("diagram");
+  const reportRaw = formData.get("report");
 
-  if (typeof metadataRaw !== "string" || !(diagramRaw instanceof File)) {
+  if ((reportRaw !== null && typeof reportRaw !== "string") || typeof metadataRaw !== "string" || !(diagramRaw instanceof File)) {
     throw new Error("INVALID_PAYLOAD");
   }
 
@@ -55,13 +64,30 @@ async function parsePayloadFromRequest(request: Request) {
 
   const metadata = submitArchitectureReviewMetadataSchema.parse(JSON.parse(metadataRaw));
   const bytes = new Uint8Array(await diagramRaw.arrayBuffer());
-
-  if (diagramRaw.type !== "image/png" || !isPngBytes(bytes)) {
-    throw new Error("INVALID_DIAGRAM_FILE");
-  }
-
   if (bytes.length > maxBytes) {
     throw new Error("DIAGRAM_TOO_LARGE");
+  }
+
+  const lowerName = diagramRaw.name.toLowerCase();
+  if (lowerName.endsWith(".png")) {
+    if (!isPngBytes(bytes)) {
+      throw new Error("INVALID_DIAGRAM_FILE");
+    }
+
+    return {
+      metadata,
+      diagram: {
+        filename: diagramRaw.name,
+        bytes,
+        format: "png",
+        mimeType: "image/png",
+        svgEvidence: null,
+      } satisfies ParsedDiagram,
+    } as const;
+  }
+
+  if (!lowerName.endsWith(".svg")) {
+    throw new Error("INVALID_DIAGRAM_FILE");
   }
 
   return {
@@ -69,7 +95,10 @@ async function parsePayloadFromRequest(request: Request) {
     diagram: {
       filename: diagramRaw.name,
       bytes,
-    },
+      format: "svg",
+      mimeType: "image/svg+xml",
+      svgEvidence: extractSvgEvidenceFromBytes(bytes),
+    } satisfies ParsedDiagram,
   } as const;
 }
 
@@ -99,23 +128,40 @@ export async function POST(request: Request) {
     }
 
     const { metadata, diagram } = await parsePayloadFromRequest(request);
-    const ocrText = await extractOcrTextFromPng(Buffer.from(diagram.bytes));
+    const extractedText =
+      diagram.format === "png"
+        ? await extractOcrTextFromPng(Buffer.from(diagram.bytes))
+        : (diagram.svgEvidence?.text ?? "");
+
     const evidenceBundle = createEvidenceBundle({
       provider: metadata.provider,
       paragraph: metadata.paragraphInput,
-      ocrText,
+      ocrText: extractedText,
       metadata: {
+        diagramFormat: diagram.format,
         title: metadata.title,
         owner: metadata.owner,
         lastUpdated: metadata.lastUpdated,
         version: metadata.version,
         legend: metadata.legend,
+        workloadCriticality: metadata.workloadCriticality,
+        regulatoryScope: metadata.regulatoryScope,
+        environment: metadata.environment,
+        lifecycleStage: metadata.lifecycleStage,
+        desiredEngagement: metadata.desiredEngagement,
       },
     });
 
     const finalizedReport = buildReviewReportFromEvidence({
       bundle: evidenceBundle,
       userEmail: user.email,
+      quoteContext: {
+        tokenCount: evidenceBundle.serviceTokens.length,
+        ocrCharacterCount: evidenceBundle.ocrText.length,
+        mode: "rules-only",
+        workloadCriticality: metadata.workloadCriticality,
+        desiredEngagement: metadata.desiredEngagement,
+      },
     });
 
     const hasNonArchitectureFinding = finalizedReport.findings.some(
@@ -125,7 +171,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Uploaded PNG appears to be non-architecture content. No review email was sent. Upload a real architecture diagram.",
+            "Uploaded diagram appears to be non-architecture content. No review email was sent. Upload a real architecture diagram.",
         },
         { status: 422 },
       );
@@ -191,6 +237,7 @@ export async function POST(request: Request) {
     const archiveResult = await archiveArchitectureReviewToWorkDrive({
       diagramFileName: diagram.filename,
       diagramBytes: diagram.bytes,
+      diagramMimeType: diagram.mimeType,
       report: finalizedReport,
       userName: resolvedUserName,
       paragraphInput: metadata.paragraphInput ?? "",
@@ -296,8 +343,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (error instanceof Error && error.message === "INVALID_DIAGRAM_FILE") {
-      return NextResponse.json({ error: "Invalid diagram file. Upload a PNG." }, { status: 400 });
+    if (error instanceof Error && (error.message === "INVALID_DIAGRAM_FILE" || error.message === "INVALID_SVG_FILE")) {
+      return NextResponse.json({ error: "Invalid diagram file. Upload a safe PNG or SVG." }, { status: 400 });
     }
 
     if (error instanceof Error && error.message === "DIAGRAM_TOO_LARGE") {

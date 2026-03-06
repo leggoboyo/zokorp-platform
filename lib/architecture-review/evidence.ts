@@ -6,11 +6,17 @@ export function createEvidenceBundle(input: {
   paragraph: string;
   ocrText: string;
   metadata: {
+    diagramFormat?: ArchitectureEvidenceBundle["metadata"]["diagramFormat"];
     title?: string;
     owner?: string;
     lastUpdated?: string;
     version?: string;
     legend?: string;
+    workloadCriticality?: ArchitectureEvidenceBundle["metadata"]["workloadCriticality"];
+    regulatoryScope?: ArchitectureEvidenceBundle["metadata"]["regulatoryScope"];
+    environment?: ArchitectureEvidenceBundle["metadata"]["environment"];
+    lifecycleStage?: ArchitectureEvidenceBundle["metadata"]["lifecycleStage"];
+    desiredEngagement?: ArchitectureEvidenceBundle["metadata"]["desiredEngagement"];
   };
 }) {
   const normalizedOcrText = input.ocrText.replace(/\s+/g, " ").trim();
@@ -22,11 +28,17 @@ export function createEvidenceBundle(input: {
     ocrText: normalizedOcrText,
     serviceTokens,
     metadata: {
+      diagramFormat: input.metadata.diagramFormat,
       title: input.metadata.title?.trim(),
       owner: input.metadata.owner?.trim(),
       lastUpdated: input.metadata.lastUpdated?.trim(),
       version: input.metadata.version?.trim(),
       legend: input.metadata.legend?.trim(),
+      workloadCriticality: input.metadata.workloadCriticality,
+      regulatoryScope: input.metadata.regulatoryScope,
+      environment: input.metadata.environment,
+      lifecycleStage: input.metadata.lifecycleStage,
+      desiredEngagement: input.metadata.desiredEngagement,
     },
   };
 

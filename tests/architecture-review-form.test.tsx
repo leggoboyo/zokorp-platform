@@ -29,14 +29,14 @@ describe("ArchitectureDiagramReviewerForm", () => {
     vi.unstubAllGlobals();
   });
 
-  it("enforces PNG-only uploads", async () => {
+  it("enforces PNG/SVG-only uploads", async () => {
     render(<ArchitectureDiagramReviewerForm />);
 
-    const fileInput = screen.getByLabelText(/diagram png/i);
+    const fileInput = screen.getByLabelText(/diagram file/i);
     const descriptionInput = screen.getByLabelText(/architecture description/i);
     const submitButton = screen.getByRole("button", { name: /run review/i });
     const form = submitButton.closest("form");
-    expect(fileInput.getAttribute("accept")).toBe("image/png");
+    expect(fileInput.getAttribute("accept")).toBe("image/png,image/svg+xml,.png,.svg");
 
     const jpgFile = new File([new Uint8Array([1, 2, 3, 4])], "diagram.jpg", { type: "image/jpeg" });
 
@@ -54,12 +54,15 @@ describe("ArchitectureDiagramReviewerForm", () => {
     fireEvent.submit(form);
 
     await waitFor(() => expect(fetchMock).not.toHaveBeenCalled());
-
-    expect(fetchMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByText(/file name must end with \.png or \.svg/i)).toBeTruthy());
   });
 
   it("shows email fallback actions without rendering findings", async () => {
-    vi.spyOn(architectureReviewClient, "isStrictPngFile").mockResolvedValue({ ok: true });
+    vi.spyOn(architectureReviewClient, "isStrictDiagramFile").mockResolvedValue({
+      ok: true,
+      format: "png",
+      mimeType: "image/png",
+    });
 
     fetchMock.mockResolvedValue({
       ok: true,
@@ -75,7 +78,7 @@ describe("ArchitectureDiagramReviewerForm", () => {
     const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
     const pngFile = new File([pngBytes], "diagram.png", { type: "image/png" });
 
-    const fileInput = screen.getByLabelText(/diagram png/i);
+    const fileInput = screen.getByLabelText(/diagram file/i);
     const submitButton = screen.getByRole("button", { name: /run review/i });
     const form = submitButton.closest("form");
 
@@ -113,13 +116,17 @@ describe("ArchitectureDiagramReviewerForm", () => {
   });
 
   it("shows server-side validation errors returned by the API", async () => {
-    vi.spyOn(architectureReviewClient, "isStrictPngFile").mockResolvedValue({ ok: true });
+    vi.spyOn(architectureReviewClient, "isStrictDiagramFile").mockResolvedValue({
+      ok: true,
+      format: "png",
+      mimeType: "image/png",
+    });
     fetchMock.mockResolvedValue({
       ok: false,
       status: 422,
       json: async () => ({
         error:
-          "Uploaded PNG appears to be non-architecture content. No review email was sent. Upload a real architecture diagram.",
+          "Uploaded diagram appears to be non-architecture content. No review email was sent. Upload a real architecture diagram.",
       }),
     });
 
@@ -128,7 +135,7 @@ describe("ArchitectureDiagramReviewerForm", () => {
     const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
     const pngFile = new File([pngBytes], "diagram.png", { type: "image/png" });
 
-    const fileInput = screen.getByLabelText(/diagram png/i);
+    const fileInput = screen.getByLabelText(/diagram file/i);
     const submitButton = screen.getByRole("button", { name: /run review/i });
     const form = submitButton.closest("form");
 

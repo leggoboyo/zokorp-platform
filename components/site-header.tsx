@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { auth } from "@/lib/auth";
+import { isPasswordAuthEnabled } from "@/lib/auth-config";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -14,11 +15,15 @@ const navLinks = [
 ];
 
 export async function SiteHeader() {
+  const authRuntimeReady = isPasswordAuthEnabled() && Boolean(process.env.NEXTAUTH_SECRET);
+
   let session = null;
-  try {
-    session = await auth();
-  } catch {
-    session = null;
+  if (authRuntimeReady) {
+    try {
+      session = await auth();
+    } catch {
+      session = null;
+    }
   }
 
   return (
@@ -72,7 +77,7 @@ export async function SiteHeader() {
                   Sign out
                 </Link>
               </div>
-            ) : (
+            ) : authRuntimeReady ? (
               <div className="flex flex-wrap items-center gap-2 md:justify-end">
                 <Link
                   href="/login"
@@ -87,6 +92,10 @@ export async function SiteHeader() {
                   Create account
                 </Link>
               </div>
+            ) : (
+              <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-amber-900">
+                Auth setup pending
+              </span>
             )}
           </div>
         </div>

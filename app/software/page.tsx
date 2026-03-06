@@ -38,7 +38,7 @@ const roadmapItems = [
     title: "Architecture Diagram Reviewer",
     status: "Free tool",
     summary:
-      "Upload a cloud architecture PNG and receive structured feedback on reliability, security, and operational readiness.",
+      "Upload a cloud architecture PNG or SVG and receive structured feedback on reliability, security, and operational readiness.",
     cta: "Open in catalog",
     href: "/software/architecture-diagram-reviewer",
   },
