@@ -30,6 +30,34 @@ type SubmitApiResponse =
       error: string;
     };
 
+const WEBLLM_MODEL_LOAD_TIMEOUT_MS = 3 * 60 * 1000;
+const WEBLLM_REFINEMENT_TIMEOUT_MS = 90 * 1000;
+
+class TimeoutError extends Error {
+  constructor(step: string, timeoutMs: number) {
+    super(`${step} timed out after ${timeoutMs}ms`);
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, step: string) {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new TimeoutError(step, timeoutMs));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 function stripCodeFences(raw: string) {
   return raw
     .replace(/^```json\s*/i, "")
@@ -83,6 +111,14 @@ function selectWebLlmModelIds(modelIds: string[]) {
   return modelIds.slice(0, 2);
 }
 
+async function safeUnloadEngine(engine: { unload: () => Promise<void> }) {
+  try {
+    await engine.unload();
+  } catch {
+    // no-op: cleanup failures should not break the user flow
+  }
+}
+
 async function runWebLlmRefinement(input: {
   provider: ArchitectureProvider;
   paragraph: string;
@@ -118,17 +154,24 @@ async function runWebLlmRefinement(input: {
     for (const modelId of modelIds) {
       try {
         input.onProgress(`Loading local model (${modelId})...`);
-        engine = await webllm.CreateMLCEngine(modelId, {
-          initProgressCallback(progress) {
-            if (typeof progress.progress === "number") {
-              const percentage = Math.round(progress.progress * 100);
-              input.onProgress(`Loading local model (${modelId}) ${percentage}%`);
-            }
-          },
-        });
+        engine = await withTimeout(
+          webllm.CreateMLCEngine(modelId, {
+            initProgressCallback(progress) {
+              if (typeof progress.progress === "number") {
+                const percentage = Math.round(progress.progress * 100);
+                input.onProgress(`Loading local model (${modelId}) ${percentage}%`);
+              }
+            },
+          }),
+          WEBLLM_MODEL_LOAD_TIMEOUT_MS,
+          `Model load (${modelId})`,
+        );
         loadedModel = modelId;
         break;
-      } catch {
+      } catch (error) {
+        if (error instanceof TimeoutError) {
+          input.onProgress(`Model load timed out for ${modelId}; trying fallback model...`);
+        }
         continue;
       }
     }
@@ -147,27 +190,41 @@ async function runWebLlmRefinement(input: {
     });
 
     input.onProgress("Running local model refinement...");
-    const completion = await engine.chat.completions.create({
-      model: loadedModel,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a deterministic architecture reviewer assistant. Output strict JSON only, no markdown.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0,
-      top_p: 1,
-      max_tokens: 1100,
-      response_format: { type: "json_object" },
-    });
+    let completion: Awaited<ReturnType<typeof engine.chat.completions.create>> | null = null;
+    try {
+      completion = await withTimeout(
+        engine.chat.completions.create({
+          model: loadedModel,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a deterministic architecture reviewer assistant. Output strict JSON only, no markdown.",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0,
+          top_p: 1,
+          max_tokens: 1100,
+          response_format: { type: "json_object" },
+        }),
+        WEBLLM_REFINEMENT_TIMEOUT_MS,
+        "Local model refinement",
+      );
+    } catch (error) {
+      await safeUnloadEngine(engine);
+      if (error instanceof TimeoutError) {
+        input.onProgress("Local model refinement timed out; using deterministic rules only.");
+        return null;
+      }
+      throw error;
+    }
 
     const raw = completion.choices?.[0]?.message?.content;
-    await engine.unload();
+    await safeUnloadEngine(engine);
 
     if (!raw) {
       return null;
