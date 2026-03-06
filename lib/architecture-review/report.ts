@@ -1,4 +1,13 @@
-import { calculateConsultationQuoteUSD, calculateFixCostUSD, calculateOverallScore } from "@/lib/architecture-review/quote";
+import {
+  calculateConsultationQuoteUSD,
+  calculateFixCostUSD,
+  calculateOverallScore,
+  compareFindingsDeterministically,
+  intentGroupForRule,
+  isCriticalFinding,
+  mergedEvidenceText,
+  type ArchitectureQuoteContext,
+} from "@/lib/architecture-review/quote";
 import {
   ARCHITECTURE_REVIEW_VERSION,
   architectureFindingDraftSchema,
@@ -29,35 +38,50 @@ function normalizeFindingDraft(input: ArchitectureFindingDraft): ArchitectureFin
   };
 }
 
-function mergeOverflowFindings(findings: ArchitectureFindingDraft[]) {
+function sortFindingDrafts(findings: ArchitectureFindingDraft[]) {
+  return [...findings].sort(compareFindingsDeterministically);
+}
+
+function mergeByIntentGroup(findings: ArchitectureFindingDraft[]) {
+  const grouped = new Map<string, ArchitectureFindingDraft[]>();
+
+  for (const finding of findings) {
+    const intentGroup = intentGroupForRule(finding.ruleId);
+    const key = `${finding.category}:${intentGroup}`;
+    const bucket = grouped.get(key);
+    if (bucket) {
+      bucket.push(finding);
+    } else {
+      grouped.set(key, [finding]);
+    }
+  }
+
+  return [...grouped.values()].map((bucket) => {
+    const sortedBucket = sortFindingDrafts(bucket);
+    const winner = sortedBucket[0];
+    const mergedEvidence = mergedEvidenceText(bucket.map((item) => item.evidence));
+    return {
+      ...winner,
+      evidence: mergedEvidence || winner.evidence,
+    };
+  });
+}
+
+function limitFindings(findings: ArchitectureFindingDraft[]) {
   if (findings.length <= 20) {
     return findings;
   }
 
-  const head = findings.slice(0, 19);
-  const overflow = findings.slice(19);
-  const totalOverflowPoints = overflow.reduce((sum, finding) => sum + finding.pointsDeducted, 0);
+  const sorted = sortFindingDrafts(findings);
+  const critical = sorted.filter((finding) => isCriticalFinding(finding));
 
-  head.push({
-    ruleId: "merged-overflow",
-    category: "clarity",
-    pointsDeducted: Math.min(100, totalOverflowPoints),
-    message: `Consolidate ${overflow.length} lower-priority findings into one remediation plan.`,
-    fix: "Group similar issues by ownership and close them in one iteration plan.",
-    evidence: `Merged ${overflow.length} overflow findings to keep output within the 20-item limit.`,
-  });
+  if (critical.length >= 20) {
+    return critical.slice(0, 20);
+  }
 
-  return head;
-}
-
-function sortFindingDrafts(findings: ArchitectureFindingDraft[]) {
-  return [...findings].sort((a, b) => {
-    if (b.pointsDeducted !== a.pointsDeducted) {
-      return b.pointsDeducted - a.pointsDeducted;
-    }
-
-    return a.category.localeCompare(b.category);
-  });
+  const nonCritical = sorted.filter((finding) => !isCriticalFinding(finding));
+  const selected = [...critical, ...nonCritical.slice(0, 20 - critical.length)];
+  return sortFindingDrafts(selected);
 }
 
 export function finalizeFindings(inputFindings: ArchitectureFindingDraft[]): ArchitectureFinding[] {
@@ -79,10 +103,11 @@ export function finalizeFindings(inputFindings: ArchitectureFindingDraft[]): Arc
     }
   }
 
-  const sorted = sortFindingDrafts([...dedupedByRuleId.values()]);
-  const merged = mergeOverflowFindings(sorted);
+  const mergedByIntent = mergeByIntentGroup([...dedupedByRuleId.values()]);
+  const sorted = sortFindingDrafts(mergedByIntent);
+  const limited = limitFindings(sorted);
 
-  return merged.map((finding) => ({
+  return limited.map((finding) => ({
     ...finding,
     fixCostUSD: calculateFixCostUSD(finding.category, finding.pointsDeducted),
   }));
@@ -94,10 +119,11 @@ export function buildArchitectureReviewReport(input: {
   findings: ArchitectureFindingDraft[];
   userEmail: string;
   generatedAtISO?: string;
+  quoteContext?: ArchitectureQuoteContext;
 }): ArchitectureReviewReport {
   const findings = finalizeFindings(input.findings);
   const overallScore = calculateOverallScore(findings);
-  const consultationQuoteUSD = calculateConsultationQuoteUSD(findings, overallScore);
+  const consultationQuoteUSD = calculateConsultationQuoteUSD(findings, overallScore, input.quoteContext);
 
   const report: ArchitectureReviewReport = {
     reportVersion: ARCHITECTURE_REVIEW_VERSION,

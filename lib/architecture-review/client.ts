@@ -1,5 +1,6 @@
 import { buildDeterministicNarrative, buildDeterministicReviewFindings, extractServiceTokens } from "@/lib/architecture-review/engine";
 import { buildArchitectureReviewReport } from "@/lib/architecture-review/report";
+import type { ArchitectureQuoteContext } from "@/lib/architecture-review/quote";
 import {
   architectureFindingDraftSchema,
   llmRefinementSchema,
@@ -52,6 +53,11 @@ export function createEvidenceBundle(input: {
     lastUpdated?: string;
     version?: string;
     legend?: string;
+    workloadCriticality?: ArchitectureEvidenceBundle["metadata"]["workloadCriticality"];
+    regulatoryScope?: ArchitectureEvidenceBundle["metadata"]["regulatoryScope"];
+    environment?: ArchitectureEvidenceBundle["metadata"]["environment"];
+    lifecycleStage?: ArchitectureEvidenceBundle["metadata"]["lifecycleStage"];
+    desiredEngagement?: ArchitectureEvidenceBundle["metadata"]["desiredEngagement"];
   };
 }) {
   const normalizedOcrText = input.ocrText.replace(/\s+/g, " ").trim();
@@ -68,6 +74,11 @@ export function createEvidenceBundle(input: {
       lastUpdated: input.metadata.lastUpdated?.trim(),
       version: input.metadata.version?.trim(),
       legend: input.metadata.legend?.trim(),
+      workloadCriticality: input.metadata.workloadCriticality,
+      regulatoryScope: input.metadata.regulatoryScope,
+      environment: input.metadata.environment,
+      lifecycleStage: input.metadata.lifecycleStage,
+      desiredEngagement: input.metadata.desiredEngagement,
     },
   };
 
@@ -124,6 +135,7 @@ export function buildReviewReportFromEvidence(input: {
   bundle: ArchitectureEvidenceBundle;
   userEmail: string;
   llmRefinement?: LlmRefinement | null;
+  quoteContext?: ArchitectureQuoteContext;
 }): ArchitectureReviewReport {
   const deterministicFindings = buildDeterministicReviewFindings(input.bundle);
   const mergedFindings = dedupeMergeFindings(deterministicFindings, input.llmRefinement ?? null);
@@ -137,5 +149,6 @@ export function buildReviewReportFromEvidence(input: {
     flowNarrative: narrative,
     findings: mergedFindings,
     userEmail: input.userEmail,
+    quoteContext: input.quoteContext,
   });
 }

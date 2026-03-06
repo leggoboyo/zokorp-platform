@@ -9,7 +9,15 @@ import {
   isStrictPngFile,
   parseLlmRefinement,
 } from "@/lib/architecture-review/client";
-import type { ArchitectureProvider, LlmRefinement } from "@/lib/architecture-review/types";
+import type {
+  ArchitectureEngagementPreference,
+  ArchitectureEnvironment,
+  ArchitectureLifecycleStage,
+  ArchitectureProvider,
+  ArchitectureRegulatoryScope,
+  ArchitectureWorkloadCriticality,
+  LlmRefinement,
+} from "@/lib/architecture-review/types";
 
 type ArchitectureDiagramReviewerFormProps = {
   requiresAuth?: boolean;
@@ -259,6 +267,11 @@ export function ArchitectureDiagramReviewerForm({
   const [lastUpdated, setLastUpdated] = useState("");
   const [version, setVersion] = useState("");
   const [legend, setLegend] = useState("");
+  const [workloadCriticality, setWorkloadCriticality] = useState<ArchitectureWorkloadCriticality>("standard");
+  const [regulatoryScope, setRegulatoryScope] = useState<ArchitectureRegulatoryScope>("none");
+  const [environment, setEnvironment] = useState<ArchitectureEnvironment>("prod");
+  const [lifecycleStage, setLifecycleStage] = useState<ArchitectureLifecycleStage>("production");
+  const [desiredEngagement, setDesiredEngagement] = useState<ArchitectureEngagementPreference>("hands-on-remediation");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [progress, setProgress] = useState<string | null>(null);
@@ -342,6 +355,11 @@ export function ArchitectureDiagramReviewerForm({
         lastUpdated,
         version,
         legend,
+        workloadCriticality,
+        regulatoryScope,
+        environment,
+        lifecycleStage,
+        desiredEngagement,
       },
     });
 
@@ -350,6 +368,13 @@ export function ArchitectureDiagramReviewerForm({
     const deterministicOnlyReport = buildReviewReportFromEvidence({
       bundle: evidenceBundle,
       userEmail: "placeholder@example.com",
+      quoteContext: {
+        tokenCount: evidenceBundle.serviceTokens.length,
+        ocrCharacterCount: evidenceBundle.ocrText.length,
+        mode: "rules-only",
+        workloadCriticality,
+        desiredEngagement,
+      },
     });
 
     let llmRefinement: LlmRefinement | null = null;
@@ -393,6 +418,13 @@ export function ArchitectureDiagramReviewerForm({
       bundle: evidenceBundle,
       userEmail: "placeholder@example.com",
       llmRefinement,
+      quoteContext: {
+        tokenCount: evidenceBundle.serviceTokens.length,
+        ocrCharacterCount: evidenceBundle.ocrText.length,
+        mode,
+        workloadCriticality,
+        desiredEngagement,
+      },
     });
 
     try {
@@ -410,6 +442,11 @@ export function ArchitectureDiagramReviewerForm({
           tokenCount: evidenceBundle.serviceTokens.length,
           ocrCharacterCount: evidenceBundle.ocrText.length,
           mode,
+          workloadCriticality,
+          regulatoryScope,
+          environment,
+          lifecycleStage,
+          desiredEngagement,
         }),
       );
       submitData.append("diagram", selectedFile, selectedFile.name);
@@ -612,6 +649,77 @@ export function ArchitectureDiagramReviewerForm({
                 className={`${fieldClassName} min-h-24`}
               />
             </label>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className={fieldLabelClassName}>Workload Criticality</span>
+                <select
+                  value={workloadCriticality}
+                  onChange={(event) => setWorkloadCriticality(event.target.value as ArchitectureWorkloadCriticality)}
+                  className={fieldClassName}
+                >
+                  <option value="low">Low</option>
+                  <option value="standard">Standard</option>
+                  <option value="mission-critical">Mission-critical</option>
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className={fieldLabelClassName}>Regulatory Scope</span>
+                <select
+                  value={regulatoryScope}
+                  onChange={(event) => setRegulatoryScope(event.target.value as ArchitectureRegulatoryScope)}
+                  className={fieldClassName}
+                >
+                  <option value="none">None</option>
+                  <option value="soc2">SOC 2</option>
+                  <option value="pci">PCI</option>
+                  <option value="hipaa">HIPAA</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className={fieldLabelClassName}>Environment</span>
+                <select
+                  value={environment}
+                  onChange={(event) => setEnvironment(event.target.value as ArchitectureEnvironment)}
+                  className={fieldClassName}
+                >
+                  <option value="dev">Dev</option>
+                  <option value="test">Test</option>
+                  <option value="prod">Prod</option>
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className={fieldLabelClassName}>Lifecycle Stage</span>
+                <select
+                  value={lifecycleStage}
+                  onChange={(event) => setLifecycleStage(event.target.value as ArchitectureLifecycleStage)}
+                  className={fieldClassName}
+                >
+                  <option value="early-design">Early design</option>
+                  <option value="pre-prod">Pre-prod</option>
+                  <option value="production">Production</option>
+                </select>
+              </label>
+
+              <label className="space-y-2 md:col-span-2">
+                <span className={fieldLabelClassName}>Desired Engagement</span>
+                <select
+                  value={desiredEngagement}
+                  onChange={(event) => setDesiredEngagement(event.target.value as ArchitectureEngagementPreference)}
+                  className={fieldClassName}
+                >
+                  <option value="hands-on-remediation">Hands-on remediation</option>
+                  <option value="diagram-rebuild">Diagram rebuild</option>
+                  <option value="review-call-only">Review call only</option>
+                  <option value="ongoing-quarterly-reviews">Ongoing quarterly reviews</option>
+                  <option value="architect-on-call">Architect-on-call</option>
+                </select>
+              </label>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

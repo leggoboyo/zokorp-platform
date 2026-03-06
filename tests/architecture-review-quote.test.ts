@@ -43,4 +43,82 @@ describe("architecture quote calculator", () => {
     expect(quote).toBeLessThanOrEqual(1500);
     expect(quote).toBe(249 + 290 + 340);
   });
+
+  it("caps category deductions instead of summing unlimited penalties", () => {
+    const score = calculateOverallScore([
+      { category: "security", pointsDeducted: 18 },
+      { category: "security", pointsDeducted: 17 },
+      { category: "clarity", pointsDeducted: 12 },
+    ]);
+
+    expect(score).toBe(63);
+  });
+
+  it("uses deterministic diagnostic pricing in low-confidence contexts", () => {
+    const findings = [
+      {
+        ruleId: "MSFT-COMPONENT-LABEL-COVERAGE",
+        category: "clarity" as const,
+        pointsDeducted: 6,
+        message: "Explain each major component used in the diagram.",
+        fix: "Reference key services and state each role.",
+        evidence: "Token coverage low.",
+        fixCostUSD: 40,
+      },
+      {
+        ruleId: "CLAR-REL-LABELS-MISSING",
+        category: "clarity" as const,
+        pointsDeducted: 4,
+        message: "Label relationships with protocol.",
+        fix: "Add HTTPS/gRPC/event labels.",
+        evidence: "Protocol labels missing.",
+        fixCostUSD: 35,
+      },
+      {
+        ruleId: "PILLAR-SECURITY",
+        category: "security" as const,
+        pointsDeducted: 12,
+        message: "Document security controls.",
+        fix: "Add IAM, encryption, and secrets handling.",
+        evidence: "Missing security terms.",
+        fixCostUSD: 260,
+      },
+    ];
+
+    const score = calculateOverallScore(findings);
+    const quote = calculateConsultationQuoteUSD(findings, score, {
+      tokenCount: 22,
+      ocrCharacterCount: 200,
+      mode: "rules-only",
+      workloadCriticality: "standard",
+      desiredEngagement: "hands-on-remediation",
+    });
+
+    expect(quote).toBe(450);
+  });
+
+  it("returns review-call quote when review-call-only engagement is selected", () => {
+    const findings = [
+      {
+        ruleId: "PILLAR-RELIABILITY",
+        category: "reliability" as const,
+        pointsDeducted: 10,
+        message: "Specify failover and recovery targets.",
+        fix: "Define backup restore and DR objectives.",
+        evidence: "No DR terms.",
+        fixCostUSD: 280,
+      },
+    ];
+
+    const score = calculateOverallScore(findings);
+    const quote = calculateConsultationQuoteUSD(findings, score, {
+      tokenCount: 10,
+      mode: "webllm",
+      ocrCharacterCount: 1200,
+      desiredEngagement: "review-call-only",
+      workloadCriticality: "standard",
+    });
+
+    expect(quote).toBe(249);
+  });
 });

@@ -16,6 +16,27 @@ export const architectureCategorySchema = z.enum([
 ]);
 export type ArchitectureCategory = z.infer<typeof architectureCategorySchema>;
 
+export const architectureWorkloadCriticalitySchema = z.enum(["low", "standard", "mission-critical"]);
+export type ArchitectureWorkloadCriticality = z.infer<typeof architectureWorkloadCriticalitySchema>;
+
+export const architectureRegulatoryScopeSchema = z.enum(["none", "soc2", "pci", "hipaa", "other"]);
+export type ArchitectureRegulatoryScope = z.infer<typeof architectureRegulatoryScopeSchema>;
+
+export const architectureEnvironmentSchema = z.enum(["dev", "test", "prod"]);
+export type ArchitectureEnvironment = z.infer<typeof architectureEnvironmentSchema>;
+
+export const architectureLifecycleStageSchema = z.enum(["early-design", "pre-prod", "production"]);
+export type ArchitectureLifecycleStage = z.infer<typeof architectureLifecycleStageSchema>;
+
+export const architectureEngagementPreferenceSchema = z.enum([
+  "review-call-only",
+  "hands-on-remediation",
+  "diagram-rebuild",
+  "ongoing-quarterly-reviews",
+  "architect-on-call",
+]);
+export type ArchitectureEngagementPreference = z.infer<typeof architectureEngagementPreferenceSchema>;
+
 export const architectureFindingSchema = z.object({
   ruleId: z.string().trim().min(1).max(80),
   category: architectureCategorySchema,
@@ -54,6 +75,11 @@ export const architectureReviewMetadataSchema = z.object({
   tokenCount: z.number().int().min(0).max(5000).optional(),
   ocrCharacterCount: z.number().int().min(0).max(50000).optional(),
   mode: z.enum(["rules-only", "webllm"]).optional(),
+  workloadCriticality: architectureWorkloadCriticalitySchema.optional(),
+  regulatoryScope: architectureRegulatoryScopeSchema.optional(),
+  environment: architectureEnvironmentSchema.optional(),
+  lifecycleStage: architectureLifecycleStageSchema.optional(),
+  desiredEngagement: architectureEngagementPreferenceSchema.optional(),
 });
 export type ArchitectureReviewMetadata = z.infer<typeof architectureReviewMetadataSchema>;
 
@@ -80,5 +106,10 @@ export type ArchitectureEvidenceBundle = {
     lastUpdated?: string;
     version?: string;
     legend?: string;
+    workloadCriticality?: ArchitectureWorkloadCriticality;
+    regulatoryScope?: ArchitectureRegulatoryScope;
+    environment?: ArchitectureEnvironment;
+    lifecycleStage?: ArchitectureLifecycleStage;
+    desiredEngagement?: ArchitectureEngagementPreference;
   };
 };

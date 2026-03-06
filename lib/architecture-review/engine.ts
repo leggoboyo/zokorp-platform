@@ -199,8 +199,62 @@ const PILLAR_KEYWORDS: Record<ArchitectureProvider, Record<string, string[]>> = 
   },
 };
 
+const PROVIDER_SIGNAL_TOKENS: Record<ArchitectureProvider, string[]> = {
+  aws: ["ec2", "lambda", "cloudfront", "route 53", "iam", "vpc", "rds", "dynamodb", "s3", "cloudwatch"],
+  azure: [
+    "entra",
+    "azure ad",
+    "vnet",
+    "app service",
+    "key vault",
+    "log analytics",
+    "application gateway",
+    "front door",
+    "sql database",
+  ],
+  gcp: [
+    "cloud run",
+    "gke",
+    "cloud sql",
+    "cloud storage",
+    "cloud armor",
+    "iap",
+    "pub/sub",
+    "bigquery",
+    "spanner",
+  ],
+};
+
+const STATEFUL_SERVICE_HINTS = [
+  "database",
+  "rds",
+  "aurora",
+  "dynamodb",
+  "sql",
+  "cosmos db",
+  "spanner",
+  "cloud sql",
+  "storage",
+  "s3",
+  "cloud storage",
+  "bigquery",
+  "filestore",
+];
+
 function compressWhitespace(input: string) {
   return input.replace(/\s+/g, " ").trim();
+}
+
+function providerMismatchRuleId(provider: ArchitectureProvider) {
+  if (provider === "aws") {
+    return "AWS-PROVIDER-MISMATCH";
+  }
+
+  if (provider === "azure") {
+    return "AZURE-PROVIDER-MISMATCH";
+  }
+
+  return "GCP-PROVIDER-MISMATCH";
 }
 
 function isLowSignalParagraph(text: string) {
@@ -266,6 +320,15 @@ function countMentionedTokensInParagraph(tokens: string[], paragraph: string) {
   return tokens.filter((token) => includesTerm(normalized, token.toLowerCase())).length;
 }
 
+function detectProviderSignalCounts(text: string) {
+  const normalized = text.toLowerCase();
+  return {
+    aws: PROVIDER_SIGNAL_TOKENS.aws.filter((token) => includesTerm(normalized, token)).length,
+    azure: PROVIDER_SIGNAL_TOKENS.azure.filter((token) => includesTerm(normalized, token)).length,
+    gcp: PROVIDER_SIGNAL_TOKENS.gcp.filter((token) => includesTerm(normalized, token)).length,
+  };
+}
+
 function hasDirectionality(text: string) {
   const directionTerms = [
     "->",
@@ -302,6 +365,31 @@ function collectArrowSemantics(text: string) {
   return semantics
     .filter((entry) => entry.terms.some((term) => normalized.includes(term)))
     .map((entry) => entry.id);
+}
+
+function hasStatefulSignals(bundle: ArchitectureEvidenceBundle) {
+  const normalizedTokens = bundle.serviceTokens.map((token) => token.toLowerCase());
+  if (normalizedTokens.some((token) => STATEFUL_SERVICE_HINTS.some((hint) => token.includes(hint)))) {
+    return true;
+  }
+
+  const normalizedText = `${bundle.paragraph}\n${bundle.ocrText}`.toLowerCase();
+  return STATEFUL_SERVICE_HINTS.some((hint) => includesTerm(normalizedText, hint));
+}
+
+function monthsSinceIsoDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  if (diffMs < 0) {
+    return 0;
+  }
+
+  return diffMs / (1000 * 60 * 60 * 24 * 30.4375);
 }
 
 function addMetadataFindings(bundle: ArchitectureEvidenceBundle, findings: ArchitectureFindingDraft[]) {
@@ -446,7 +534,10 @@ export function buildDeterministicReviewFindings(bundle: ArchitectureEvidenceBun
   const findings: ArchitectureFindingDraft[] = [];
   const combinedNarrativeText = `${bundle.paragraph}\n${bundle.ocrText}`;
   const normalizedParagraph = compressWhitespace(bundle.paragraph);
+  const normalizedCombinedText = combinedNarrativeText.toLowerCase();
   const inputSignals = detectInputTypeSignals(bundle);
+  const providerSignalCounts = detectProviderSignalCounts(combinedNarrativeText);
+  const tokenCount = bundle.serviceTokens.length;
 
   if (inputSignals.likelyNonArchitecture) {
     findings.push({
@@ -470,6 +561,24 @@ export function buildDeterministicReviewFindings(bundle: ArchitectureEvidenceBun
     });
   }
 
+  const selectedProviderSignals = providerSignalCounts[bundle.provider];
+  const dominantOtherProviderSignals = (
+    Object.entries(providerSignalCounts) as Array<[ArchitectureProvider, number]>
+  )
+    .filter(([provider]) => provider !== bundle.provider)
+    .reduce((maxValue, [, value]) => Math.max(maxValue, value), 0);
+
+  if (selectedProviderSignals <= 1 && dominantOtherProviderSignals >= 3) {
+    findings.push({
+      ruleId: providerMismatchRuleId(bundle.provider),
+      category: "clarity",
+      pointsDeducted: 14,
+      message: "Select the cloud provider that matches the diagram components.",
+      fix: "Re-run with the provider matching detected services and official icon naming.",
+      evidence: `Provider token mismatch detected (${bundle.provider}:${selectedProviderSignals}, other:${dominantOtherProviderSignals}).`,
+    });
+  }
+
   if (!hasDirectionality(combinedNarrativeText)) {
     findings.push({
       ruleId: "MSFT-FLOW-DIRECTION",
@@ -478,6 +587,22 @@ export function buildDeterministicReviewFindings(bundle: ArchitectureEvidenceBun
       message: "Describe request and data direction explicitly.",
       fix: "State source-to-destination flow using verbs like sends, reads, and writes.",
       evidence: "Directional verbs and sequence markers were sparse in the paragraph.",
+    });
+  }
+
+  if (
+    normalizedCombinedText.includes("bidirectional") ||
+    normalizedCombinedText.includes("bi-directional") ||
+    normalizedCombinedText.includes("<->") ||
+    normalizedCombinedText.includes("↔")
+  ) {
+    findings.push({
+      ruleId: "CLAR-UNIDIR-RELATIONSHIPS",
+      category: "clarity",
+      pointsDeducted: 4,
+      message: "Replace bidirectional arrows with explicit one-way flow labels.",
+      fix: "Use one-way arrows and annotate request and response directions clearly.",
+      evidence: "Bidirectional relationship wording/symbols were detected.",
     });
   }
 
@@ -491,6 +616,65 @@ export function buildDeterministicReviewFindings(bundle: ArchitectureEvidenceBun
       message: "Explain each major component used in the diagram.",
       fix: "Reference key services in the paragraph and describe each component's role.",
       evidence: `${bundle.serviceTokens.length} service tokens detected, but only ${mentionedTokenCount} were explained.`,
+    });
+  }
+
+  const hasBoundaryLanguage =
+    normalizedCombinedText.includes("trust boundary") ||
+    normalizedCombinedText.includes("boundary") ||
+    normalizedCombinedText.includes("in scope") ||
+    normalizedCombinedText.includes("out of scope") ||
+    normalizedCombinedText.includes("scope");
+
+  if (!hasBoundaryLanguage) {
+    findings.push({
+      ruleId: "CLAR-BOUNDARY-EXPLICIT",
+      category: "clarity",
+      pointsDeducted: 4,
+      message: "Make system scope and trust boundaries explicit in the diagram narrative.",
+      fix: "Add labeled boundary/scope statements for internet edge, private zones, and data stores.",
+      evidence: "Boundary/scope language was not detected in OCR text or description.",
+    });
+  }
+
+  if (
+    tokenCount >= 10 &&
+    /\b(connects?|uses|integrates?|talks to)\b/i.test(normalizedParagraph) &&
+    !/\b(https?|grpc|jdbc|amqp|kafka|event|batch|stream|pub\/sub|rest|soap|dns|tls)\b/i.test(normalizedParagraph)
+  ) {
+    findings.push({
+      ruleId: "CLAR-REL-LABELS-MISSING",
+      category: "clarity",
+      pointsDeducted: 4,
+      message: "Label relationships with protocol or transfer intent.",
+      fix: "Specify connection labels like HTTPS, gRPC, event, stream, batch, or JDBC.",
+      evidence: "Generic relationship verbs were used without protocol/intent qualifiers.",
+    });
+  }
+
+  if (
+    tokenCount >= 6 &&
+    !/\b(region|availability zone|multi-az|multi az|zone strategy|paired region)\b/i.test(normalizedCombinedText)
+  ) {
+    findings.push({
+      ruleId: "CLAR-REGION-ZONE-MISSING",
+      category: "clarity",
+      pointsDeducted: 4,
+      message: "Identify region and zone placement for this architecture.",
+      fix: "Add region names and zone/availability strategy for each critical component.",
+      evidence: "No explicit region or zone strategy terms were detected.",
+    });
+  }
+
+  const staleMonths = bundle.metadata.lastUpdated ? monthsSinceIsoDate(bundle.metadata.lastUpdated) : null;
+  if (staleMonths !== null && staleMonths > 6) {
+    findings.push({
+      ruleId: "CLAR-STALE-DIAGRAM",
+      category: "clarity",
+      pointsDeducted: Math.min(6, 2 + Math.floor((staleMonths - 6) / 4)),
+      message: "Refresh this architecture diagram to reflect current system state.",
+      fix: "Update components and metadata, then bump version after review.",
+      evidence: `lastUpdated indicates the diagram may be stale (${Math.round(staleMonths)} months old).`,
     });
   }
 
@@ -509,7 +693,6 @@ export function buildDeterministicReviewFindings(bundle: ArchitectureEvidenceBun
 
   addMetadataFindings(bundle, findings);
 
-  const tokenCount = bundle.serviceTokens.length;
   if (tokenCount > 18) {
     findings.push({
       ruleId: "MSFT-LAYERING-DENSITY",
@@ -527,6 +710,55 @@ export function buildDeterministicReviewFindings(bundle: ArchitectureEvidenceBun
       message: "Optionally provide a layered view for readability.",
       fix: "Consider separate context and component diagrams for onboarding speed.",
       evidence: `${tokenCount} service tokens detected; layering is recommended but optional.`,
+    });
+  }
+
+  const statefulSignals = hasStatefulSignals(bundle);
+  if (statefulSignals && !/\b(rto|rpo)\b/i.test(normalizedCombinedText)) {
+    findings.push({
+      ruleId: "REL-RTO-RPO-MISSING",
+      category: "reliability",
+      pointsDeducted: 8,
+      message: "Define RTO and RPO targets for stateful components.",
+      fix: "Specify numeric RTO/RPO objectives and map them to failover design.",
+      evidence: "Stateful stores were detected without explicit RTO/RPO targets.",
+    });
+  }
+
+  if (statefulSignals && !/\b(backup|restore|snapshot|replica)\b/i.test(normalizedCombinedText)) {
+    findings.push({
+      ruleId: "REL-BACKUP-RESTORE",
+      category: "reliability",
+      pointsDeducted: 8,
+      message: "Add backup and restore coverage for stateful services.",
+      fix: "Document backup frequency, retention policy, and restore test cadence.",
+      evidence: "Stateful services were detected without backup/restore evidence.",
+    });
+  }
+
+  const regulatedScope = bundle.metadata.regulatoryScope && bundle.metadata.regulatoryScope !== "none";
+  if (regulatedScope && !/\b(soc2|pci|hipaa|compliance|privacy|iso ?27001)\b/i.test(normalizedCombinedText)) {
+    findings.push({
+      ruleId: "SEC-BASELINE-MISSING",
+      category: "security",
+      pointsDeducted: 8,
+      message: "Define compliance baseline and security control coverage.",
+      fix: "State required framework scope and map controls to identity, encryption, and auditing.",
+      evidence: `Regulatory scope is set (${bundle.metadata.regulatoryScope}) without compliance baseline detail.`,
+    });
+  }
+
+  if (
+    statefulSignals &&
+    !/\b(pii|pci|phi|sensitive data|data classification|confidential)\b/i.test(normalizedCombinedText)
+  ) {
+    findings.push({
+      ruleId: "CLAR-DATA-CLASS-MISSING",
+      category: "security",
+      pointsDeducted: 6,
+      message: "Classify sensitive data types and storage/transit handling.",
+      fix: "Label PII/PCI/PHI classes and identify where each class is stored and transmitted.",
+      evidence: "Stateful data stores were present without data classification language.",
     });
   }
 

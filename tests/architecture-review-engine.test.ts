@@ -117,4 +117,31 @@ describe("architecture deterministic engine", () => {
 
     expect(findings.some((finding) => finding.ruleId === "MSFT-FLOW-DIRECTION")).toBe(false);
   });
+
+  it("flags provider mismatch, stale metadata, and missing stateful reliability controls", () => {
+    const findings = buildDeterministicReviewFindings({
+      provider: "aws",
+      paragraph: "Architecture overview for production integration.",
+      ocrText: "Azure Front Door routes to App Service inside VNet with SQL Database.",
+      serviceTokens: ["database", "storage"],
+      metadata: {
+        title: "Payments architecture",
+        owner: "Platform",
+        lastUpdated: "2024-01-01",
+        version: "v1.0",
+        legend: "",
+        regulatoryScope: "soc2",
+        workloadCriticality: "mission-critical",
+        environment: "prod",
+        lifecycleStage: "production",
+        desiredEngagement: "hands-on-remediation",
+      },
+    });
+
+    expect(findings.some((finding) => finding.ruleId === "AWS-PROVIDER-MISMATCH")).toBe(true);
+    expect(findings.some((finding) => finding.ruleId === "CLAR-STALE-DIAGRAM")).toBe(true);
+    expect(findings.some((finding) => finding.ruleId === "REL-RTO-RPO-MISSING")).toBe(true);
+    expect(findings.some((finding) => finding.ruleId === "REL-BACKUP-RESTORE")).toBe(true);
+    expect(findings.some((finding) => finding.ruleId === "SEC-BASELINE-MISSING")).toBe(true);
+  });
 });

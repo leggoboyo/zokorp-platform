@@ -101,6 +101,13 @@ export async function POST(request: Request) {
       findings: normalizeFindingsForFinalScoring(payload),
       userEmail: user.email,
       generatedAtISO: new Date().toISOString(),
+      quoteContext: {
+        tokenCount: payload.metadata.tokenCount,
+        ocrCharacterCount: payload.metadata.ocrCharacterCount,
+        mode: payload.metadata.mode,
+        workloadCriticality: payload.metadata.workloadCriticality,
+        desiredEngagement: payload.metadata.desiredEngagement,
+      },
     });
 
     const hasNonArchitectureFinding = finalizedReport.findings.some(
