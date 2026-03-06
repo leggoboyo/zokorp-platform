@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+
+import { EmailVerificationResendForm } from "@/components/email-verification-resend-form";
 
 type PasswordRegisterFormProps = {
   callbackUrl: string;
@@ -13,10 +14,14 @@ export function PasswordRegisterForm({ callbackUrl }: PasswordRegisterFormProps)
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+  const [verificationEmailSent, setVerificationEmailSent] = useState(true);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setIsSubmitting(true);
 
     try {
@@ -32,30 +37,57 @@ export function PasswordRegisterForm({ callbackUrl }: PasswordRegisterFormProps)
         }),
       });
 
-      const payload = (await response.json()) as { error?: string };
+      const payload = (await response.json()) as {
+        error?: string;
+        message?: string;
+        verificationEmailSent?: boolean;
+      };
       if (!response.ok) {
         setError(payload.error ?? "Registration failed.");
         return;
       }
 
-      const signInResult = await signIn("credentials", {
-        email,
-        password,
-        callbackUrl,
-        redirect: false,
-      });
-
-      if (signInResult?.url) {
-        window.location.href = signInResult.url;
-        return;
-      }
-
-      window.location.href = callbackUrl;
+      setRegisteredEmail(email.trim().toLowerCase());
+      setVerificationEmailSent(payload.verificationEmailSent !== false);
+      setSuccessMessage(payload.message ?? "Account created. Verify your email before signing in.");
+      setPassword("");
     } catch {
       setError("Unable to register right now.");
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (registeredEmail) {
+    return (
+      <div className="mt-6 space-y-4">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          {successMessage}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+          {verificationEmailSent ? (
+            <p className="text-sm text-slate-700">
+              Verification email sent to <span className="font-semibold text-slate-900">{registeredEmail}</span>.
+            </p>
+          ) : (
+            <p className="text-sm text-slate-700">
+              Account created for <span className="font-semibold text-slate-900">{registeredEmail}</span>, but the
+              verification email did not send successfully.
+            </p>
+          )}
+          <p className="mt-2 text-sm text-slate-600">
+            Use that link first. After verification, sign in and continue to{" "}
+            <span className="font-medium text-slate-900">{callbackUrl}</span>.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+          <p className="mb-3 text-sm font-medium text-slate-900">Need a fresh verification email?</p>
+          <EmailVerificationResendForm defaultEmail={registeredEmail} submitLabel="Resend verification email" />
+        </div>
+      </div>
+    );
   }
 
   return (

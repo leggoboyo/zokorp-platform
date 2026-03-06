@@ -68,6 +68,11 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        if (!user.emailVerified) {
+          await verifyPassword(password, user.userAuth.passwordHash);
+          return null;
+        }
+
         const now = new Date();
         if (user.userAuth.lockedUntil && user.userAuth.lockedUntil > now) {
           return null;
@@ -124,34 +129,61 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
-      if (user?.id) {
-        token.sub = user.id;
-        token.email = user.email ?? token.email;
-        token.name = user.name ?? token.name;
-        const dbUser = await db.user.findUnique({
-          where: { id: user.id },
-          select: { role: true },
-        });
-
-        token.role = dbUser?.role ?? Role.USER;
+      const userId = user?.id ?? token.sub;
+      if (!userId) {
         return token;
       }
 
-      if (!token.role && token.sub) {
-        const dbUser = await db.user.findUnique({
-          where: { id: token.sub },
-          select: { role: true },
-        });
+      const dbUser = await db.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          emailVerified: true,
+          userAuth: {
+            select: {
+              passwordUpdatedAt: true,
+            },
+          },
+        },
+      });
 
-        token.role = dbUser?.role ?? Role.USER;
+      if (!dbUser?.email || !dbUser.emailVerified) {
+        return {
+          authError: "EMAIL_NOT_VERIFIED",
+          role: Role.USER,
+        };
       }
 
-      return token;
+      const issuedAtMs =
+        typeof token.iat === "number" ? token.iat * 1000 : user ? Date.now() : 0;
+      const passwordUpdatedAtMs = dbUser.userAuth?.passwordUpdatedAt?.getTime() ?? 0;
+
+      if (issuedAtMs > 0 && passwordUpdatedAtMs > issuedAtMs + 1000) {
+        return {
+          authError: "SESSION_INVALIDATED",
+          role: Role.USER,
+        };
+      }
+
+      return {
+        ...token,
+        sub: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name ?? token.name,
+        role: dbUser.role,
+        passwordUpdatedAt: passwordUpdatedAtMs,
+        authError: undefined,
+      };
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub ?? "";
-        session.user.role = (token.role as Role | undefined) ?? Role.USER;
+        session.user.email = typeof token.email === "string" ? token.email : undefined;
+        session.user.name = typeof token.name === "string" ? token.name : undefined;
+        session.user.role = token.sub ? ((token.role as Role | undefined) ?? Role.USER) : Role.USER;
       }
       return session;
     },
@@ -170,8 +202,12 @@ export const authOptions: NextAuthOptions = {
       });
 
       if (user.email) {
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { emailVerified: true },
+        });
         const adminEmails = parseAdminEmails(process.env.ZOKORP_ADMIN_EMAILS);
-        if (adminEmails.has(user.email.toLowerCase())) {
+        if (dbUser?.emailVerified && adminEmails.has(user.email.toLowerCase())) {
           await db.user.updateMany({
             where: {
               id: user.id,
@@ -214,7 +250,7 @@ export async function requireAdmin(): Promise<User> {
   }
 
   const adminEmails = parseAdminEmails(process.env.ZOKORP_ADMIN_EMAILS);
-  if (user.email && adminEmails.has(user.email.toLowerCase())) {
+  if (user.emailVerified && user.email && adminEmails.has(user.email.toLowerCase())) {
     const promoted = await db.user.update({
       where: { id: user.id },
       data: { role: Role.ADMIN },

@@ -2,10 +2,13 @@ import { Role } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { sendEmailVerificationEmail } from "@/lib/auth-email";
 import { db } from "@/lib/db";
+import { issueEmailVerificationToken } from "@/lib/email-verification";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { hashPassword, validatePasswordStrength } from "@/lib/password-auth";
-import { isBusinessEmail, parseAdminEmails } from "@/lib/security";
+import { isBusinessEmail } from "@/lib/security";
+import { getSiteOriginFromRequest } from "@/lib/site-origin";
 import { ensureUserAuthSchemaReady } from "@/lib/user-auth-schema";
 
 const registerSchema = z.object({
@@ -60,12 +63,17 @@ export async function POST(request: Request) {
 
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
-      return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
+      return NextResponse.json(
+        {
+          error: existing.emailVerified
+            ? "An account with that email already exists."
+            : "An account with that email already exists but is not verified. Request a new verification email.",
+        },
+        { status: 409 },
+      );
     }
 
     const passwordHash = await hashPassword(parsed.data.password);
-    const adminEmails = parseAdminEmails(process.env.ZOKORP_ADMIN_EMAILS);
-    const role = adminEmails.has(email) ? Role.ADMIN : Role.USER;
     const userAuthSchemaReady = await ensureUserAuthSchemaReady();
 
     if (!userAuthSchemaReady) {
@@ -79,7 +87,7 @@ export async function POST(request: Request) {
       data: {
         name: parsed.data.name?.trim() || undefined,
         email,
-        role,
+        role: Role.USER,
         userAuth: {
           create: {
             passwordHash,
@@ -98,11 +106,42 @@ export async function POST(request: Request) {
         action: "auth.register",
         metadataJson: {
           email,
+          emailVerified: false,
         },
       },
     });
 
-    return NextResponse.json({ status: "created" }, { status: 201 });
+    const verification = await issueEmailVerificationToken({
+      email,
+      baseUrl: getSiteOriginFromRequest(request),
+    });
+    const sendResult = await sendEmailVerificationEmail({
+      to: email,
+      verifyUrl: verification.verifyUrl,
+    });
+
+    await db.auditLog.create({
+      data: {
+        userId: createdUser.id,
+        action: "auth.email_verification_requested",
+        metadataJson: {
+          email,
+          deliveryOk: sendResult.ok,
+          deliveryError: sendResult.ok ? null : sendResult.error,
+        },
+      },
+    });
+
+    return NextResponse.json(
+      {
+        status: "verification_required",
+        verificationEmailSent: sendResult.ok,
+        message: sendResult.ok
+          ? "Account created. Check your email to verify the address before signing in."
+          : "Account created, but email delivery is currently unavailable. Request a new verification email from the verify-email page.",
+      },
+      { status: 201 },
+    );
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Unable to create account." }, { status: 500 });

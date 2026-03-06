@@ -45,6 +45,7 @@ export const architectureReviewReportSchema = z.object({
 export type ArchitectureReviewReport = z.infer<typeof architectureReviewReportSchema>;
 
 export const architectureReviewMetadataSchema = z.object({
+  provider: architectureProviderSchema.optional(),
   title: z.string().trim().max(160).optional(),
   owner: z.string().trim().max(160).optional(),
   lastUpdated: z.string().trim().max(60).optional(),
@@ -56,6 +57,12 @@ export const architectureReviewMetadataSchema = z.object({
   mode: z.enum(["rules-only", "webllm"]).optional(),
 });
 export type ArchitectureReviewMetadata = z.infer<typeof architectureReviewMetadataSchema>;
+
+export const submitArchitectureReviewMetadataSchema = architectureReviewMetadataSchema.extend({
+  provider: architectureProviderSchema,
+  paragraphInput: z.string().trim().min(1).max(2000),
+});
+export type SubmitArchitectureReviewMetadata = z.infer<typeof submitArchitectureReviewMetadataSchema>;
 
 export const submitArchitectureReviewPayloadSchema = z.object({
   report: architectureReviewReportSchema,

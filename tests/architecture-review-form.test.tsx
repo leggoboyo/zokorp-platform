@@ -12,14 +12,6 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("tesseract.js", () => ({
-  recognize: vi.fn(async () => ({
-    data: {
-      text: "api gateway lambda dynamodb cloudwatch",
-    },
-  })),
-}));
-
 import { ArchitectureDiagramReviewerForm } from "@/components/architecture-diagram-reviewer/ArchitectureDiagramReviewerForm";
 import * as architectureReviewClient from "@/lib/architecture-review/client";
 
@@ -120,28 +112,16 @@ describe("ArchitectureDiagramReviewerForm", () => {
     expect(screen.queryByText(/PILLAR-SECURITY/i)).toBeNull();
   });
 
-  it("stops immediately when non-architecture content is detected", async () => {
+  it("shows server-side validation errors returned by the API", async () => {
     vi.spyOn(architectureReviewClient, "isStrictPngFile").mockResolvedValue({ ok: true });
-    vi.spyOn(architectureReviewClient, "buildReviewReportFromEvidence").mockReturnValueOnce({
-      reportVersion: "1.0",
-      provider: "aws",
-      overallScore: 20,
-      flowNarrative: "Detected non-architecture content.",
-      findings: [
-        {
-          ruleId: "INPUT-NOT-ARCH-DIAGRAM",
-          category: "clarity",
-          pointsDeducted: 35,
-          message: "Upload a system architecture diagram instead of a report screenshot.",
-          fix: "Provide a PNG with system components and data/request flows.",
-          evidence: "OCR matched non-architecture terms.",
-          fixCostUSD: 75,
-        },
-      ],
-      consultationQuoteUSD: 400,
-      generatedAtISO: "2026-03-06T00:00:00.000Z",
-      userEmail: "test@example.com",
-    } as never);
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        error:
+          "Uploaded PNG appears to be non-architecture content. No review email was sent. Upload a real architecture diagram.",
+      }),
+    });
 
     render(<ArchitectureDiagramReviewerForm />);
 
@@ -171,9 +151,9 @@ describe("ArchitectureDiagramReviewerForm", () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(screen.getByText(/does not appear to be an architecture diagram/i)).toBeTruthy();
+      expect(screen.getByText(/appears to be non-architecture content/i)).toBeTruthy();
     });
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

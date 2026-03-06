@@ -2,8 +2,14 @@ import Link from "next/link";
 
 import { ServiceRequestPanel } from "@/components/service-request-panel";
 import { auth } from "@/lib/auth";
+import { buildPageMetadata } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
+export const metadata = buildPageMetadata({
+  title: "Services",
+  description: "Request AWS consultation, readiness support, or software-backed delivery work from ZoKorp.",
+  path: "/services",
+});
 
 const serviceTracks = [
   {

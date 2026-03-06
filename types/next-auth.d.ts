@@ -13,5 +13,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     role?: Role;
+    passwordUpdatedAt?: number;
+    authError?: "EMAIL_NOT_VERIFIED" | "SESSION_INVALIDATED";
   }
 }

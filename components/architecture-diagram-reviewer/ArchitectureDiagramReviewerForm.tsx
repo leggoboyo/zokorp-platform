@@ -3,13 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import {
-  buildReviewReportFromEvidence,
-  createEvidenceBundle,
-  isStrictPngFile,
-  parseLlmRefinement,
-} from "@/lib/architecture-review/client";
-import type { ArchitectureProvider, LlmRefinement } from "@/lib/architecture-review/types";
+import { isStrictPngFile } from "@/lib/architecture-review/client";
+import type { ArchitectureProvider } from "@/lib/architecture-review/types";
 
 type ArchitectureDiagramReviewerFormProps = {
   requiresAuth?: boolean;
@@ -29,224 +24,6 @@ type SubmitApiResponse =
   | {
       error: string;
     };
-
-const WEBLLM_MODEL_LOAD_TIMEOUT_MS = 3 * 60 * 1000;
-const WEBLLM_REFINEMENT_TIMEOUT_MS = 90 * 1000;
-
-class TimeoutError extends Error {
-  constructor(step: string, timeoutMs: number) {
-    super(`${step} timed out after ${timeoutMs}ms`);
-  }
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, step: string) {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new TimeoutError(step, timeoutMs));
-    }, timeoutMs);
-
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-}
-
-function stripCodeFences(raw: string) {
-  return raw
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```$/i, "")
-    .trim();
-}
-
-function buildWebLlmPrompt(input: {
-  provider: ArchitectureProvider;
-  paragraph: string;
-  ocrText: string;
-  serviceTokens: string[];
-  deterministicFindings: Array<{
-    ruleId: string;
-    category: string;
-    pointsDeducted: number;
-    message: string;
-    fix: string;
-    evidence: string;
-  }>;
-}) {
-  const payload = {
-    provider: input.provider,
-    paragraph: input.paragraph,
-    ocrText: input.ocrText.slice(0, 4000),
-    serviceTokens: input.serviceTokens,
-    preliminaryFindings: input.deterministicFindings,
-  };
-
-  return [
-    "Return JSON only. No markdown. No extra keys.",
-    "Schema:",
-    '{"flowNarrative":"string<=2000","findings":[{"ruleId":"string","category":"clarity|security|reliability|operations|performance|cost|sustainability","pointsDeducted":0,"message":"<=120","fix":"<=160","evidence":"<=240"}]}',
-    "Rules:",
-    "- Keep findings imperative and specific.",
-    "- Keep pointsDeducted integer 0-100.",
-    "- Keep 0-point findings only for optional recommendations.",
-    "- Keep 0-20 findings.",
-    "Input JSON:",
-    JSON.stringify(payload),
-  ].join("\n");
-}
-
-function selectWebLlmModelIds(modelIds: string[]) {
-  const smallInstruct = modelIds.filter((id) => /instruct/i.test(id) && /(1b|2b|3b|mini)/i.test(id));
-  if (smallInstruct.length > 0) {
-    return smallInstruct.slice(0, 3);
-  }
-
-  return modelIds.slice(0, 2);
-}
-
-async function safeUnloadEngine(engine: { unload: () => Promise<void> }) {
-  try {
-    await engine.unload();
-  } catch {
-    // no-op: cleanup failures should not break the user flow
-  }
-}
-
-async function runWebLlmRefinement(input: {
-  provider: ArchitectureProvider;
-  paragraph: string;
-  ocrText: string;
-  serviceTokens: string[];
-  deterministicFindings: Array<{
-    ruleId: string;
-    category: string;
-    pointsDeducted: number;
-    message: string;
-    fix: string;
-    evidence: string;
-  }>;
-  onProgress: (message: string) => void;
-}): Promise<LlmRefinement | null> {
-  if (typeof navigator === "undefined" || !("gpu" in navigator)) {
-    input.onProgress("WebGPU is unavailable; using deterministic rules only.");
-    return null;
-  }
-
-  try {
-    const webllm = await import("@mlc-ai/web-llm");
-    const modelIds = selectWebLlmModelIds(webllm.prebuiltAppConfig.model_list.map((model) => model.model_id));
-
-    if (modelIds.length === 0) {
-      input.onProgress("No local WebLLM model available; using deterministic rules only.");
-      return null;
-    }
-
-    let engine: Awaited<ReturnType<typeof webllm.CreateMLCEngine>> | null = null;
-    let loadedModel: string | null = null;
-
-    for (const modelId of modelIds) {
-      try {
-        input.onProgress(`Loading local model (${modelId})...`);
-        engine = await withTimeout(
-          webllm.CreateMLCEngine(modelId, {
-            initProgressCallback(progress) {
-              if (typeof progress.progress === "number") {
-                const percentage = Math.round(progress.progress * 100);
-                input.onProgress(`Loading local model (${modelId}) ${percentage}%`);
-              }
-            },
-          }),
-          WEBLLM_MODEL_LOAD_TIMEOUT_MS,
-          `Model load (${modelId})`,
-        );
-        loadedModel = modelId;
-        break;
-      } catch (error) {
-        if (error instanceof TimeoutError) {
-          input.onProgress(`Model load timed out for ${modelId}; trying fallback model...`);
-        }
-        continue;
-      }
-    }
-
-    if (!engine || !loadedModel) {
-      input.onProgress("Model load failed; using deterministic rules only.");
-      return null;
-    }
-
-    const prompt = buildWebLlmPrompt({
-      provider: input.provider,
-      paragraph: input.paragraph,
-      ocrText: input.ocrText,
-      serviceTokens: input.serviceTokens,
-      deterministicFindings: input.deterministicFindings,
-    });
-
-    input.onProgress("Running local model refinement...");
-    let completion: Awaited<ReturnType<typeof engine.chat.completions.create>> | null = null;
-    try {
-      completion = await withTimeout(
-        engine.chat.completions.create({
-          model: loadedModel,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a deterministic architecture reviewer assistant. Output strict JSON only, no markdown.",
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0,
-          top_p: 1,
-          max_tokens: 1100,
-          response_format: { type: "json_object" },
-        }),
-        WEBLLM_REFINEMENT_TIMEOUT_MS,
-        "Local model refinement",
-      );
-    } catch (error) {
-      await safeUnloadEngine(engine);
-      if (error instanceof TimeoutError) {
-        input.onProgress("Local model refinement timed out; using deterministic rules only.");
-        return null;
-      }
-      throw error;
-    }
-
-    const raw = completion.choices?.[0]?.message?.content;
-    await safeUnloadEngine(engine);
-
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(stripCodeFences(raw));
-    return parseLlmRefinement(parsed);
-  } catch {
-    input.onProgress("WebLLM refinement failed; using deterministic rules only.");
-    return null;
-  }
-}
-
-function progressLabelFromOcr(message: { status: string; progress: number }) {
-  const percent = Number.isFinite(message.progress) ? Math.round(message.progress * 100) : 0;
-
-  if (!message.status) {
-    return `Running OCR ${percent}%`;
-  }
-
-  return `OCR ${message.status} ${percent}%`;
-}
 
 export function ArchitectureDiagramReviewerForm({
   requiresAuth = false,
@@ -312,104 +89,20 @@ export function ArchitectureDiagramReviewerForm({
       return;
     }
 
-    let ocrText = "";
-
-    try {
-      setProgress("Running OCR in your browser...");
-      const tesseract = await import("tesseract.js");
-      const result = await tesseract.recognize(selectedFile, "eng", {
-        logger(message) {
-          if (message.status) {
-            setProgress(progressLabelFromOcr(message));
-          }
-        },
-      });
-      ocrText = (result.data.text || "").trim();
-    } catch {
-      setStatus("error");
-      setProgress(null);
-      setError("OCR failed in browser. Retry with a clearer PNG.");
-      return;
-    }
-
-    const evidenceBundle = createEvidenceBundle({
-      provider,
-      paragraph,
-      ocrText,
-      metadata: {
-        title,
-        owner,
-        lastUpdated,
-        version,
-        legend,
-      },
-    });
-
-    setProgress("Running deterministic scoring rules...");
-
-    const deterministicOnlyReport = buildReviewReportFromEvidence({
-      bundle: evidenceBundle,
-      userEmail: "placeholder@example.com",
-    });
-
-    let llmRefinement: LlmRefinement | null = null;
-    let mode: "rules-only" | "webllm" = "rules-only";
-
-    const detectedNonArchitectureInput = deterministicOnlyReport.findings.some(
-      (finding) => finding.ruleId === "INPUT-NOT-ARCH-DIAGRAM",
-    );
-    if (detectedNonArchitectureInput) {
-      setStatus("error");
-      setProgress(null);
-      setError(
-        "This PNG does not appear to be an architecture diagram. No report was sent. Upload a system architecture diagram and retry.",
-      );
-      return;
-    }
-
-    llmRefinement = await runWebLlmRefinement({
-      provider,
-      paragraph,
-      ocrText,
-      serviceTokens: evidenceBundle.serviceTokens,
-      deterministicFindings: deterministicOnlyReport.findings.map((finding) => ({
-        ruleId: finding.ruleId,
-        category: finding.category,
-        pointsDeducted: finding.pointsDeducted,
-        message: finding.message,
-        fix: finding.fix,
-        evidence: finding.evidence,
-      })),
-      onProgress: setProgress,
-    });
-
-    if (llmRefinement) {
-      mode = "webllm";
-    }
-
-    setProgress("Finalizing report and sending metadata...");
-
-    const finalReport = buildReviewReportFromEvidence({
-      bundle: evidenceBundle,
-      userEmail: "placeholder@example.com",
-      llmRefinement,
-    });
+    setProgress("Uploading diagram and running server-side review...");
 
     try {
       const submitData = new FormData();
-      submitData.append("report", JSON.stringify(finalReport));
       submitData.append(
         "metadata",
         JSON.stringify({
+          provider,
           title: title.trim() || undefined,
           owner: owner.trim() || undefined,
           lastUpdated: lastUpdated.trim() || undefined,
           version: version.trim() || undefined,
           legend: legend.trim() || undefined,
           paragraphInput: paragraph.trim(),
-          tokenCount: evidenceBundle.serviceTokens.length,
-          ocrCharacterCount: evidenceBundle.ocrText.length,
-          mode,
         }),
       );
       submitData.append("diagram", selectedFile, selectedFile.name);
@@ -491,15 +184,16 @@ export function ArchitectureDiagramReviewerForm({
       <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-slate-900 via-[#123c66] to-[#0f8ea9] px-6 py-6 text-white">
         <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-10 left-10 h-28 w-28 rounded-full bg-amber-200/20 blur-2xl" />
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/80">Browser-Native Analysis</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/80">Server-Validated Review</p>
         <h3 className="font-display mt-2 text-3xl font-semibold">Architecture Diagram Reviewer</h3>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-white/90 md:text-base">
-          Upload a PNG, select cloud provider, and describe your architecture in one paragraph. The review runs
-          deterministically with optional local model refinement, then emails results to your signed-in address.
+          Upload a PNG, select cloud provider, and describe your architecture in one paragraph. The server
+          recomputes OCR and scoring from the uploaded diagram before emailing results to your signed-in address.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/90">
           <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">PNG only</span>
-          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">OCR in browser</span>
+          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">Server-side OCR</span>
+          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">Trusted scoring</span>
           <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">No findings on page</span>
           <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">Email delivery</span>
         </div>
