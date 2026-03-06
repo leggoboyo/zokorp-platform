@@ -545,7 +545,7 @@ export function buildDeterministicReviewFindings(bundle: ArchitectureEvidenceBun
       category: "clarity",
       pointsDeducted: 35,
       message: "Upload a system architecture diagram instead of a report or statement screenshot.",
-      fix: "Provide a PNG that shows services, trust boundaries, and data/request flows with labeled components.",
+      fix: "Provide a PNG or SVG that shows services, trust boundaries, and data/request flows with labeled components.",
       evidence: `OCR matched ${inputSignals.nonArchitectureHits} non-architecture terms and only ${inputSignals.architectureHits} architecture indicators.`,
     });
   }
@@ -772,7 +772,7 @@ export function buildDeterministicNarrative(bundle: ArchitectureEvidenceBundle) 
   const inputSignals = detectInputTypeSignals(bundle);
 
   if (inputSignals.likelyNonArchitecture) {
-    return `${providerLabel} review detected non-architecture content in the uploaded PNG. Scoring was generated from low-confidence signals; upload a true architecture diagram for accurate findings.`.slice(
+    return `${providerLabel} review detected non-architecture content in the uploaded diagram. Scoring was generated from low-confidence signals; upload a true architecture diagram for accurate findings.`.slice(
       0,
       2000,
     );
@@ -783,7 +783,7 @@ export function buildDeterministicNarrative(bundle: ArchitectureEvidenceBundle) 
   const lowSignalParagraph = isLowSignalParagraph(paragraph);
   const tokenSentence = tokenPreview
     ? `Detected components include ${tokenPreview}${bundle.serviceTokens.length > 6 ? ", and others" : ""}.`
-    : "Component labels in OCR were limited, so narrative confidence is lower.";
+    : "Component labels were limited, so narrative confidence is lower.";
 
   if (lowSignalParagraph) {
     return `${providerLabel} architecture review used OCR-derived component cues because the written description was low-signal. ${tokenSentence} Add a clearer one-paragraph flow description for higher-confidence narrative output.`.slice(

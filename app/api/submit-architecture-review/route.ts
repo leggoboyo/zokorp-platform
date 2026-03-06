@@ -14,6 +14,8 @@ import { z } from "zod";
 
 export const runtime = "nodejs";
 
+const MAX_DIAGRAM_FILE_BYTES = 8 * 1024 * 1024;
+
 function emlSecret() {
   return process.env.ARCH_REVIEW_EML_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
 }
@@ -25,6 +27,31 @@ function isPngBytes(bytes: Uint8Array) {
   }
 
   return signature.every((byte, index) => bytes[index] === byte);
+}
+
+function isSafeSvgMarkup(bytes: Uint8Array) {
+  const decoded = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  if (!/<svg\b/i.test(decoded)) {
+    return false;
+  }
+
+  if (/<script\b/i.test(decoded)) {
+    return false;
+  }
+
+  if (/\son[a-z]+\s*=/i.test(decoded)) {
+    return false;
+  }
+
+  if (/javascript:/i.test(decoded)) {
+    return false;
+  }
+
+  if (/<foreignObject\b/i.test(decoded)) {
+    return false;
+  }
+
+  return true;
 }
 
 async function parsePayloadFromRequest(request: Request) {
@@ -47,7 +74,22 @@ async function parsePayloadFromRequest(request: Request) {
 
     if (diagramRaw instanceof File) {
       const bytes = new Uint8Array(await diagramRaw.arrayBuffer());
-      if (diagramRaw.type !== "image/png" || !isPngBytes(bytes)) {
+      if (bytes.length === 0 || bytes.length > MAX_DIAGRAM_FILE_BYTES) {
+        throw new Error("INVALID_DIAGRAM_FILE");
+      }
+
+      const lowerName = diagramRaw.name.toLowerCase();
+      const isPng = lowerName.endsWith(".png");
+      const isSvg = lowerName.endsWith(".svg");
+      if (!isPng && !isSvg) {
+        throw new Error("INVALID_DIAGRAM_FILE");
+      }
+
+      if (isPng && !isPngBytes(bytes)) {
+        throw new Error("INVALID_DIAGRAM_FILE");
+      }
+
+      if (isSvg && !isSafeSvgMarkup(bytes)) {
         throw new Error("INVALID_DIAGRAM_FILE");
       }
 
@@ -56,6 +98,7 @@ async function parsePayloadFromRequest(request: Request) {
         diagram: {
           filename: diagramRaw.name,
           bytes,
+          mimeType: isSvg ? "image/svg+xml" : "image/png",
         },
       } as const;
     }
@@ -117,7 +160,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Uploaded PNG appears to be non-architecture content. No review email was sent. Upload a real architecture diagram.",
+            "Uploaded diagram appears to be non-architecture content. No review email was sent. Upload a real architecture diagram.",
         },
         { status: 422 },
       );
@@ -186,6 +229,7 @@ export async function POST(request: Request) {
       const archiveResult = await archiveArchitectureReviewToWorkDrive({
         diagramFileName: diagram.filename,
         diagramBytes: diagram.bytes,
+        diagramMimeType: diagram.mimeType,
         report: finalizedReport,
         userName: resolvedUserName,
         paragraphInput: payload.metadata.paragraphInput ?? "",
@@ -292,7 +336,7 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof Error && error.message === "INVALID_DIAGRAM_FILE") {
-      return NextResponse.json({ error: "Invalid diagram file. Upload a PNG." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid diagram file. Upload a safe PNG or SVG." }, { status: 400 });
     }
 
     if (error instanceof Error && error.message === "INVALID_PAYLOAD") {

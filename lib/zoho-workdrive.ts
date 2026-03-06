@@ -146,6 +146,7 @@ function sanitizeFilenamePart(input: string) {
 export async function archiveArchitectureReviewToWorkDrive(input: {
   diagramFileName: string;
   diagramBytes: Uint8Array;
+  diagramMimeType?: "image/png" | "image/svg+xml";
   report: ArchitectureReviewReport;
   userName: string | null;
   paragraphInput: string;
@@ -174,12 +175,13 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const emailPart = sanitizeFilenamePart(input.report.userEmail);
     const diagramName = `${timestamp}_${emailPart}_${sanitizeFilenamePart(input.diagramFileName) || "diagram.png"}`;
+    const diagramMimeType = input.diagramMimeType === "image/svg+xml" ? "image/svg+xml" : "image/png";
 
     let diagramUpload = await uploadFile({
       token,
       folderId,
       filename: diagramName,
-      mimeType: "image/png",
+      mimeType: diagramMimeType,
       bytes: input.diagramBytes,
     });
 
@@ -198,7 +200,7 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
         token: refreshed,
         folderId,
         filename: diagramName,
-        mimeType: "image/png",
+        mimeType: diagramMimeType,
         bytes: input.diagramBytes,
       });
 

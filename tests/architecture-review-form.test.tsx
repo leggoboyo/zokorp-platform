@@ -47,14 +47,14 @@ describe("ArchitectureDiagramReviewerForm", () => {
     vi.unstubAllGlobals();
   });
 
-  it("enforces PNG-only uploads", async () => {
+  it("enforces PNG/SVG-only uploads", async () => {
     render(<ArchitectureDiagramReviewerForm />);
 
-    const fileInput = screen.getByLabelText(/diagram png/i);
+    const fileInput = screen.getByLabelText(/diagram file/i);
     const descriptionInput = screen.getByLabelText(/architecture description/i);
     const submitButton = screen.getByRole("button", { name: /run review/i });
     const form = submitButton.closest("form");
-    expect(fileInput.getAttribute("accept")).toBe("image/png");
+    expect(fileInput.getAttribute("accept")).toBe("image/png,image/svg+xml,.png,.svg");
 
     const jpgFile = new File([new Uint8Array([1, 2, 3, 4])], "diagram.jpg", { type: "image/jpeg" });
 
@@ -77,7 +77,11 @@ describe("ArchitectureDiagramReviewerForm", () => {
   });
 
   it("shows email fallback actions without rendering findings", async () => {
-    vi.spyOn(architectureReviewClient, "isStrictPngFile").mockResolvedValue({ ok: true });
+    vi.spyOn(architectureReviewClient, "isStrictDiagramFile").mockResolvedValue({
+      ok: true,
+      format: "png",
+      mimeType: "image/png",
+    });
 
     fetchMock.mockResolvedValue({
       ok: true,
@@ -93,7 +97,7 @@ describe("ArchitectureDiagramReviewerForm", () => {
     const pngBytes = createPngHeader(1200, 800);
     const pngFile = new File([pngBytes], "diagram.png", { type: "image/png" });
 
-    const fileInput = screen.getByLabelText(/diagram png/i);
+    const fileInput = screen.getByLabelText(/diagram file/i);
     const submitButton = screen.getByRole("button", { name: /run review/i });
     const form = submitButton.closest("form");
 
@@ -131,7 +135,11 @@ describe("ArchitectureDiagramReviewerForm", () => {
   });
 
   it("stops immediately when non-architecture content is detected", async () => {
-    vi.spyOn(architectureReviewClient, "isStrictPngFile").mockResolvedValue({ ok: true });
+    vi.spyOn(architectureReviewClient, "isStrictDiagramFile").mockResolvedValue({
+      ok: true,
+      format: "png",
+      mimeType: "image/png",
+    });
     vi.spyOn(architectureReviewClient, "buildReviewReportFromEvidence").mockReturnValueOnce({
       reportVersion: "1.0",
       provider: "aws",
@@ -158,7 +166,7 @@ describe("ArchitectureDiagramReviewerForm", () => {
     const pngBytes = createPngHeader(1200, 800);
     const pngFile = new File([pngBytes], "diagram.png", { type: "image/png" });
 
-    const fileInput = screen.getByLabelText(/diagram png/i);
+    const fileInput = screen.getByLabelText(/diagram file/i);
     const submitButton = screen.getByRole("button", { name: /run review/i });
     const form = submitButton.closest("form");
 

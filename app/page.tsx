@@ -48,7 +48,7 @@ const productDirections = [
   },
   {
     title: "Architecture Diagram Reviewer",
-    summary: "Free architecture feedback tool for cloud diagram PNG uploads.",
+    summary: "Free architecture feedback tool for cloud diagram PNG/SVG uploads.",
     tags: ["Free", "Fast feedback", "Lead-in offering"],
     href: "/software/architecture-diagram-reviewer",
   },

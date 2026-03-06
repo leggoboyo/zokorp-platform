@@ -6,10 +6,12 @@ import { useMemo, useState } from "react";
 import {
   buildReviewReportFromEvidence,
   createEvidenceBundle,
-  isStrictPngFile,
+  extractSvgEvidence,
+  isStrictDiagramFile,
   parseLlmRefinement,
 } from "@/lib/architecture-review/client";
 import type {
+  ArchitectureDiagramFormat,
   ArchitectureEngagementPreference,
   ArchitectureEnvironment,
   ArchitectureLifecycleStage,
@@ -256,7 +258,7 @@ function progressLabelFromOcr(message: { status: string; progress: number }) {
   return `OCR ${message.status} ${percent}%`;
 }
 
-async function readImageDimensions(file: File) {
+async function readPngDimensions(file: File) {
   const bytes = new Uint8Array(await file.slice(0, 24).arrayBuffer());
   if (bytes.length < 24) {
     throw new Error("image-header-too-short");
@@ -321,7 +323,7 @@ export function ArchitectureDiagramReviewerForm({
     event.preventDefault();
 
     if (!selectedFile) {
-      setError("Select a PNG diagram before submitting.");
+      setError("Select a PNG or SVG diagram before submitting.");
       return;
     }
 
@@ -332,59 +334,88 @@ export function ArchitectureDiagramReviewerForm({
 
     setStatus("running");
     setError(null);
-    setProgress("Validating PNG...");
+    setProgress("Validating diagram...");
     setFallbackMailtoUrl(null);
     setFallbackEmlToken(null);
 
-    const pngValidation = await isStrictPngFile(selectedFile);
-    if (!pngValidation.ok) {
+    const diagramValidation = await isStrictDiagramFile(selectedFile);
+    if (!diagramValidation.ok) {
       setStatus("error");
       setProgress(null);
-      setError(pngValidation.error ?? "Only PNG files are allowed.");
+      setError(diagramValidation.error ?? "Only PNG or SVG files are allowed.");
       return;
     }
 
-    try {
-      setProgress("Validating image dimensions...");
-      const dimensions = await readImageDimensions(selectedFile);
-      if (dimensions.width < 600 || dimensions.height < 600) {
-        setStatus("error");
-        setProgress(null);
-        setError("PNG is too small for reliable analysis. Upload a PNG at least 600x600.");
-        return;
-      }
-    } catch {
-      // Continue when dimension parsing is unavailable in the runtime.
-      setProgress("Image dimension check unavailable; continuing.");
-    }
+    const diagramFormat: ArchitectureDiagramFormat = diagramValidation.format;
 
     let ocrText = "";
-    let ocrConfidence: number | null = null;
 
-    try {
-      setProgress("Running OCR in your browser...");
-      const tesseract = await import("tesseract.js");
-      const result = await tesseract.recognize(selectedFile, "eng", {
-        logger(message) {
-          if (message.status) {
-            setProgress(progressLabelFromOcr(message));
-          }
-        },
-      });
-      ocrText = (result.data.text || "").trim();
-      ocrConfidence = typeof result.data.confidence === "number" ? result.data.confidence : null;
-    } catch {
-      setStatus("error");
-      setProgress(null);
-      setError("OCR failed in browser. Retry with a clearer PNG.");
-      return;
-    }
+    if (diagramFormat === "png") {
+      try {
+        setProgress("Validating image dimensions...");
+        const dimensions = await readPngDimensions(selectedFile);
+        if (dimensions.width < 600 || dimensions.height < 600) {
+          setStatus("error");
+          setProgress(null);
+          setError("PNG is too small for reliable analysis. Upload a PNG at least 600x600.");
+          return;
+        }
+      } catch {
+        // Continue when dimension parsing is unavailable in the runtime.
+        setProgress("Image dimension check unavailable; continuing.");
+      }
 
-    if (ocrText.length < 40 || (ocrConfidence !== null && ocrConfidence < 45)) {
-      setStatus("error");
-      setProgress(null);
-      setError("PNG text is too unclear to review reliably. Upload a sharper architecture diagram.");
-      return;
+      let ocrConfidence: number | null = null;
+
+      try {
+        setProgress("Running OCR in your browser...");
+        const tesseract = await import("tesseract.js");
+        const result = await tesseract.recognize(selectedFile, "eng", {
+          logger(message) {
+            if (message.status) {
+              setProgress(progressLabelFromOcr(message));
+            }
+          },
+        });
+        ocrText = (result.data.text || "").trim();
+        ocrConfidence = typeof result.data.confidence === "number" ? result.data.confidence : null;
+      } catch {
+        setStatus("error");
+        setProgress(null);
+        setError("OCR failed in browser. Retry with a clearer PNG.");
+        return;
+      }
+
+      if (ocrText.length < 40 || (ocrConfidence !== null && ocrConfidence < 45)) {
+        setStatus("error");
+        setProgress(null);
+        setError("PNG text is too unclear to review reliably. Upload a sharper architecture diagram.");
+        return;
+      }
+    } else {
+      try {
+        setProgress("Parsing SVG labels in your browser...");
+        const svgEvidence = await extractSvgEvidence(selectedFile);
+        if (svgEvidence.dimensions && (svgEvidence.dimensions.width < 400 || svgEvidence.dimensions.height < 400)) {
+          setStatus("error");
+          setProgress(null);
+          setError("SVG canvas is too small for reliable analysis. Upload an SVG at least 400x400.");
+          return;
+        }
+        ocrText = svgEvidence.text;
+      } catch (error) {
+        setStatus("error");
+        setProgress(null);
+        setError(error instanceof Error ? error.message : "SVG parsing failed. Upload a valid SVG diagram.");
+        return;
+      }
+
+      if (ocrText.length < 20) {
+        setStatus("error");
+        setProgress(null);
+        setError("SVG labels are too sparse to review reliably. Add labeled components and flows.");
+        return;
+      }
     }
 
     const evidenceBundle = createEvidenceBundle({
@@ -392,6 +423,7 @@ export function ArchitectureDiagramReviewerForm({
       paragraph,
       ocrText,
       metadata: {
+        diagramFormat,
         title,
         owner,
         lastUpdated,
@@ -429,7 +461,7 @@ export function ArchitectureDiagramReviewerForm({
       setStatus("error");
       setProgress(null);
       setError(
-        "This PNG does not appear to be an architecture diagram. No report was sent. Upload a system architecture diagram and retry.",
+        "This file does not appear to be an architecture diagram. No report was sent. Upload a system architecture diagram and retry.",
       );
       return;
     }
@@ -481,6 +513,7 @@ export function ArchitectureDiagramReviewerForm({
           version: version.trim() || undefined,
           legend: legend.trim() || undefined,
           paragraphInput: paragraph.trim(),
+          diagramFormat,
           tokenCount: evidenceBundle.serviceTokens.length,
           ocrCharacterCount: evidenceBundle.ocrText.length,
           mode,
@@ -573,12 +606,12 @@ export function ArchitectureDiagramReviewerForm({
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/80">Browser-Native Analysis</p>
         <h3 className="font-display mt-2 text-3xl font-semibold">Architecture Diagram Reviewer</h3>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-white/90 md:text-base">
-          Upload a PNG, select cloud provider, and describe your architecture in one paragraph. The review runs
+          Upload a PNG or SVG, select cloud provider, and describe your architecture in one paragraph. The review runs
           deterministically with optional local model refinement, then emails results to your signed-in address.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/90">
-          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">PNG only</span>
-          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">OCR in browser</span>
+          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">PNG + SVG</span>
+          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">OCR/parse in browser</span>
           <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">No findings on page</span>
           <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1">Email delivery</span>
         </div>
@@ -605,16 +638,16 @@ export function ArchitectureDiagramReviewerForm({
               </label>
 
               <label className="space-y-2">
-                <span className={fieldLabelClassName}>Diagram PNG</span>
+                <span className={fieldLabelClassName}>Diagram File</span>
                 <input
                   name="diagram"
                   type="file"
-                  accept="image/png"
+                  accept="image/png,image/svg+xml,.png,.svg"
                   required
                   onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
                   className={fieldClassName}
                 />
-                <p className="text-xs text-slate-500">Only `image/png` files are accepted.</p>
+                <p className="text-xs text-slate-500">Only `image/png` and `image/svg+xml` files are accepted.</p>
               </label>
             </div>
 

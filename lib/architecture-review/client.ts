@@ -4,6 +4,7 @@ import type { ArchitectureQuoteContext } from "@/lib/architecture-review/quote";
 import {
   architectureFindingDraftSchema,
   llmRefinementSchema,
+  type ArchitectureDiagramFormat,
   type ArchitectureEvidenceBundle,
   type ArchitectureProvider,
   type ArchitectureReviewReport,
@@ -11,36 +12,235 @@ import {
 } from "@/lib/architecture-review/types";
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const MAX_DIAGRAM_FILE_BYTES = 8 * 1024 * 1024;
 
-export async function isStrictPngFile(file: File) {
-  if (file.type !== "image/png") {
-    return {
-      ok: false,
-      error: "Only PNG files are allowed.",
-    };
+function isPngBytes(bytes: Uint8Array) {
+  return PNG_SIGNATURE.every((byte, index) => bytes[index] === byte);
+}
+
+function parseSvgLabelText(rawSvg: string) {
+  const textFragments: string[] = [];
+
+  if (typeof DOMParser !== "undefined") {
+    const doc = new DOMParser().parseFromString(rawSvg, "image/svg+xml");
+    const parserError = doc.querySelector("parsererror");
+    if (!parserError) {
+      for (const node of doc.querySelectorAll("text, title, desc")) {
+        const value = node.textContent?.trim();
+        if (value) {
+          textFragments.push(value);
+        }
+      }
+    }
   }
 
+  if (textFragments.length === 0) {
+    const regex = /<(?:text|title|desc)\b[^>]*>([\s\S]*?)<\/(?:text|title|desc)>/gi;
+    let match: RegExpExecArray | null = null;
+    while ((match = regex.exec(rawSvg)) !== null) {
+      const value = match[1]?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      if (value) {
+        textFragments.push(value);
+      }
+    }
+  }
+
+  return textFragments.join(" ").replace(/\s+/g, " ").trim();
+}
+
+function parseSvgSizeAttribute(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const numeric = Number.parseFloat(value.replace(/px$/i, "").trim());
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return null;
+  }
+
+  return numeric;
+}
+
+function parseSvgDimensions(rawSvg: string) {
+  if (typeof DOMParser !== "undefined") {
+    const doc = new DOMParser().parseFromString(rawSvg, "image/svg+xml");
+    const parserError = doc.querySelector("parsererror");
+    if (!parserError) {
+      const svg = doc.querySelector("svg");
+      if (svg) {
+        const width = parseSvgSizeAttribute(svg.getAttribute("width"));
+        const height = parseSvgSizeAttribute(svg.getAttribute("height"));
+        const viewBox = svg.getAttribute("viewBox");
+
+        if (width && height) {
+          return { width, height };
+        }
+
+        if (viewBox) {
+          const values = viewBox
+            .split(/[\s,]+/)
+            .map((value) => Number.parseFloat(value))
+            .filter((value) => Number.isFinite(value));
+          if (values.length === 4 && values[2] > 0 && values[3] > 0) {
+            return { width: values[2], height: values[3] };
+          }
+        }
+      }
+    }
+  }
+
+  const viewBoxMatch = rawSvg.match(/viewBox\s*=\s*["']([^"']+)["']/i);
+  if (viewBoxMatch?.[1]) {
+    const values = viewBoxMatch[1]
+      .split(/[\s,]+/)
+      .map((value) => Number.parseFloat(value))
+      .filter((value) => Number.isFinite(value));
+    if (values.length === 4 && values[2] > 0 && values[3] > 0) {
+      return { width: values[2], height: values[3] };
+    }
+  }
+
+  return null;
+}
+
+function validateSvgMarkup(rawSvg: string) {
+  const normalized = rawSvg.trim();
+  if (!/<svg\b/i.test(normalized)) {
+    return {
+      ok: false,
+      error: "Invalid SVG payload.",
+    } as const;
+  }
+
+  if (/<script\b/i.test(normalized)) {
+    return {
+      ok: false,
+      error: "SVG with script tags is not allowed.",
+    } as const;
+  }
+
+  if (/\son[a-z]+\s*=/i.test(normalized)) {
+    return {
+      ok: false,
+      error: "SVG with inline event handlers is not allowed.",
+    } as const;
+  }
+
+  if (/javascript:/i.test(normalized)) {
+    return {
+      ok: false,
+      error: "SVG with javascript: links is not allowed.",
+    } as const;
+  }
+
+  if (/<foreignObject\b/i.test(normalized)) {
+    return {
+      ok: false,
+      error: "SVG with foreignObject is not allowed.",
+    } as const;
+  }
+
+  return {
+    ok: true,
+  } as const;
+}
+
+export async function extractSvgEvidence(file: File) {
+  const rawSvg = await file.text();
+  const validation = validateSvgMarkup(rawSvg);
+  if (!validation.ok) {
+    throw new Error(validation.error);
+  }
+
+  const text = parseSvgLabelText(rawSvg);
+  const dimensions = parseSvgDimensions(rawSvg);
+  return {
+    text,
+    dimensions,
+  };
+}
+
+export async function isStrictDiagramFile(file: File): Promise<
+  | { ok: true; format: ArchitectureDiagramFormat; mimeType: "image/png" | "image/svg+xml" }
+  | { ok: false; error: string }
+> {
   const lowerName = file.name.toLowerCase();
-  if (!lowerName.endsWith(".png")) {
+  const isPngName = lowerName.endsWith(".png");
+  const isSvgName = lowerName.endsWith(".svg");
+
+  if (!isPngName && !isSvgName) {
     return {
       ok: false,
-      error: "File name must end with .png.",
+      error: "File name must end with .png or .svg.",
     };
   }
 
-  const bytes = new Uint8Array(await file.slice(0, PNG_SIGNATURE.length).arrayBuffer());
-  const hasSignature = PNG_SIGNATURE.every((byte, index) => bytes[index] === byte);
-
-  if (!hasSignature) {
+  if (file.size <= 0) {
     return {
       ok: false,
-      error: "Invalid PNG signature.",
+      error: "Uploaded file is empty.",
+    };
+  }
+
+  if (file.size > MAX_DIAGRAM_FILE_BYTES) {
+    return {
+      ok: false,
+      error: "File is too large. Upload a file up to 8MB.",
+    };
+  }
+
+  if (isPngName) {
+    const bytes = new Uint8Array(await file.slice(0, PNG_SIGNATURE.length).arrayBuffer());
+    if (bytes.length < PNG_SIGNATURE.length || !isPngBytes(bytes)) {
+      return {
+        ok: false,
+        error: "Invalid PNG signature.",
+      };
+    }
+
+    return {
+      ok: true,
+      format: "png",
+      mimeType: "image/png",
+    };
+  }
+
+  const rawSvg = await file.text();
+  const svgValidation = validateSvgMarkup(rawSvg);
+  if (!svgValidation.ok) {
+    return svgValidation;
+  }
+
+  if (file.type && !["image/svg+xml", "application/xml", "text/xml"].includes(file.type)) {
+    return {
+      ok: false,
+      error: "SVG file type is invalid.",
     };
   }
 
   return {
     ok: true,
+    format: "svg",
+    mimeType: "image/svg+xml",
   };
+}
+
+export async function isStrictPngFile(file: File) {
+  const result = await isStrictDiagramFile(file);
+  if (!result.ok) {
+    return result;
+  }
+
+  if (result.format !== "png") {
+    return {
+      ok: false,
+      error: "Only PNG files are allowed.",
+    } as const;
+  }
+
+  return {
+    ok: true,
+  } as const;
 }
 
 export function createEvidenceBundle(input: {
@@ -48,6 +248,7 @@ export function createEvidenceBundle(input: {
   paragraph: string;
   ocrText: string;
   metadata: {
+    diagramFormat?: ArchitectureDiagramFormat;
     title?: string;
     owner?: string;
     lastUpdated?: string;
@@ -69,6 +270,7 @@ export function createEvidenceBundle(input: {
     ocrText: normalizedOcrText,
     serviceTokens,
     metadata: {
+      diagramFormat: input.metadata.diagramFormat,
       title: input.metadata.title?.trim(),
       owner: input.metadata.owner?.trim(),
       lastUpdated: input.metadata.lastUpdated?.trim(),

@@ -5,6 +5,9 @@ export const ARCHITECTURE_REVIEW_VERSION = "1.0" as const;
 export const architectureProviderSchema = z.enum(["aws", "azure", "gcp"]);
 export type ArchitectureProvider = z.infer<typeof architectureProviderSchema>;
 
+export const architectureDiagramFormatSchema = z.enum(["png", "svg"]);
+export type ArchitectureDiagramFormat = z.infer<typeof architectureDiagramFormatSchema>;
+
 export const architectureCategorySchema = z.enum([
   "clarity",
   "security",
@@ -66,6 +69,7 @@ export const architectureReviewReportSchema = z.object({
 export type ArchitectureReviewReport = z.infer<typeof architectureReviewReportSchema>;
 
 export const architectureReviewMetadataSchema = z.object({
+  diagramFormat: architectureDiagramFormatSchema.optional(),
   title: z.string().trim().max(160).optional(),
   owner: z.string().trim().max(160).optional(),
   lastUpdated: z.string().trim().max(60).optional(),
@@ -101,6 +105,7 @@ export type ArchitectureEvidenceBundle = {
   ocrText: string;
   serviceTokens: string[];
   metadata: {
+    diagramFormat?: ArchitectureDiagramFormat;
     title?: string;
     owner?: string;
     lastUpdated?: string;
