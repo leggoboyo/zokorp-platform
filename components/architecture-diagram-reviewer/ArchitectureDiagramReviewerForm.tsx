@@ -502,12 +502,12 @@ export function ArchitectureDiagramReviewerForm({
                   </button>
                 </div>
                 {generatedDiagramPreviewUrl ? (
-                  <div className="overflow-hidden rounded-md border border-emerald-200 bg-white">
-                    <object
-                      data={generatedDiagramPreviewUrl}
-                      type="image/svg+xml"
-                      aria-label="Generated architecture diagram preview"
-                      className="h-[280px] w-full"
+                  <div className="overflow-hidden rounded-md border border-emerald-200 bg-white p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={generatedDiagramPreviewUrl}
+                      alt="Generated architecture diagram preview"
+                      className="h-[280px] w-full rounded object-contain"
                     />
                   </div>
                 ) : null}

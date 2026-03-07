@@ -21,8 +21,8 @@ describe("architecture diagram generator", () => {
     expect(first.edges.length).toBeGreaterThan(0);
     expect(first.svg).toContain("AWS");
     expect(first.svg).toContain("API Gateway");
-    expect(first.svg).toContain("/architecture-icons/aws/api-gateway.svg");
-    expect(first.svg).toContain("/architecture-icons/aws/lambda.svg");
+    expect(first.svg).toContain("data:image/svg+xml;base64,");
+    expect(first.nodes.some((node) => node.label === "Lambda")).toBe(true);
   });
 
   it("falls back to provider defaults for low-signal narrative", () => {
@@ -34,7 +34,7 @@ describe("architecture diagram generator", () => {
     expect(generated.nodes.some((node) => /front door/i.test(node.label))).toBe(true);
     expect(generated.nodes.some((node) => /app service/i.test(node.label))).toBe(true);
     expect(generated.nodes.some((node) => /sql database/i.test(node.label))).toBe(true);
-    expect(generated.svg).toContain("/architecture-icons/azure/front-door.svg");
+    expect(generated.svg).toContain("Application Insights");
   });
 
   it("creates downloadable svg files with stable metadata", () => {
