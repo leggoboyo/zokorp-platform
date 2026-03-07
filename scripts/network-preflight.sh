@@ -15,7 +15,41 @@ log() {
 
 check_dns() {
   local host="$1"
-  dig +short "$host" | grep -qE '.'
+
+  # Some constrained runtimes can block specific DNS tools (e.g. `dig` socket bind)
+  # while regular resolver calls still work. Try multiple resolvers before failing.
+  if command -v dig >/dev/null 2>&1; then
+    if dig +short "$host" 2>/dev/null | grep -qE '.'; then
+      return 0
+    fi
+  fi
+
+  if command -v nslookup >/dev/null 2>&1; then
+    if nslookup "$host" >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
+  if command -v getent >/dev/null 2>&1; then
+    if getent hosts "$host" >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    if python3 - "$host" >/dev/null 2>&1 <<'PY'
+import socket
+import sys
+
+host = sys.argv[1]
+socket.getaddrinfo(host, 443)
+PY
+    then
+      return 0
+    fi
+  fi
+
+  return 1
 }
 
 check_https() {
