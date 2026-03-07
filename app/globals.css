@@ -1,33 +1,92 @@
 @import "tailwindcss";
 
 :root {
-  --background: #e8edf5;
-  --foreground: #0b1220;
+  color-scheme: light;
+  --background: #edf2f8;
+  --background-elevated: #f8fbff;
+  --background-emphasis: #dfe8f3;
+  --foreground: #0b1324;
+  --foreground-muted: #4f5f78;
+  --foreground-subtle: #6e7e96;
   --surface: #ffffff;
-  --surface-muted: #f5f8fc;
-  --border: #cfd8e6;
-  --border-strong: #b7c5da;
-  --accent: #0f3460;
-  --accent-strong: #081f3d;
-  --teal: #0f8ea9;
-  --gold: #ca9c38;
-  --rose: #cf6479;
-  --sky: #4a8fcb;
-  --ring: rgba(15, 52, 96, 0.25);
+  --surface-muted: #f4f7fb;
+  --surface-glass-start: rgba(255, 255, 255, 0.82);
+  --surface-glass-end: rgba(242, 247, 255, 0.9);
+  --border: #d2dbe8;
+  --border-strong: #b3c1d4;
+  --brand: #103a67;
+  --brand-strong: #081f3d;
+  --brand-soft: #e7f0fb;
+  --brand-accent: #0f8ea9;
+  --brand-gold: #ca9c38;
+  --success: #177764;
+  --warning: #a86512;
+  --danger: #b94f67;
+  --info: #2f74bb;
+  --ring: rgba(16, 58, 103, 0.24);
+  --radius-panel: 1.1rem;
+  --radius-panel-lg: 1.6rem;
+  --radius-pill: 999px;
+  --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.72) inset,
+    0 14px 32px rgba(8, 31, 61, 0.06);
+  --shadow-card-hover:
+    0 1px 0 rgba(255, 255, 255, 0.82) inset,
+    0 18px 38px rgba(8, 31, 61, 0.12);
+  --shadow-glass:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 18px 34px rgba(8, 31, 61, 0.08);
+  --shadow-hero:
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 26px 52px rgba(5, 21, 43, 0.34);
+  --gradient-page:
+    radial-gradient(circle at 7% -2%, rgba(15, 142, 169, 0.2), transparent 30%),
+    radial-gradient(circle at 96% 4%, rgba(202, 156, 56, 0.14), transparent 34%),
+    linear-gradient(180deg, #f5f8fc 0%, #eaf0f7 100%);
+  --gradient-hero:
+    radial-gradient(circle at 18% 16%, rgba(121, 225, 255, 0.2), transparent 44%),
+    radial-gradient(circle at 82% 10%, rgba(255, 211, 132, 0.2), transparent 42%),
+    linear-gradient(136deg, #07192f 0%, #123762 52%, #0f6e87 100%);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-elevated: var(--background-elevated);
+  --color-background-emphasis: var(--background-emphasis);
   --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-foreground-subtle: var(--foreground-subtle);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-gold: var(--brand-gold);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
   --font-sans: var(--font-plus-jakarta);
   --font-mono: var(--font-jetbrains-mono);
+  --radius-panel: var(--radius-panel);
+  --radius-panel-lg: var(--radius-panel-lg);
+  --radius-pill: var(--radius-pill);
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-glass: var(--shadow-glass);
+  --shadow-hero: var(--shadow-hero);
+}
+
+html {
+  background: var(--background);
 }
 
 body {
-  background:
-    radial-gradient(circle at 7% -2%, rgba(15, 142, 169, 0.2), transparent 30%),
-    radial-gradient(circle at 96% 4%, rgba(202, 156, 56, 0.15), transparent 34%),
-    linear-gradient(180deg, #f1f5fb 0%, #e6edf6 100%);
+  background: var(--gradient-page);
   color: var(--foreground);
   font-family: var(--font-plus-jakarta), Arial, Helvetica, sans-serif;
   min-height: 100vh;
@@ -48,26 +107,23 @@ h3,
 .surface {
   background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 14px 32px rgba(8, 31, 61, 0.06);
-  border-radius: 1.1rem;
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-panel);
 }
 
 .surface-muted {
   background: var(--surface-muted);
   border: 1px solid var(--border);
-  border-radius: 1.1rem;
+  box-shadow: var(--shadow-soft);
+  border-radius: var(--radius-panel);
 }
 
 .glass-surface {
-  background: linear-gradient(140deg, rgba(255, 255, 255, 0.78), rgba(243, 248, 255, 0.86));
+  background: linear-gradient(140deg, var(--surface-glass-start), var(--surface-glass-end));
   border: 1px solid rgba(183, 197, 218, 0.75);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 18px 34px rgba(8, 31, 61, 0.08);
+  box-shadow: var(--shadow-glass);
   backdrop-filter: blur(8px);
-  border-radius: 1.1rem;
+  border-radius: var(--radius-panel);
 }
 
 .lift-card {
@@ -81,23 +137,16 @@ h3,
 .lift-card:hover {
   transform: translateY(-4px);
   border-color: var(--border-strong);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.8) inset,
-    0 18px 38px rgba(8, 31, 61, 0.12);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .hero-surface {
   position: relative;
   overflow: hidden;
-  border-radius: 1.6rem;
+  border-radius: var(--radius-panel-lg);
   border: 1px solid rgba(188, 204, 225, 0.45);
-  background:
-    radial-gradient(circle at 18% 16%, rgba(121, 225, 255, 0.2), transparent 44%),
-    radial-gradient(circle at 82% 10%, rgba(255, 211, 132, 0.2), transparent 42%),
-    linear-gradient(136deg, #07192f 0%, #123762 52%, #0f6e87 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.16) inset,
-    0 26px 52px rgba(5, 21, 43, 0.34);
+  background: var(--gradient-hero);
+  box-shadow: var(--shadow-hero);
 }
 
 .hero-surface::after {
@@ -117,7 +166,7 @@ h3,
   border: 1px solid rgba(167, 181, 202, 0.9);
   background: linear-gradient(180deg, #f8fbff 0%, #edf3fa 100%);
   color: #25334b;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0.35rem 0.75rem;
   font-size: 0.72rem;
   font-weight: 600;
@@ -136,9 +185,16 @@ h3,
   text-wrap: balance;
 }
 
-.focus-ring:focus-visible {
+.focus-ring:focus-visible,
+.focus-ring:focus-within {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+.focus-ring[data-focus-ring="inset"]:focus-visible,
+.focus-ring[data-focus-ring="inset"]:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--ring);
 }
 
 @keyframes pulseGlow {

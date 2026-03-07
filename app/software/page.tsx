@@ -1,8 +1,12 @@
 import Link from "next/link";
-import { AccessModel } from "@prisma/client";
 
+import { SoftwareCatalogShell } from "@/components/software-catalog-shell";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { getSoftwareCatalog } from "@/lib/catalog";
 import { buildPageMetadata } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const metadata = buildPageMetadata({
@@ -10,20 +14,6 @@ export const metadata = buildPageMetadata({
   description: "Browse ZoKorp software products, pricing models, and account-linked access paths.",
   path: "/software",
 });
-
-const accessLabel: Record<AccessModel, string> = {
-  FREE: "Free",
-  ONE_TIME_CREDIT: "Pay Per Use",
-  SUBSCRIPTION: "Subscription",
-  METERED: "Usage Metered",
-};
-
-const accessStyle: Record<AccessModel, string> = {
-  FREE: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  ONE_TIME_CREDIT: "bg-amber-50 text-amber-800 border-amber-200",
-  SUBSCRIPTION: "bg-sky-50 text-sky-700 border-sky-200",
-  METERED: "bg-violet-50 text-violet-700 border-violet-200",
-};
 
 const roadmapItems = [
   {
@@ -44,105 +34,76 @@ const roadmapItems = [
   },
 ];
 
-function formatAmount(amount: number, currency: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(amount / 100);
-}
-
 export default async function SoftwarePage() {
   const products = await getSoftwareCatalog();
   const activeProductCount = products.length;
 
   return (
-    <div className="space-y-8">
-      <section className="hero-surface animate-fade-up px-6 py-8 text-white md:px-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Software Hub</p>
-        <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Products, access, and billing in one place</h1>
+    <div className="space-y-8 md:space-y-10">
+      <section className="hero-surface animate-fade-up overflow-hidden px-6 py-8 text-white md:px-8 md:py-10">
+        <div className="pointer-events-none absolute -right-16 top-6 h-44 w-44 rounded-full border border-white/15 bg-white/10 blur-lg" />
+        <div className="pointer-events-none absolute -left-8 bottom-0 h-36 w-36 rounded-full bg-teal-300/20 blur-3xl" />
+
+        <Badge variant="brand" className="border-white/15 bg-white/12 text-white shadow-none">
+          Software Hub
+        </Badge>
+        <h1 className="font-display mt-4 max-w-4xl text-balance text-4xl font-semibold md:text-5xl">
+          Products, access, and billing in one place
+        </h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200 md:text-base">
           Purchase software, run tools, manage subscriptions, and track usage through a single account
           and Stripe-backed billing experience.
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <span className="metric-chip bg-white/90 text-slate-800">{activeProductCount} active products</span>
-          <span className="metric-chip bg-white/90 text-slate-800">Hosted checkout + portal</span>
-          <span className="metric-chip bg-white/90 text-slate-800">Entitlement-protected access</span>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Badge className="bg-white/90 text-slate-800">{activeProductCount} active products</Badge>
+          <Badge className="bg-white/90 text-slate-800">Hosted checkout + portal</Badge>
+          <Badge className="bg-white/90 text-slate-800">Entitlement-protected access</Badge>
+        </div>
+        <div className="mt-7 flex flex-wrap gap-3">
+          <Link href="/pricing" className={cn(buttonVariants({ size: "lg" }), "bg-white text-slate-950 hover:bg-slate-100")}>
+            Review pricing
+          </Link>
+          <Link
+            href="/services#service-request"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "lg" }),
+              "border border-white/35 text-white hover:bg-white/10",
+            )}
+          >
+            Request services
+          </Link>
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-2">
-        {products.map((product) => (
-          <article key={product.id} className="surface lift-card rounded-2xl p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-display text-2xl font-semibold text-slate-900">{product.name}</h2>
-              <span
-                className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${accessStyle[product.accessModel]}`}
-              >
-                {accessLabel[product.accessModel]}
-              </span>
-            </div>
+      <SoftwareCatalogShell products={products} />
 
-            <p className="mt-3 text-sm leading-6 text-slate-600">{product.description}</p>
-
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/85 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Pricing</p>
-              {product.prices.length > 0 ? (
-                <ul className="mt-2 space-y-1 text-sm text-slate-700">
-                  {product.prices.map((price) => (
-                    <li key={price.id} className="flex items-center justify-between gap-4">
-                      <span>{price.kind.replaceAll("_", " ")}</span>
-                      <span className="font-semibold">{formatAmount(price.amount, price.currency)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-slate-600">Pricing is configured per product in the admin dashboard.</p>
-              )}
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Link
-                className="focus-ring rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                href={`/software/${product.slug}`}
-              >
-                Open product
-              </Link>
-              <Link
-                className="focus-ring rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-                href="/account"
-              >
-                View account access
-              </Link>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section className="surface soft-grid rounded-2xl p-6 md:p-7">
+      <section className="surface soft-grid rounded-[calc(var(--radius-xl)+0.25rem)] p-6 md:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Roadmap</p>
             <h2 className="font-display mt-1 text-3xl font-semibold text-slate-900">Upcoming product surfaces</h2>
           </div>
-          <Link href="/services#service-request" className="text-sm font-semibold text-slate-700 underline-offset-2 hover:underline">
+          <Link href="/services#service-request" className={buttonVariants({ variant: "link" })}>
             Request priority access
           </Link>
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           {roadmapItems.map((item) => (
-            <article key={item.title} className="lift-card rounded-xl border border-slate-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{item.status}</p>
-              <h3 className="font-display mt-2 text-2xl font-semibold text-slate-900">{item.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{item.summary}</p>
-              <Link
-                href={item.href}
-                className="focus-ring mt-4 inline-flex rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-              >
-                {item.cta}
-              </Link>
-            </article>
+            <Card key={item.title} lift className="rounded-3xl border border-slate-200 bg-white p-5">
+              <CardHeader>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{item.status}</p>
+                <h3 className="font-display text-2xl font-semibold text-slate-900">{item.title}</h3>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-6 text-slate-600">{item.summary}</p>
+              </CardContent>
+              <CardFooter>
+                <Link href={item.href} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                  {item.cta}
+                </Link>
+              </CardFooter>
+            </Card>
           ))}
         </div>
       </section>

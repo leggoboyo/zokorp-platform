@@ -2,11 +2,26 @@
 
 import { useState } from "react";
 
-export function PortalButton() {
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+
+type PortalButtonProps = {
+  available?: boolean;
+  unavailableMessage?: string;
+};
+
+export function PortalButton({
+  available = true,
+  unavailableMessage = "Billing portal setup is still in progress. Please try again shortly.",
+}: PortalButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onClick() {
+    if (!available) {
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -40,15 +55,11 @@ export function PortalButton() {
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={isLoading}
-        className="focus-ring rounded-md bg-gradient-to-r from-slate-900 to-[#153f67] px-4 py-2 text-sm font-semibold text-white transition hover:from-slate-800 hover:to-[#174f7f] disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <Button type="button" onClick={onClick} disabled={isLoading || !available}>
         {isLoading ? "Opening..." : "Open Stripe Billing Portal"}
-      </button>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      </Button>
+      {!available ? <Alert tone="warning">{unavailableMessage}</Alert> : null}
+      {error ? <Alert tone="danger">{error}</Alert> : null}
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import { ServiceRequestPanel } from "@/components/service-request-panel";
+import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
+import { cn } from "@/lib/utils";
 import { buildPageMetadata } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -104,15 +106,12 @@ export default async function ServicesPage() {
           progress with evidence they can trust.
         </p>
         <div className="mt-6 flex flex-wrap gap-2">
-          <Link
-            href="#service-request"
-            className="focus-ring inline-flex rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-          >
+          <Link href="#service-request" className={buttonVariants({ variant: "secondary" })}>
             Request service
           </Link>
           <Link
             href="/account"
-            className="focus-ring inline-flex rounded-md border border-slate-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className={cn(buttonVariants({ variant: "ghost" }), "border border-white/30 text-white hover:bg-white/10")}
           >
             Track in account
           </Link>
@@ -141,7 +140,12 @@ export default async function ServicesPage() {
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           {engagementSteps.map((step, index) => (
             <article key={step.title} className="lift-card rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-teal-700">Step 0{index + 1}</p>
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-teal-700">
+                <span>Step</span>
+                <span className="rounded-full bg-teal-50 px-2 py-1 font-mono tracking-[0.18em] text-teal-800">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+              </p>
               <h3 className="font-display mt-1 text-xl font-semibold text-slate-900">{step.title}</h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">{step.detail}</p>
             </article>
@@ -158,10 +162,7 @@ export default async function ServicesPage() {
             ZoKorp software tools support the same delivery patterns used in consulting engagements,
             starting with validation workflows and account-based usage tracking.
           </p>
-          <Link
-            href="/software"
-            className="focus-ring mt-5 inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
+          <Link href="/software" className={`${buttonVariants()} mt-5`}>
             Explore software catalog
           </Link>
         </article>
