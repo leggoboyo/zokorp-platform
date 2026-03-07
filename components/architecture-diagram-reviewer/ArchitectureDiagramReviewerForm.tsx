@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { extractSvgEvidence, isStrictDiagramFile } from "@/lib/architecture-review/client";
 import {
   generateArchitectureDiagramFromNarrative,
@@ -87,6 +92,17 @@ const PHASE_LABELS: Record<ArchitectureReviewPhase, string> = {
   "package-email": "Packaging report email",
   "send-fallback": "Sending email or fallback draft",
   completed: "Completed",
+};
+
+const PHASE_DESCRIPTIONS: Record<ArchitectureReviewPhase, string> = {
+  "upload-validate": "Checking file type, size, and whether the upload looks like architecture content.",
+  "diagram-precheck": "Screening the diagram and narrative for structure before deeper review work starts.",
+  ocr: "Extracting text and component hints from the uploaded diagram.",
+  rules: "Applying deterministic scoring for reliability, security, and operational readiness.",
+  "llm-refine": "Refining the written output with the local model while keeping the scoring deterministic.",
+  "package-email": "Packaging the report for email delivery.",
+  "send-fallback": "Attempting delivery and preparing fallback options if email automation fails.",
+  completed: "The review package is complete.",
 };
 
 const NON_ARCH_PRECHECK_TERMS = ["tradeline", "credit", "debt", "account number", "loan", "statement", "apr"];
@@ -606,35 +622,45 @@ export function ArchitectureDiagramReviewerForm({
 
   if (authUnavailable) {
     return (
-      <section className="surface-muted animate-fade-up rounded-2xl p-6">
-        <div className="rounded-xl border border-slate-200 bg-white/75 p-5">
+      <Card tone="muted" className="animate-fade-up rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+        <CardHeader>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Architecture Review</p>
-          <h3 className="font-display mt-2 text-2xl font-semibold text-slate-900">Architecture Diagram Reviewer</h3>
-          <p className="mt-2 text-sm text-slate-700">
-            Password sign-in is currently disabled. Set `AUTH_PASSWORD_ENABLED=true`.
-          </p>
-        </div>
-      </section>
+          <h3 className="font-display text-2xl font-semibold text-slate-900">Architecture Diagram Reviewer</h3>
+        </CardHeader>
+        <CardContent>
+          <Alert tone="warning">
+            <AlertTitle>Authentication is disabled</AlertTitle>
+            <AlertDescription>
+              Password sign-in is currently disabled. Set `AUTH_PASSWORD_ENABLED=true`.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
     );
   }
 
   if (requiresAuth) {
     return (
-      <section className="surface-muted animate-fade-up rounded-2xl p-6">
-        <div className="rounded-xl border border-slate-200 bg-white/75 p-5">
+      <Card tone="muted" className="animate-fade-up rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+        <CardHeader>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Architecture Review</p>
-          <h3 className="font-display mt-2 text-2xl font-semibold text-slate-900">Architecture Diagram Reviewer</h3>
-          <p className="mt-2 text-sm text-slate-700">
-            Sign in with a business email to run this review. Results are delivered only by email.
-          </p>
-        </div>
-        <Link
-          href="/login?callbackUrl=/software/architecture-diagram-reviewer"
-          className="focus-ring mt-4 inline-flex rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
-        >
-          Sign in to continue
-        </Link>
-      </section>
+          <h3 className="font-display text-2xl font-semibold text-slate-900">Architecture Diagram Reviewer</h3>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert tone="info">
+            <AlertTitle>Business sign-in required</AlertTitle>
+            <AlertDescription>
+              Sign in with a business email to run this review. Results are delivered only by email.
+            </AlertDescription>
+          </Alert>
+          <Link
+            href="/login?callbackUrl=/software/architecture-diagram-reviewer"
+            className={buttonVariants({ variant: "secondary" })}
+          >
+            Sign in to continue
+          </Link>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -649,11 +675,19 @@ export function ArchitectureDiagramReviewerForm({
           Upload your architecture diagram, add one paragraph, and get a deterministic review delivered to your email.
           Findings stay off-page by design.
         </p>
-        <div className="mt-4 grid gap-2 md:grid-cols-4 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/90">
-          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-center">Free</span>
-          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-center">Private</span>
-          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-center">Email-only report in ~2 min</span>
-          <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-center">No findings on page</span>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Badge variant="brand" className="border-white/20 bg-white/12 text-white shadow-none">
+            Free
+          </Badge>
+          <Badge variant="brand" className="border-white/20 bg-white/12 text-white shadow-none">
+            Private
+          </Badge>
+          <Badge variant="brand" className="border-white/20 bg-white/12 text-white shadow-none">
+            Email-only report in ~2 min
+          </Badge>
+          <Badge variant="brand" className="border-white/20 bg-white/12 text-white shadow-none">
+            No findings on page
+          </Badge>
         </div>
       </div>
 
@@ -679,37 +713,40 @@ export function ArchitectureDiagramReviewerForm({
             </label>
 
             <div className="mt-3 flex flex-wrap gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={handleGenerateDiagram}
-                className="focus-ring rounded-md border border-slate-300 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+                size="sm"
               >
                 Generate Diagram SVG
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => setGenerationNarrative(paragraph)}
-                className="focus-ring rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                variant="secondary"
+                size="sm"
               >
                 Copy Description Here
-              </button>
+              </Button>
               {speechSupported ? (
                 isListening ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={stopDictation}
-                    className="focus-ring rounded-md border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                    variant="destructive"
+                    size="sm"
                   >
                     Stop Dictation
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="button"
                     onClick={startDictation}
-                    className="focus-ring rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+                    variant="secondary"
+                    size="sm"
                   >
                     Start Dictation (Mobile)
-                  </button>
+                  </Button>
                 )
               ) : null}
             </div>
@@ -727,18 +764,19 @@ export function ArchitectureDiagramReviewerForm({
                     <a
                       href={generatedDiagramPreviewUrl}
                       download={generatedDiagramSummary.filename}
-                      className="focus-ring inline-flex rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-100"
+                      className={buttonVariants({ variant: "secondary", size: "sm" })}
                     >
                       Download Generated SVG
                     </a>
                   ) : null}
-                  <button
+                  <Button
                     type="button"
                     onClick={clearGeneratedDiagramPreview}
-                    className="focus-ring rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-100"
+                    variant="secondary"
+                    size="sm"
                   >
                     Clear Generated Diagram
-                  </button>
+                  </Button>
                 </div>
                 {generatedDiagramPreviewUrl ? (
                   <div className="overflow-hidden rounded-md border border-emerald-200 bg-white p-2">
@@ -949,68 +987,81 @@ export function ArchitectureDiagramReviewerForm({
           </details>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
+            <Button
               type="submit"
               disabled={!canSubmit}
-              className="focus-ring rounded-lg bg-gradient-to-r from-slate-900 to-[#174f7f] px-5 py-2.5 text-sm font-semibold text-white transition hover:from-slate-800 hover:to-[#1d628f] disabled:cursor-not-allowed disabled:opacity-60"
+              loading={status === "running"}
             >
               {status === "running" ? "Reviewing..." : "Run Review"}
-            </button>
+            </Button>
             <p className="text-xs text-slate-500">Results are delivered by email only and are not shown in this page.</p>
           </div>
         </form>
 
-        {status === "running" ? (
-          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-lg font-semibold text-sky-900">Processing: {PHASE_LABELS[phase]}</p>
-              <span className="rounded-full bg-sky-100 px-3 py-1 text-2xl font-semibold text-sky-800">
-                {clampPercent(progressPct)}%
-              </span>
-            </div>
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-sky-100">
-              <div
-                className="h-full rounded-full bg-sky-500 transition-[width] duration-500"
-                style={{ width: `${clampPercent(progressPct)}%` }}
-              />
-            </div>
-            <p className="mt-2 text-sm text-sky-900">Timeout budget ETA {formatEta(etaSeconds)}</p>
-          </div>
-        ) : null}
-
-        {status === "success" ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">
-            Review complete. Check your email for results.
-          </div>
-        ) : null}
-
-        {status === "fallback" ? (
-          <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
-            <p>Automated delivery was unavailable. Use an email draft option below.</p>
-            <div className="flex flex-wrap gap-2">
-              {fallbackMailtoUrl ? (
-                <a
-                  href={fallbackMailtoUrl}
-                  className="focus-ring inline-flex rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
-                >
-                  Open email draft
-                </a>
-              ) : null}
-              {fallbackEmlToken ? (
-                <a
-                  href={`/api/download-eml?token=${encodeURIComponent(fallbackEmlToken)}`}
-                  className="focus-ring inline-flex rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
-                >
-                  Download .eml
-                </a>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
-        {(status === "error" || status === "rejected") && error ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">{error}</div>
-        ) : null}
+        <div className="min-h-[168px]">
+          {status === "running" ? (
+            <Card tone="glass" className="rounded-3xl p-5">
+              <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Review in progress</p>
+                    <h4 className="font-display text-2xl font-semibold text-slate-900">
+                      Processing: {PHASE_LABELS[phase]}
+                    </h4>
+                    <p className="text-sm leading-6 text-slate-600">{PHASE_DESCRIPTIONS[phase]}</p>
+                  </div>
+                  <Badge variant="info">{clampPercent(progressPct)}%</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Progress value={clampPercent(progressPct)} tone="info" />
+                <p className="text-sm text-sky-900">Timeout budget ETA {formatEta(etaSeconds)}</p>
+              </CardContent>
+            </Card>
+          ) : status === "success" ? (
+            <Alert tone="success">
+              <AlertTitle>Review complete</AlertTitle>
+              <AlertDescription>Check your email for results.</AlertDescription>
+            </Alert>
+          ) : status === "fallback" ? (
+            <Alert tone="warning">
+              <AlertTitle>Automated delivery was unavailable.</AlertTitle>
+              <AlertDescription>Use an email draft option below.</AlertDescription>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {fallbackMailtoUrl ? (
+                  <a href={fallbackMailtoUrl} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                    Open email draft
+                  </a>
+                ) : null}
+                {fallbackEmlToken ? (
+                  <a
+                    href={`/api/download-eml?token=${encodeURIComponent(fallbackEmlToken)}`}
+                    className={buttonVariants({ variant: "secondary", size: "sm" })}
+                  >
+                    Download .eml
+                  </a>
+                ) : null}
+              </div>
+            </Alert>
+          ) : (status === "error" || status === "rejected") && error ? (
+            <Alert tone="danger">
+              <AlertTitle>Review could not be completed</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : (
+            <Card tone="muted" className="rounded-3xl p-5">
+              <CardHeader>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Review status</p>
+                <h4 className="font-display text-2xl font-semibold text-slate-900">Status updates will appear here</h4>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-6 text-slate-600">
+                  After you submit, this panel shows the active review stage, progress percentage, and any fallback delivery actions.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </section>
   );
