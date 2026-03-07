@@ -59,6 +59,7 @@ function buildTextEmail(input: {
     `Overall score: ${input.report.overallScore}/100`,
     `Maturity band: ${input.report.maturityBand}`,
     `Suggested engagement: ${input.report.quote.quoteTier}`,
+    `Estimated solo-consulting effort: ${input.report.quote.estimatedDaysLow}-${input.report.quote.estimatedDaysHigh} working days`,
     `Estimated quote range: ${toUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh)}`,
     "",
     "Category snapshot:",
@@ -78,6 +79,8 @@ function buildTextEmail(input: {
     lines.push(`You said your biggest cloud challenge is: "${input.answers.biggestChallenge.trim()}"`);
   }
 
+  lines.push("");
+  lines.push("Quote basis: deterministic remediation effort estimate from fixed rule matches, not AI-generated pricing.");
   lines.push("");
   lines.push(...input.report.quote.rationaleLines.map((line) => `- ${line}`));
   lines.push("");
@@ -125,6 +128,11 @@ function buildHtmlEmail(input: {
               </td>
             </tr>
           </table>
+
+          <div style="margin-bottom:18px;border:1px solid #d7e2ef;border-radius:12px;padding:14px;background:#fbfcfe;color:#334155;font-size:14px;line-height:1.6;">
+            Estimated solo-consulting effort: <strong>${escapeHtml(`${input.report.quote.estimatedDaysLow}-${input.report.quote.estimatedDaysHigh} working days`)}</strong><br />
+            Quote basis: deterministic remediation effort from fixed rule matches, not AI-generated pricing.
+          </div>
 
           <div style="border:1px solid #d7e2ef;border-radius:12px;padding:14px;background:#f8fbff;">
             <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Category snapshot</div>

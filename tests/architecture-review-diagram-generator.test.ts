@@ -53,4 +53,30 @@ describe("architecture diagram generator", () => {
     expect(file.name).toMatch(/^generated-gcp-architecture-/);
     expect(file.name.endsWith(".svg")).toBe(true);
   });
+
+  it("detects hybrid narratives and adds private connectivity source flow", () => {
+    const generated = generateArchitectureDiagramFromNarrative({
+      provider: "aws",
+      narrative:
+        "Users access an ALB while on-prem systems connect over private network links to services in a VPC with RDS.",
+    });
+
+    expect(generated.template).toBe("hybrid");
+    expect(generated.nodes.some((node) => node.label === "On-Prem Systems")).toBe(true);
+    expect(generated.edges.some((edge) => edge.label === "Private link")).toBe(true);
+    expect(generated.svg).toContain("AWS Region");
+    expect(generated.svg).toContain("VPC");
+  });
+
+  it("uses event-driven template for queue/stream narratives", () => {
+    const generated = generateArchitectureDiagramFromNarrative({
+      provider: "azure",
+      narrative:
+        "Clients call API Management, requests publish events to Service Bus, and function apps process event consumers into SQL Database.",
+    });
+
+    expect(generated.template).toBe("event-driven");
+    expect(generated.svg).toContain("Event-driven layout");
+    expect(generated.edges.some((edge) => edge.label === "Event consumers")).toBe(true);
+  });
 });

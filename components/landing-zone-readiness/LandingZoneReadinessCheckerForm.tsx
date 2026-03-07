@@ -186,9 +186,78 @@ const yesPartialNoOptions = [
   { value: "no", label: "No", description: "This is missing, informal, or we are not sure." },
 ] as const;
 
-function firstIssueMessage(error: z.ZodError) {
-  return error.issues[0]?.message ?? "Please review the highlighted fields.";
-}
+const productHighlights = [
+  {
+    title: "50 fixed landing-zone checks",
+    description: "Identity, network, security, recovery, delivery, and cost are reviewed the same way every time.",
+  },
+  {
+    title: "Real output, not a teaser",
+    description: "The email includes category scores, blunt findings, concrete fixes, and a scoped consulting quote.",
+  },
+  {
+    title: "Built for SMB cloud teams",
+    description: "This is tuned for growing AWS, Azure, GCP, and multi-cloud environments without enterprise fluff.",
+  },
+] as const;
+
+const FRIENDLY_REQUIRED_MESSAGES: Partial<Record<keyof FormState, string>> = {
+  email: "Enter your business email.",
+  fullName: "Enter your full name.",
+  companyName: "Enter your company name.",
+  roleTitle: "Enter your role or title.",
+  website: "Enter your company website or domain.",
+  primaryCloud: "Select the primary cloud provider.",
+  numberOfEnvironments: "Select how many environments you actively use.",
+  numberOfRegions: "Select how many regions are in scope.",
+  employeeCount: "Select your approximate employee count.",
+  engineeringTeamSize: "Select your engineering team size.",
+  handlesSensitiveData: "Answer whether you handle regulated or sensitive data.",
+  clearEnvironmentSeparation: "Answer whether dev, test/stage, and prod are clearly separated.",
+  hasSso: "Answer whether SSO is in place for workforce access.",
+  enforcesMfa: "Answer whether MFA is enforced.",
+  centralizedIdentity: "Answer whether identity is managed centrally.",
+  breakGlassProcess: "Answer whether you have a break-glass access process.",
+  documentedRbac: "Answer whether your RBAC model is documented.",
+  serviceAccountHygiene: "Answer whether service account hygiene is under control.",
+  usesOrgHierarchy: "Answer whether you use org-level hierarchy.",
+  separateCloudAccounts: "Answer whether environments are split by account, subscription, or project.",
+  sharedServicesModel: "Answer whether there is a shared services model.",
+  guardrailsPolicy: "Answer whether guardrails are inherited from the top.",
+  standardNetworkArchitecture: "Answer whether you use a standard network pattern.",
+  productionIsolation: "Answer whether production is isolated from non-prod.",
+  ingressEgressControls: "Answer whether ingress and egress controls are defined.",
+  privateConnectivity: "Answer whether private connectivity is used where needed.",
+  documentedDnsStrategy: "Answer whether the DNS strategy is documented.",
+  networkCleanup: "Answer whether stale network objects are removed.",
+  secretsManagement: "Answer whether managed secrets storage is used.",
+  keyManagement: "Answer whether key management is defined.",
+  baselineSecurityLogging: "Answer whether baseline security logging is enabled.",
+  vulnerabilityScanning: "Answer whether vulnerability scanning runs consistently.",
+  privilegeReviews: "Answer whether privileged access is reviewed regularly.",
+  patchingOwnership: "Answer whether patching ownership is clear.",
+  centralizedLogs: "Answer whether logs are centralized.",
+  metricsDashboards: "Answer whether usable metrics dashboards exist.",
+  alertingCoverage: "Answer whether alerting is in place for real production risk.",
+  runbooks: "Answer whether runbooks exist.",
+  onCallOwnership: "Answer whether on-call ownership is clear.",
+  incidentResponseProcess: "Answer whether there is an incident response process.",
+  backupCoverage: "Answer whether backups cover critical systems.",
+  restoreTesting: "Answer whether restores are tested.",
+  definedRecoveryTargets: "Answer whether RTO and RPO are defined.",
+  crossRegionResilience: "Answer whether cross-region resilience exists where needed.",
+  drDocumentation: "Answer whether disaster recovery is documented.",
+  infrastructureAsCode: "Answer whether infrastructure is managed as code.",
+  changesViaCiCd: "Answer whether infrastructure changes go through CI/CD.",
+  manualProductionChanges: "Select whether engineers can change production directly outside the normal pipeline.",
+  codeReviewRequired: "Answer whether code review is required for infrastructure changes.",
+  driftDetection: "Answer whether drift is checked.",
+  taggingStandard: "Answer whether a tagging or labeling standard exists.",
+  budgetAlerts: "Answer whether budgets and alerts are set.",
+  resourceOwnership: "Answer whether resource ownership is clear.",
+  lifecycleCleanup: "Answer whether stale resources are cleaned up.",
+  nonProdShutdown: "Answer whether non-prod is shut down when appropriate.",
+};
 
 function buildPayload(form: FormState) {
   return {
@@ -204,77 +273,159 @@ function buildPayload(form: FormState) {
   };
 }
 
-const stepValidators = [
-  landingZoneReadinessAnswersBaseSchema.pick({
-    email: true,
-    fullName: true,
-    companyName: true,
-    roleTitle: true,
-    website: true,
-    primaryCloud: true,
-    secondaryCloud: true,
-  }),
-  landingZoneReadinessAnswersBaseSchema.pick({
-    numberOfEnvironments: true,
-    numberOfRegions: true,
-    employeeCount: true,
-    engineeringTeamSize: true,
-    handlesSensitiveData: true,
-    clearEnvironmentSeparation: true,
-  }),
-  landingZoneReadinessAnswersBaseSchema.pick({
-    hasSso: true,
-    enforcesMfa: true,
-    centralizedIdentity: true,
-    breakGlassProcess: true,
-    documentedRbac: true,
-    serviceAccountHygiene: true,
-    usesOrgHierarchy: true,
-    separateCloudAccounts: true,
-    sharedServicesModel: true,
-    guardrailsPolicy: true,
-  }),
-  landingZoneReadinessAnswersBaseSchema.pick({
-    standardNetworkArchitecture: true,
-    productionIsolation: true,
-    ingressEgressControls: true,
-    privateConnectivity: true,
-    documentedDnsStrategy: true,
-    networkCleanup: true,
-    secretsManagement: true,
-    keyManagement: true,
-    baselineSecurityLogging: true,
-    vulnerabilityScanning: true,
-    privilegeReviews: true,
-    patchingOwnership: true,
-  }),
-  landingZoneReadinessAnswersBaseSchema.pick({
-    centralizedLogs: true,
-    metricsDashboards: true,
-    alertingCoverage: true,
-    runbooks: true,
-    onCallOwnership: true,
-    incidentResponseProcess: true,
-    backupCoverage: true,
-    restoreTesting: true,
-    definedRecoveryTargets: true,
-    crossRegionResilience: true,
-    drDocumentation: true,
-  }),
-  landingZoneReadinessAnswersBaseSchema.pick({
-    infrastructureAsCode: true,
-    changesViaCiCd: true,
-    manualProductionChanges: true,
-    codeReviewRequired: true,
-    driftDetection: true,
-    taggingStandard: true,
-    budgetAlerts: true,
-    resourceOwnership: true,
-    lifecycleCleanup: true,
-    nonProdShutdown: true,
-    biggestChallenge: true,
-  }),
+type LandingZonePayload = ReturnType<typeof buildPayload>;
+
+const stepRequiredFields: Array<Array<keyof FormState>> = [
+  ["email", "fullName", "companyName", "roleTitle", "website", "primaryCloud"],
+  [
+    "numberOfEnvironments",
+    "numberOfRegions",
+    "employeeCount",
+    "engineeringTeamSize",
+    "handlesSensitiveData",
+    "clearEnvironmentSeparation",
+  ],
+  [
+    "hasSso",
+    "enforcesMfa",
+    "centralizedIdentity",
+    "breakGlassProcess",
+    "documentedRbac",
+    "serviceAccountHygiene",
+    "usesOrgHierarchy",
+    "separateCloudAccounts",
+    "sharedServicesModel",
+    "guardrailsPolicy",
+  ],
+  [
+    "standardNetworkArchitecture",
+    "productionIsolation",
+    "ingressEgressControls",
+    "privateConnectivity",
+    "documentedDnsStrategy",
+    "networkCleanup",
+    "secretsManagement",
+    "keyManagement",
+    "baselineSecurityLogging",
+    "vulnerabilityScanning",
+    "privilegeReviews",
+    "patchingOwnership",
+  ],
+  [
+    "centralizedLogs",
+    "metricsDashboards",
+    "alertingCoverage",
+    "runbooks",
+    "onCallOwnership",
+    "incidentResponseProcess",
+    "backupCoverage",
+    "restoreTesting",
+    "definedRecoveryTargets",
+    "crossRegionResilience",
+    "drDocumentation",
+  ],
+  [
+    "infrastructureAsCode",
+    "changesViaCiCd",
+    "manualProductionChanges",
+    "codeReviewRequired",
+    "driftDetection",
+    "taggingStandard",
+    "budgetAlerts",
+    "resourceOwnership",
+    "lifecycleCleanup",
+    "nonProdShutdown",
+  ],
 ];
+
+function requireStepFields(payload: LandingZonePayload, fields: Array<keyof FormState>) {
+  for (const field of fields) {
+    const value = payload[field];
+
+    if (value === "" || value === null || value === undefined) {
+      return FRIENDLY_REQUIRED_MESSAGES[field] ?? "Please answer the next required question.";
+    }
+  }
+
+  return null;
+}
+
+function validateCompanyStep(payload: LandingZonePayload) {
+  const missingFieldMessage = requireStepFields(payload, stepRequiredFields[0]);
+  if (missingFieldMessage) {
+    return missingFieldMessage;
+  }
+
+  if (!landingZoneReadinessAnswersBaseSchema.shape.email.safeParse(payload.email).success) {
+    return "Enter a valid business email address.";
+  }
+
+  if (!landingZoneReadinessAnswersBaseSchema.shape.fullName.safeParse(payload.fullName).success) {
+    return "Enter your full name.";
+  }
+
+  if (!landingZoneReadinessAnswersBaseSchema.shape.companyName.safeParse(payload.companyName).success) {
+    return "Enter your company name.";
+  }
+
+  if (!landingZoneReadinessAnswersBaseSchema.shape.roleTitle.safeParse(payload.roleTitle).success) {
+    return "Enter your role or title.";
+  }
+
+  if (!landingZoneReadinessAnswersBaseSchema.shape.website.safeParse(payload.website).success) {
+    return "Enter a valid company website or domain.";
+  }
+
+  if (payload.secondaryCloud && payload.secondaryCloud === payload.primaryCloud) {
+    return "Choose a different secondary cloud or leave it blank.";
+  }
+
+  return null;
+}
+
+function validateBasicsStep(payload: LandingZonePayload) {
+  return requireStepFields(payload, stepRequiredFields[1]);
+}
+
+function validateStructuredStep(payload: LandingZonePayload, stepIndex: number) {
+  return requireStepFields(payload, stepRequiredFields[stepIndex]);
+}
+
+const stepValidators = [
+  validateCompanyStep,
+  validateBasicsStep,
+  (payload: LandingZonePayload) => validateStructuredStep(payload, 2),
+  (payload: LandingZonePayload) => validateStructuredStep(payload, 3),
+  (payload: LandingZonePayload) => validateStructuredStep(payload, 4),
+  (payload: LandingZonePayload) => validateStructuredStep(payload, 5),
+];
+
+function firstIssueMessage(error: z.ZodError) {
+  const firstIssue = error.issues[0];
+  const field = firstIssue?.path[0];
+
+  if (field === "email") {
+    return "Enter a valid business email address.";
+  }
+
+  if (field === "website") {
+    return "Enter a valid company website or domain.";
+  }
+
+  if (field === "secondaryCloud") {
+    return "Choose a different secondary cloud or leave it blank.";
+  }
+
+  if (field === "biggestChallenge") {
+    return "Keep the biggest challenge note under 500 characters.";
+  }
+
+  if (typeof field === "string" && field in FRIENDLY_REQUIRED_MESSAGES) {
+    return FRIENDLY_REQUIRED_MESSAGES[field as keyof FormState] ?? "Please review the unanswered fields.";
+  }
+
+  return "Please review the unanswered fields before continuing.";
+}
 
 function trackAnalyticsEvent(name: string, params?: Record<string, string | number>) {
   if (typeof window === "undefined") {
@@ -379,10 +530,10 @@ export function LandingZoneReadinessCheckerForm({
   function validateCurrentStep() {
     const payload = buildPayload(form);
     const validator = stepValidators[currentStep];
-    const parsed = validator.safeParse(payload);
+    const validationMessage = validator(payload);
 
-    if (!parsed.success) {
-      setError(firstIssueMessage(parsed.error));
+    if (validationMessage) {
+      setError(validationMessage);
       return false;
     }
 
@@ -475,7 +626,7 @@ export function LandingZoneReadinessCheckerForm({
           {result.status === "sent" ? "Your results have been emailed" : "Submission received"}
         </h2>
         <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-          Check your email for the full report. This page intentionally stays short and does not show the detailed findings.
+          Check your email for the full report, top fixes, and scoped consulting quote. This page intentionally stays short and does not show the detailed findings.
         </p>
         <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
           {result.overallScore}/100 · {result.maturityBand} · {result.quoteTier}
@@ -533,6 +684,15 @@ export function LandingZoneReadinessCheckerForm({
           <span className="rounded-full border border-slate-300 bg-white px-3 py-1">Business email only</span>
           <span className="rounded-full border border-slate-300 bg-white px-3 py-1">Results by email</span>
           <span className="rounded-full border border-slate-300 bg-white px-3 py-1">Deterministic quote</span>
+          <span className="rounded-full border border-slate-300 bg-white px-3 py-1">No AI scoring</span>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {productHighlights.map((highlight) => (
+            <div key={highlight.title} className="rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-sm font-semibold text-slate-900">{highlight.title}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{highlight.description}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -1020,7 +1180,8 @@ export function LandingZoneReadinessCheckerForm({
 
         {error ? (
           <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
-            {error}
+            <p className="font-semibold text-rose-800">One thing to fix before continuing</p>
+            <p className="mt-1">{error}</p>
           </div>
         ) : null}
 

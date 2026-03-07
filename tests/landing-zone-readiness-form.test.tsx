@@ -41,13 +41,37 @@ describe("LandingZoneReadinessCheckerForm", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows validation feedback when required inputs are missing", async () => {
+  it("shows plain-English validation feedback when required inputs are missing", async () => {
     render(<LandingZoneReadinessCheckerForm />);
 
     fireEvent.click(screen.getByRole("button", { name: /next step/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert").textContent?.length).toBeGreaterThan(0);
+      expect(screen.getByRole("alert").textContent).toContain("Enter your business email.");
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("shows a specific plain-English message for missing step answers", async () => {
+    render(<LandingZoneReadinessCheckerForm />);
+
+    fireEvent.change(screen.getByLabelText(/business email/i), { target: { value: "owner@acmecloud.com" } });
+    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Jordan Rivera" } });
+    fireEvent.change(screen.getByLabelText(/company name/i), { target: { value: "Acme Cloud" } });
+    fireEvent.change(screen.getByLabelText(/role or title/i), { target: { value: "CTO" } });
+    fireEvent.change(screen.getByLabelText(/company website or domain/i), { target: { value: "acmecloud.com" } });
+    fireEvent.change(screen.getByLabelText(/primary cloud/i), { target: { value: "aws" } });
+    fireEvent.click(screen.getByRole("button", { name: /next step/i }));
+
+    fireEvent.change(screen.getByLabelText(/how many environments do you actively use/i), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText(/approximate employee count/i), { target: { value: "26_100" } });
+    fireEvent.change(screen.getByLabelText(/engineering team size/i), { target: { value: "6_20" } });
+    choose("handlesSensitiveData", "no");
+    choose("clearEnvironmentSeparation", "yes");
+    fireEvent.click(screen.getByRole("button", { name: /next step/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain("Select how many regions are in scope.");
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });

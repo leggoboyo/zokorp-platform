@@ -100,8 +100,10 @@ describe("landing zone readiness engine", () => {
     expect(first).toEqual(second);
     expect(first.overallScore).toBe(77);
     expect(first.quote.quoteTier).toBe("Landing Zone Hardening");
-    expect(first.quote.quoteLow).toBe(13250);
-    expect(first.quote.quoteHigh).toBe(30000);
+    expect(first.quote.quoteLow).toBe(15500);
+    expect(first.quote.quoteHigh).toBe(34000);
+    expect(first.quote.estimatedDaysLow).toBe(8.5);
+    expect(first.quote.estimatedDaysHigh).toBe(19);
     expect(first.quote.confidence).toBe("low");
   });
 

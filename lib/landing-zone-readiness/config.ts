@@ -50,21 +50,18 @@ export type QuotePricingConfig = {
   tiers: Record<
     QuoteTier,
     {
-      low: number;
-      high: number;
+      minimumDaysLow: number;
+      minimumDaysHigh: number;
     }
   >;
-  adders: {
-    perHighSeverityLow: number;
-    perHighSeverityHigh: number;
-    perMediumSeverityLow: number;
-    perMediumSeverityHigh: number;
-    multiCloudLow: number;
-    multiCloudHigh: number;
-    sensitiveDataLow: number;
-    sensitiveDataHigh: number;
-    missingCoreControlLow: number;
-    missingCoreControlHigh: number;
+  labor: {
+    dayRateUsd: number;
+    multiCloudDaysLow: number;
+    multiCloudDaysHigh: number;
+    sensitiveDataDaysLow: number;
+    sensitiveDataDaysHigh: number;
+    missingCoreControlDaysLow: number;
+    missingCoreControlDaysHigh: number;
   };
   customScopeThresholds: {
     minimumScore: number;
@@ -75,22 +72,19 @@ export type QuotePricingConfig = {
 
 export const DEFAULT_QUOTE_PRICING_CONFIG: QuotePricingConfig = {
   tiers: {
-    "Advisory Review": { low: 750, high: 1500 },
-    "Foundation Fix Sprint": { low: 3500, high: 7000 },
-    "Landing Zone Hardening": { low: 8000, high: 18000 },
-    "Custom Scope Required": { low: 15000, high: 30000 },
+    "Advisory Review": { minimumDaysLow: 1, minimumDaysHigh: 2 },
+    "Foundation Fix Sprint": { minimumDaysLow: 3, minimumDaysHigh: 5.5 },
+    "Landing Zone Hardening": { minimumDaysLow: 6, minimumDaysHigh: 10 },
+    "Custom Scope Required": { minimumDaysLow: 10, minimumDaysHigh: 16 },
   },
-  adders: {
-    perHighSeverityLow: 250,
-    perHighSeverityHigh: 500,
-    perMediumSeverityLow: 100,
-    perMediumSeverityHigh: 250,
-    multiCloudLow: 500,
-    multiCloudHigh: 1500,
-    sensitiveDataLow: 500,
-    sensitiveDataHigh: 1500,
-    missingCoreControlLow: 350,
-    missingCoreControlHigh: 750,
+  labor: {
+    dayRateUsd: 1800,
+    multiCloudDaysLow: 0.5,
+    multiCloudDaysHigh: 1.5,
+    sensitiveDataDaysLow: 0.5,
+    sensitiveDataDaysHigh: 1.5,
+    missingCoreControlDaysLow: 0.25,
+    missingCoreControlDaysHigh: 0.5,
   },
   customScopeThresholds: {
     minimumScore: 40,

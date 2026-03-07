@@ -564,6 +564,10 @@ export const LANDING_ZONE_RULES: LandingZoneRule[] = [
   }),
 ];
 
+export const LANDING_ZONE_CORE_CONTROL_RULE_IDS = new Set(
+  LANDING_ZONE_RULES.filter((rule) => rule.coreControl).map((rule) => rule.ruleId),
+);
+
 export function evaluateLandingZoneRules(answers: LandingZoneReadinessAnswers): EvaluatedRule[] {
   return LANDING_ZONE_RULES.map((rule) => {
     const pointsDeducted = rule.evaluate(answers);

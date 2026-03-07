@@ -11,6 +11,7 @@ type DiagramNodeSeed = {
   iconKey?: string;
   iconPath?: string;
   priority: number;
+  mentionOrder: number;
 };
 
 type DiagramNode = {
@@ -20,13 +21,17 @@ type DiagramNode = {
   iconKey?: string;
   iconPath?: string;
   priority: number;
+  mentionOrder: number;
 };
 
 type DiagramEdge = {
   from: string;
   to: string;
   kind: "primary" | "secondary";
+  label?: string;
 };
+
+type DiagramTemplate = "web-tier" | "event-driven" | "data-platform" | "hybrid" | "multi-region-dr";
 
 type IconRule = {
   keywords: string[];
@@ -55,6 +60,7 @@ type ProviderTheme = {
 
 type GeneratedArchitectureDiagram = {
   provider: ArchitectureProvider;
+  template: DiagramTemplate;
   svg: string;
   nodes: DiagramNode[];
   edges: DiagramEdge[];
@@ -74,10 +80,17 @@ type Layout = {
   laneZones: Record<NonSourceLane, Rect>;
 };
 
+type BoundaryOverlay = {
+  rect: Rect;
+  label: string;
+  subtitle?: string;
+  style?: "solid" | "dashed";
+};
+
 const NON_SOURCE_LANES: NonSourceLane[] = ["edge", "application", "data", "operations"];
 
 const MAX_NODES_PER_LANE: Record<DiagramLane, number> = {
-  source: 1,
+  source: 2,
   edge: 3,
   application: 4,
   data: 3,
@@ -86,6 +99,62 @@ const MAX_NODES_PER_LANE: Record<DiagramLane, number> = {
 
 const DEFAULT_NARRATIVE =
   "Users access a secure edge tier, traffic routes to application services, data is persisted in managed stores, and operations are monitored.";
+
+const MISSING_MENTION_ORDER = 10_000;
+
+const HYBRID_SOURCE_TERMS = [
+  "on-prem",
+  "on prem",
+  "on-premise",
+  "datacenter",
+  "data center",
+  "corporate network",
+  "hybrid",
+];
+
+const TEMPLATE_SUBTITLES: Record<DiagramTemplate, string> = {
+  "web-tier": "Provider-authentic web-tier layout with deterministic request flow routing.",
+  "event-driven": "Event-driven layout with command and event-processing flow channels.",
+  "data-platform": "Data-platform layout emphasizing ingestion, storage, and operational oversight.",
+  hybrid: "Hybrid topology with on-prem/private connectivity into cloud workloads.",
+  "multi-region-dr": "Multi-region disaster recovery layout with deterministic resiliency cues.",
+};
+
+const TEMPLATE_SOURCE_HINTS: Record<DiagramTemplate, string> = {
+  "web-tier": "Client entry and public access",
+  "event-driven": "Clients and producers emitting commands/events",
+  "data-platform": "Producers and consumers exchanging analytical data",
+  hybrid: "Users and on-prem systems using private connectivity",
+  "multi-region-dr": "Clients with failover-ready entry paths",
+};
+
+const TEMPLATE_EDGE_LABELS: Record<DiagramTemplate, { sourceToEdge: string; edgeToApp: string; appToData: string }> = {
+  "web-tier": {
+    sourceToEdge: "Ingress",
+    edgeToApp: "Request flow",
+    appToData: "Read / write",
+  },
+  "event-driven": {
+    sourceToEdge: "Ingress",
+    edgeToApp: "Command API",
+    appToData: "Publish events",
+  },
+  "data-platform": {
+    sourceToEdge: "Ingestion entry",
+    edgeToApp: "Data processing",
+    appToData: "Store / transform",
+  },
+  hybrid: {
+    sourceToEdge: "Ingress",
+    edgeToApp: "Application traffic",
+    appToData: "Data access",
+  },
+  "multi-region-dr": {
+    sourceToEdge: "Ingress",
+    edgeToApp: "Primary path",
+    appToData: "Primary data path",
+  },
+};
 
 const LOW_SIGNAL_TOKENS = new Set([
   "api",
@@ -383,37 +452,37 @@ const PROVIDER_ICON_RULES: Record<ArchitectureProvider, IconRule[]> = {
 
 const PROVIDER_DEFAULT_SEEDS: Record<ArchitectureProvider, DiagramNodeSeed[]> = {
   aws: [
-    { label: "Users", lane: "source", priority: 0 },
-    { label: "Route 53", lane: "edge", iconKey: "aws/route-53", priority: 10 },
-    { label: "API Gateway", lane: "edge", iconKey: "aws/api-gateway", priority: 14 },
-    { label: "Lambda", lane: "application", iconKey: "aws/lambda", priority: 30 },
-    { label: "ECS", lane: "application", iconKey: "aws/ecs", priority: 32 },
-    { label: "RDS", lane: "data", iconKey: "aws/rds", priority: 50 },
-    { label: "S3", lane: "data", iconKey: "aws/s3", priority: 56 },
-    { label: "CloudWatch", lane: "operations", iconKey: "aws/cloudwatch", priority: 76 },
-    { label: "IAM", lane: "operations", iconKey: "aws/iam", priority: 70 },
+    { label: "Users", lane: "source", priority: 0, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Route 53", lane: "edge", iconKey: "aws/route-53", priority: 10, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "API Gateway", lane: "edge", iconKey: "aws/api-gateway", priority: 14, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Lambda", lane: "application", iconKey: "aws/lambda", priority: 30, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "ECS", lane: "application", iconKey: "aws/ecs", priority: 32, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "RDS", lane: "data", iconKey: "aws/rds", priority: 50, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "S3", lane: "data", iconKey: "aws/s3", priority: 56, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "CloudWatch", lane: "operations", iconKey: "aws/cloudwatch", priority: 76, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "IAM", lane: "operations", iconKey: "aws/iam", priority: 70, mentionOrder: MISSING_MENTION_ORDER },
   ],
   azure: [
-    { label: "Users", lane: "source", priority: 0 },
-    { label: "Front Door", lane: "edge", iconKey: "azure/front-door", priority: 10 },
-    { label: "Application Gateway", lane: "edge", iconKey: "azure/application-gateway", priority: 12 },
-    { label: "App Service", lane: "application", iconKey: "azure/app-service", priority: 30 },
-    { label: "AKS", lane: "application", iconKey: "azure/aks", priority: 34 },
-    { label: "SQL Database", lane: "data", iconKey: "azure/sql-database", priority: 50 },
-    { label: "Storage Account", lane: "data", iconKey: "azure/storage-account", priority: 54 },
-    { label: "Application Insights", lane: "operations", iconKey: "azure/application-insights", priority: 78 },
-    { label: "Key Vault", lane: "operations", iconKey: "azure/key-vault", priority: 70 },
+    { label: "Users", lane: "source", priority: 0, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Front Door", lane: "edge", iconKey: "azure/front-door", priority: 10, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Application Gateway", lane: "edge", iconKey: "azure/application-gateway", priority: 12, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "App Service", lane: "application", iconKey: "azure/app-service", priority: 30, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "AKS", lane: "application", iconKey: "azure/aks", priority: 34, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "SQL Database", lane: "data", iconKey: "azure/sql-database", priority: 50, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Storage Account", lane: "data", iconKey: "azure/storage-account", priority: 54, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Application Insights", lane: "operations", iconKey: "azure/application-insights", priority: 78, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Key Vault", lane: "operations", iconKey: "azure/key-vault", priority: 70, mentionOrder: MISSING_MENTION_ORDER },
   ],
   gcp: [
-    { label: "Users", lane: "source", priority: 0 },
-    { label: "Apigee", lane: "edge", iconKey: "gcp/apigee", priority: 10 },
-    { label: "Cloud Networking", lane: "edge", iconKey: "gcp/networking", priority: 12 },
-    { label: "Cloud Run", lane: "application", iconKey: "gcp/cloud-run", priority: 30 },
-    { label: "GKE", lane: "application", iconKey: "gcp/gke", priority: 32 },
-    { label: "Cloud SQL", lane: "data", iconKey: "gcp/cloud-sql", priority: 50 },
-    { label: "Cloud Storage", lane: "data", iconKey: "gcp/cloud-storage", priority: 54 },
-    { label: "Observability", lane: "operations", iconKey: "gcp/observability", priority: 72 },
-    { label: "Security Identity", lane: "operations", iconKey: "gcp/security-identity", priority: 70 },
+    { label: "Users", lane: "source", priority: 0, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Apigee", lane: "edge", iconKey: "gcp/apigee", priority: 10, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Cloud Networking", lane: "edge", iconKey: "gcp/networking", priority: 12, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Cloud Run", lane: "application", iconKey: "gcp/cloud-run", priority: 30, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "GKE", lane: "application", iconKey: "gcp/gke", priority: 32, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Cloud SQL", lane: "data", iconKey: "gcp/cloud-sql", priority: 50, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Cloud Storage", lane: "data", iconKey: "gcp/cloud-storage", priority: 54, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Observability", lane: "operations", iconKey: "gcp/observability", priority: 72, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Security Identity", lane: "operations", iconKey: "gcp/security-identity", priority: 70, mentionOrder: MISSING_MENTION_ORDER },
   ],
 };
 
@@ -436,6 +505,39 @@ function toTitleCase(input: string) {
 
 function normalizeToken(input: string) {
   return input.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getFirstMentionOrder(narrative: string, searchTerms: string[]) {
+  const normalizedNarrative = normalizeToken(narrative);
+  let earliest = MISSING_MENTION_ORDER;
+
+  for (const term of searchTerms) {
+    const index = normalizedNarrative.indexOf(normalizeToken(term));
+    if (index >= 0 && index < earliest) {
+      earliest = index;
+    }
+  }
+
+  return earliest;
+}
+
+function detectDiagramTemplate(narrative: string): DiagramTemplate {
+  const text = normalizeToken(narrative);
+
+  if (/\b(multi-region|multi region|disaster recovery|dr|rto|rpo|active-active|active-passive)\b/.test(text)) {
+    return "multi-region-dr";
+  }
+  if (/\b(on-prem|on prem|hybrid|datacenter|data center|direct connect|expressroute|interconnect|vpn)\b/.test(text)) {
+    return "hybrid";
+  }
+  if (/\b(analytics|warehouse|etl|data lake|lakehouse|bigquery|athena|dataflow|databricks)\b/.test(text)) {
+    return "data-platform";
+  }
+  if (/\b(event|queue|stream|pub\/sub|pubsub|topic|sns|sqs|eventbridge|service bus|event hub|kinesis)\b/.test(text)) {
+    return "event-driven";
+  }
+
+  return "web-tier";
 }
 
 function normalizeLabel(token: string) {
@@ -561,8 +663,25 @@ function removeGenericDuplicates(lane: NonSourceLane, seeds: DiagramNodeSeed[]) 
   return seeds.filter((seed) => !GENERIC_NODE_LABELS[lane].includes(seed.label.toLowerCase()));
 }
 
+function isHybridNarrative(narrative: string) {
+  const normalized = normalizeToken(narrative);
+  return HYBRID_SOURCE_TERMS.some((term) => normalized.includes(normalizeToken(term)));
+}
+
+function enrichMentionOrder(seed: DiagramNodeSeed, narrative: string) {
+  if (seed.mentionOrder !== MISSING_MENTION_ORDER) {
+    return seed;
+  }
+
+  return {
+    ...seed,
+    mentionOrder: getFirstMentionOrder(narrative, [seed.label]),
+  };
+}
+
 function collectNodesFromNarrative(provider: ArchitectureProvider, narrative: string) {
   const input = narrative.trim() || DEFAULT_NARRATIVE;
+  const template = detectDiagramTemplate(input);
   const tokens = extractServiceTokens(provider, input).filter((token) => !LOW_SIGNAL_TOKENS.has(token));
 
   const buckets: Record<DiagramLane, DiagramNodeSeed[]> = {
@@ -573,10 +692,20 @@ function collectNodesFromNarrative(provider: ArchitectureProvider, narrative: st
     operations: [],
   };
 
+  if (template === "hybrid" && isHybridNarrative(input)) {
+    buckets.source.push({
+      label: "On-Prem Systems",
+      lane: "source",
+      priority: 1,
+      mentionOrder: getFirstMentionOrder(input, HYBRID_SOURCE_TERMS),
+    });
+  }
+
   for (const token of tokens) {
     const rule = findIconRule(provider, token);
     const lane = rule?.lane ?? inferLane(token);
     const iconKey = rule?.iconKey ?? FALLBACK_LANE_ICON_KEYS[provider][lane];
+    const mentionOrder = getFirstMentionOrder(input, rule?.keywords ?? [token]);
 
     buckets[lane].push({
       label: rule?.label ?? normalizeLabel(token),
@@ -584,6 +713,7 @@ function collectNodesFromNarrative(provider: ArchitectureProvider, narrative: st
       iconKey,
       iconPath: iconPathFromKey(iconKey),
       priority: rule?.priority ?? 900,
+      mentionOrder,
     });
   }
 
@@ -591,13 +721,18 @@ function collectNodesFromNarrative(provider: ArchitectureProvider, narrative: st
     if (buckets[lane].length === 0) {
       buckets[lane].push(...getProviderDefaultsForLane(provider, lane));
     }
-    buckets[lane] = removeGenericDuplicates(lane, buckets[lane]);
+    buckets[lane] = removeGenericDuplicates(lane, buckets[lane]).map((seed) => enrichMentionOrder(seed, input));
   }
+
+  buckets.source = buckets.source.map((seed) => enrichMentionOrder(seed, input));
 
   const nodes: DiagramNode[] = [];
   for (const lane of ["source", ...NON_SOURCE_LANES] as DiagramLane[]) {
     const sorted = dedupeSeeds(buckets[lane])
       .sort((a, b) => {
+        if (a.mentionOrder !== b.mentionOrder) {
+          return a.mentionOrder - b.mentionOrder;
+        }
         if (a.priority !== b.priority) {
           return a.priority - b.priority;
         }
@@ -613,11 +748,15 @@ function collectNodesFromNarrative(provider: ArchitectureProvider, narrative: st
         iconKey: seed.iconKey,
         iconPath: seed.iconPath ?? (seed.iconKey ? iconPathFromKey(seed.iconKey) : undefined),
         priority: seed.priority,
+        mentionOrder: seed.mentionOrder,
       });
     });
   }
 
-  return nodes;
+  return {
+    nodes,
+    template,
+  };
 }
 
 function pushUniqueEdge(edges: DiagramEdge[], edge: DiagramEdge) {
@@ -631,59 +770,102 @@ function pushUniqueEdge(edges: DiagramEdge[], edge: DiagramEdge) {
   edges.push(edge);
 }
 
-function buildEdges(nodes: DiagramNode[]) {
+function sortLaneNodes(nodes: DiagramNode[]) {
+  return [...nodes].sort((a, b) => {
+    if (a.mentionOrder !== b.mentionOrder) {
+      return a.mentionOrder - b.mentionOrder;
+    }
+    if (a.priority !== b.priority) {
+      return a.priority - b.priority;
+    }
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function buildEdges(nodes: DiagramNode[], template: DiagramTemplate) {
   const byLane: Record<DiagramLane, DiagramNode[]> = {
-    source: nodes.filter((node) => node.lane === "source"),
-    edge: nodes.filter((node) => node.lane === "edge"),
-    application: nodes.filter((node) => node.lane === "application"),
-    data: nodes.filter((node) => node.lane === "data"),
-    operations: nodes.filter((node) => node.lane === "operations"),
+    source: sortLaneNodes(nodes.filter((node) => node.lane === "source")),
+    edge: sortLaneNodes(nodes.filter((node) => node.lane === "edge")),
+    application: sortLaneNodes(nodes.filter((node) => node.lane === "application")),
+    data: sortLaneNodes(nodes.filter((node) => node.lane === "data")),
+    operations: sortLaneNodes(nodes.filter((node) => node.lane === "operations")),
   };
 
   const edges: DiagramEdge[] = [];
+  const labels = TEMPLATE_EDGE_LABELS[template];
   const sourceMain = byLane.source[0];
+  const sourceSecondary = byLane.source[1];
   const edgeMain = byLane.edge[0];
   const appMain = byLane.application[0];
+  const appSecondary = byLane.application[1];
   const dataMain = byLane.data[0];
+  const dataSecondary = byLane.data[1];
   const opsMain = byLane.operations[0];
 
   if (sourceMain && edgeMain) {
-    pushUniqueEdge(edges, { from: sourceMain.id, to: edgeMain.id, kind: "primary" });
+    pushUniqueEdge(edges, { from: sourceMain.id, to: edgeMain.id, kind: "primary", label: labels.sourceToEdge });
   }
+
+  if (sourceSecondary && edgeMain) {
+    pushUniqueEdge(edges, {
+      from: sourceSecondary.id,
+      to: edgeMain.id,
+      kind: template === "hybrid" ? "primary" : "secondary",
+      label: template === "hybrid" ? "Private link" : "Source path",
+    });
+  }
+
   if (edgeMain && appMain) {
-    pushUniqueEdge(edges, { from: edgeMain.id, to: appMain.id, kind: "primary" });
+    pushUniqueEdge(edges, { from: edgeMain.id, to: appMain.id, kind: "primary", label: labels.edgeToApp });
   }
   if (appMain && dataMain) {
-    pushUniqueEdge(edges, { from: appMain.id, to: dataMain.id, kind: "primary" });
+    pushUniqueEdge(edges, { from: appMain.id, to: dataMain.id, kind: "primary", label: labels.appToData });
   }
 
   byLane.edge.slice(1).forEach((node) => {
     if (edgeMain) {
-      pushUniqueEdge(edges, { from: edgeMain.id, to: node.id, kind: "secondary" });
+      pushUniqueEdge(edges, { from: edgeMain.id, to: node.id, kind: "secondary", label: "Aux edge path" });
     }
   });
 
   byLane.application.slice(1).forEach((node, index) => {
     const parent = byLane.edge[Math.min(index, byLane.edge.length - 1)] ?? edgeMain;
     if (parent) {
-      pushUniqueEdge(edges, { from: parent.id, to: node.id, kind: "secondary" });
+      pushUniqueEdge(edges, { from: parent.id, to: node.id, kind: "secondary", label: "Service fanout" });
     }
   });
 
   byLane.data.slice(1).forEach((node, index) => {
     const parent = byLane.application[Math.min(index, byLane.application.length - 1)] ?? appMain;
     if (parent) {
-      pushUniqueEdge(edges, { from: parent.id, to: node.id, kind: "secondary" });
+      pushUniqueEdge(edges, { from: parent.id, to: node.id, kind: "secondary", label: "Data dependency" });
     }
   });
 
+  if (template === "event-driven" && dataMain && appSecondary) {
+    pushUniqueEdge(edges, { from: dataMain.id, to: appSecondary.id, kind: "primary", label: "Event consumers" });
+  }
+
+  if (template === "data-platform" && dataMain && dataSecondary) {
+    pushUniqueEdge(edges, { from: dataMain.id, to: dataSecondary.id, kind: "primary", label: "Transform / serve" });
+  }
+
+  if (template === "multi-region-dr") {
+    if (appMain && appSecondary) {
+      pushUniqueEdge(edges, { from: appMain.id, to: appSecondary.id, kind: "secondary", label: "Failover" });
+    }
+    if (dataMain && dataSecondary) {
+      pushUniqueEdge(edges, { from: dataMain.id, to: dataSecondary.id, kind: "secondary", label: "Replication" });
+    }
+  }
+
   if (opsMain) {
     [...byLane.application.slice(0, 3), ...byLane.data.slice(0, 2)].forEach((node) => {
-      pushUniqueEdge(edges, { from: node.id, to: opsMain.id, kind: "secondary" });
+      pushUniqueEdge(edges, { from: node.id, to: opsMain.id, kind: "secondary", label: "Telemetry" });
     });
 
     byLane.operations.slice(1).forEach((node) => {
-      pushUniqueEdge(edges, { from: opsMain.id, to: node.id, kind: "secondary" });
+      pushUniqueEdge(edges, { from: opsMain.id, to: node.id, kind: "secondary", label: "Control plane" });
     });
   }
 
@@ -832,21 +1014,31 @@ const FLOW_ROW_OFFSETS = [0, 1, -1, 2, -2];
 
 function layoutNodeRects(nodes: DiagramNode[], layout: Layout) {
   const rects = new Map<string, Rect>();
-  const sourceNodes = nodes.filter((node) => node.lane === "source");
+  const sourceNodes = sortLaneNodes(nodes.filter((node) => node.lane === "source"));
   if (sourceNodes.length > 0) {
     const zone = layout.sourceZone;
     const config = laneNodeRectConfig("source", zone);
-    const sourceNode = sourceNodes[0];
-    rects.set(sourceNode.id, {
-      x: zone.x + Math.floor((zone.width - config.width) / 2),
-      y: zone.y + Math.floor((zone.height - config.height) / 2),
-      width: config.width,
-      height: config.height,
+    const minY = zone.y + config.topPadding;
+    const maxY = zone.y + zone.height - config.bottomPadding - config.height;
+    const centerY = zone.y + Math.floor((zone.height - config.height) / 2);
+    const step = config.height + 18;
+    const nodeX = zone.x + Math.floor((zone.width - config.width) / 2);
+
+    sourceNodes.forEach((node, index) => {
+      const offset = FLOW_ROW_OFFSETS[index] ?? index;
+      const rawY = centerY + offset * step;
+      const y = Math.max(minY, Math.min(maxY, rawY));
+      rects.set(node.id, {
+        x: nodeX,
+        y,
+        width: config.width,
+        height: config.height,
+      });
     });
   }
 
   for (const lane of NON_SOURCE_LANES) {
-    const laneNodes = nodes.filter((node) => node.lane === lane);
+    const laneNodes = sortLaneNodes(nodes.filter((node) => node.lane === lane));
     if (laneNodes.length === 0) {
       continue;
     }
@@ -964,8 +1156,132 @@ function resolveIconHref(node: DiagramNode) {
   return null;
 }
 
+function buildBoundaryOverlays(provider: ArchitectureProvider, template: DiagramTemplate, layout: Layout): BoundaryOverlay[] {
+  const edgeZone = layout.laneZones.edge;
+  const appZone = layout.laneZones.application;
+  const dataZone = layout.laneZones.data;
+  const opsZone = layout.laneZones.operations;
+  const dataExtentX = dataZone.x + dataZone.width;
+  const allLaneExtentX = opsZone.x + opsZone.width;
+  const overlays: BoundaryOverlay[] = [];
+
+  if (provider === "aws") {
+    overlays.push({
+      rect: {
+        x: edgeZone.x - 12,
+        y: layout.cloudRect.y + 66,
+        width: dataExtentX - edgeZone.x + 24,
+        height: edgeZone.height + 18,
+      },
+      label: "AWS Region",
+      subtitle: template === "multi-region-dr" ? "Primary region shown" : "Single region scope",
+    });
+    overlays.push({
+      rect: {
+        x: edgeZone.x + 10,
+        y: edgeZone.y + 58,
+        width: dataExtentX - edgeZone.x - 20,
+        height: edgeZone.height - 74,
+      },
+      label: "VPC",
+      subtitle: "Subnets and services within trust boundary",
+    });
+    return overlays;
+  }
+
+  if (provider === "azure") {
+    overlays.push({
+      rect: {
+        x: edgeZone.x - 12,
+        y: layout.cloudRect.y + 66,
+        width: allLaneExtentX - edgeZone.x + 24,
+        height: edgeZone.height + 18,
+      },
+      label: "Azure Region",
+      subtitle: template === "multi-region-dr" ? "Primary region shown" : "Regional deployment boundary",
+    });
+    overlays.push({
+      rect: {
+        x: edgeZone.x + 10,
+        y: edgeZone.y + 58,
+        width: dataExtentX - edgeZone.x - 20,
+        height: edgeZone.height - 74,
+      },
+      label: "VNet",
+      subtitle: "Application and data tiers in one VNet",
+    });
+    if (template === "multi-region-dr") {
+      overlays.push({
+        rect: {
+          x: opsZone.x + 16,
+          y: opsZone.y + 96,
+          width: opsZone.width - 32,
+          height: 138,
+        },
+        label: "Secondary Region (DR)",
+        subtitle: "Replicated failover target",
+        style: "dashed",
+      });
+    }
+    return overlays;
+  }
+
+  overlays.push({
+    rect: {
+      x: edgeZone.x - 12,
+      y: layout.cloudRect.y + 66,
+      width: dataExtentX - edgeZone.x + 24,
+      height: edgeZone.height + 18,
+    },
+    label: "VPC Network (Global)",
+    subtitle: "Global network with regional segmentation",
+  });
+  overlays.push({
+    rect: {
+      x: appZone.x + 8,
+      y: appZone.y + 58,
+      width: dataExtentX - appZone.x - 16,
+      height: appZone.height - 74,
+    },
+    label: "Regional Subnets",
+    subtitle: "Regional subnet scope for app and data services",
+    style: "dashed",
+  });
+  return overlays;
+}
+
+function renderBoundaryOverlays(theme: ProviderTheme, overlays: BoundaryOverlay[]) {
+  return overlays
+    .map((overlay) => {
+      const strokeDash = overlay.style === "dashed" ? ' stroke-dasharray="10 8"' : "";
+      const labelX = overlay.rect.x + 14;
+      const labelY = overlay.rect.y + 24;
+      const subtitleY = labelY + 16;
+      return [
+        `<rect x="${overlay.rect.x}" y="${overlay.rect.y}" width="${overlay.rect.width}" height="${overlay.rect.height}" rx="16" fill="none" stroke="${theme.zoneStroke}" stroke-width="1.6"${strokeDash} />`,
+        `<text x="${labelX}" y="${labelY}" fill="${theme.textStrong}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="11" font-weight="700">${escapeXml(overlay.label)}</text>`,
+        overlay.subtitle
+          ? `<text x="${labelX}" y="${subtitleY}" fill="${theme.textMuted}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="10.5">${escapeXml(overlay.subtitle)}</text>`
+          : "",
+      ].join("");
+    })
+    .join("");
+}
+
+function buildTemplateTitle(provider: ArchitectureProvider, template: DiagramTemplate) {
+  const suffix: Record<DiagramTemplate, string> = {
+    "web-tier": "reference architecture",
+    "event-driven": "event-driven architecture",
+    "data-platform": "data platform architecture",
+    hybrid: "hybrid architecture",
+    "multi-region-dr": "multi-region DR architecture",
+  };
+  return `${provider.toUpperCase()} ${suffix[template]}`;
+}
+
 function renderSvg(input: {
   provider: ArchitectureProvider;
+  template: DiagramTemplate;
   title: string;
   nodes: DiagramNode[];
   edges: DiagramEdge[];
@@ -975,6 +1291,8 @@ function renderSvg(input: {
   const height = 1040;
   const layout = buildLayout(width, height);
   const nodeRects = layoutNodeRects(input.nodes, layout);
+  const boundaryOverlays = buildBoundaryOverlays(input.provider, input.template, layout);
+  const sourceHint = TEMPLATE_SOURCE_HINTS[input.template];
 
   const laneZones = NON_SOURCE_LANES.map((lane) => {
     const rect = layout.laneZones[lane];
@@ -988,7 +1306,7 @@ function renderSvg(input: {
   const sourceZoneSvg = [
     `<rect x="${layout.sourceZone.x}" y="${layout.sourceZone.y}" width="${layout.sourceZone.width}" height="${layout.sourceZone.height}" rx="18" fill="${theme.sourceFill}" stroke="${theme.sourceStroke}" stroke-width="1.5" />`,
     `<text x="${layout.sourceZone.x + 14}" y="${layout.sourceZone.y + 30}" fill="${theme.textStrong}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="15" font-weight="700">${escapeXml(LANE_LABELS.source)}</text>`,
-    `<text x="${layout.sourceZone.x + 14}" y="${layout.sourceZone.y + 49}" fill="${theme.textMuted}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="12">Client entry and public access</text>`,
+    `<text x="${layout.sourceZone.x + 14}" y="${layout.sourceZone.y + 49}" fill="${theme.textMuted}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="12">${escapeXml(sourceHint)}</text>`,
   ].join("");
 
   const edgesByKind = {
@@ -1005,7 +1323,14 @@ function renderSvg(input: {
       }
       const channel = ((index % 5) - 2) as number;
       const path = routeConnectorPath(from, to, channel);
-      return `<path d="${path}" fill="none" stroke="${theme.accentMuted}" stroke-width="2" stroke-dasharray="8 6" opacity="0.9" marker-end="url(#arrow-secondary)" />`;
+      const labelX = Math.round((from.x + from.width / 2 + to.x + to.width / 2) / 2);
+      const labelY = Math.round((from.y + from.height / 2 + to.y + to.height / 2) / 2 - 8);
+      return [
+        `<path d="${path}" fill="none" stroke="${theme.accentMuted}" stroke-width="2" stroke-dasharray="8 6" opacity="0.9" marker-end="url(#arrow-secondary)" />`,
+        edge.label
+          ? `<text x="${labelX}" y="${labelY}" fill="${theme.textMuted}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="10.5" font-weight="600">${escapeXml(edge.label)}</text>`
+          : "",
+      ].join("");
     })
     .join("");
 
@@ -1018,7 +1343,14 @@ function renderSvg(input: {
       }
       const channel = ((index % 3) - 1) as number;
       const path = routeConnectorPath(from, to, channel);
-      return `<path d="${path}" fill="none" stroke="${theme.accent}" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow-primary)" />`;
+      const labelX = Math.round((from.x + from.width / 2 + to.x + to.width / 2) / 2);
+      const labelY = Math.round((from.y + from.height / 2 + to.y + to.height / 2) / 2 - 10);
+      return [
+        `<path d="${path}" fill="none" stroke="${theme.accent}" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow-primary)" />`,
+        edge.label
+          ? `<text x="${labelX}" y="${labelY}" fill="${theme.textStrong}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="10.5" font-weight="700">${escapeXml(edge.label)}</text>`
+          : "",
+      ].join("");
     })
     .join("");
 
@@ -1080,13 +1412,14 @@ function renderSvg(input: {
     `<rect x="0" y="0" width="${width}" height="${height}" fill="url(#canvas-gradient)" />`,
     `<rect x="0" y="0" width="${width}" height="92" fill="${theme.accentSoft}" />`,
     `<text x="34" y="49" fill="${theme.textStrong}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="56" font-weight="700">${escapeXml(input.title)}</text>`,
-    `<text x="34" y="84" fill="${theme.textMuted}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="19">Deterministic provider-authentic layout for architecture discussion and review.</text>`,
+    `<text x="34" y="84" fill="${theme.textMuted}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="19">${escapeXml(TEMPLATE_SUBTITLES[input.template])}</text>`,
     `<text x="${width - 180}" y="53" fill="${theme.accent}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="36" font-weight="700">${input.provider.toUpperCase()}</text>`,
     `<rect x="${layout.cloudRect.x}" y="${layout.cloudRect.y}" width="${layout.cloudRect.width}" height="${layout.cloudRect.height}" rx="24" fill="${theme.cloudFill}" stroke="${theme.cloudStroke}" stroke-width="1.8" />`,
     `<text x="${layout.cloudRect.x + 24}" y="${layout.cloudRect.y + 34}" fill="${theme.textStrong}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="16" font-weight="700">${escapeXml(input.provider.toUpperCase())} Cloud Boundary</text>`,
     `<text x="${layout.cloudRect.x + 24}" y="${layout.cloudRect.y + 54}" fill="${theme.textMuted}" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="12">Public-to-private flow with service grouping and operational overlays</text>`,
     sourceZoneSvg,
     laneZones,
+    renderBoundaryOverlays(theme, boundaryOverlays),
     secondaryEdges,
     primaryEdges,
     nodesSvg,
@@ -1105,11 +1438,12 @@ export function generateArchitectureDiagramFromNarrative(input: {
   narrative: string;
 }): GeneratedArchitectureDiagram {
   const trimmed = input.narrative.trim();
-  const nodes = collectNodesFromNarrative(input.provider, trimmed);
-  const edges = buildEdges(nodes);
-  const title = `${input.provider.toUpperCase()} reference architecture`;
+  const { nodes, template } = collectNodesFromNarrative(input.provider, trimmed);
+  const edges = buildEdges(nodes, template);
+  const title = buildTemplateTitle(input.provider, template);
   const svg = renderSvg({
     provider: input.provider,
+    template,
     title,
     nodes,
     edges,
@@ -1117,6 +1451,7 @@ export function generateArchitectureDiagramFromNarrative(input: {
 
   return {
     provider: input.provider,
+    template,
     svg,
     nodes,
     edges,

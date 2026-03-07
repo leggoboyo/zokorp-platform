@@ -163,6 +163,8 @@ export const landingZoneReadinessQuoteSchema = z.object({
   quoteTier: quoteTierSchema,
   quoteLow: z.number().int().min(0),
   quoteHigh: z.number().int().min(0),
+  estimatedDaysLow: z.number().min(0),
+  estimatedDaysHigh: z.number().min(0),
   confidence: quoteConfidenceSchema,
   rationaleLines: z.array(z.string().trim().min(1).max(140)).max(3),
 });
