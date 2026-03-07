@@ -3,14 +3,7 @@ import Link from "next/link";
 import { EmailVerificationResendForm } from "@/components/email-verification-resend-form";
 import { PasswordSignInForm } from "@/components/password-signin-form";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
-
-function sanitizeCallbackUrl(raw: string | undefined) {
-  if (!raw) {
-    return "/account";
-  }
-
-  return raw.startsWith("/") ? raw : "/account";
-}
+import { sanitizeAuthCallbackUrl } from "@/lib/auth-callback-url";
 
 function getErrorMessage(error: string | undefined) {
   if (!error) {
@@ -30,7 +23,7 @@ export default async function LoginPage({
   searchParams: Promise<{ callbackUrl?: string; error?: string; verified?: string }>;
 }) {
   const params = await searchParams;
-  const callbackUrl = sanitizeCallbackUrl(params.callbackUrl);
+  const callbackUrl = sanitizeAuthCallbackUrl(params.callbackUrl);
   const passwordAuthEnabled = isPasswordAuthEnabled();
   const errorMessage = getErrorMessage(params.error);
   const verificationSuccess = params.verified === "1";

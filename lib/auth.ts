@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { parseAdminEmails, isBusinessEmail } from "@/lib/security";
 import { verifyPassword } from "@/lib/password-auth";
 import { ensureUserAuthSchemaReady } from "@/lib/user-auth-schema";
+import { resolveAuthRedirectUrl } from "@/lib/auth-callback-url";
 
 const MAX_FAILED_ATTEMPTS = 8;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
@@ -128,6 +129,9 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      return resolveAuthRedirectUrl(url, baseUrl);
+    },
     async jwt({ token, user }) {
       const userId = user?.id ?? token.sub;
       if (!userId) {
