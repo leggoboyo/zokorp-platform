@@ -1,14 +1,7 @@
 import Link from "next/link";
 
 import { PasswordRegisterForm } from "@/components/password-register-form";
-
-function sanitizeCallbackUrl(raw: string | undefined) {
-  if (!raw) {
-    return "/account";
-  }
-
-  return raw.startsWith("/") ? raw : "/account";
-}
+import { sanitizeAuthCallbackUrl } from "@/lib/auth-callback-url";
 
 export default async function RegisterPage({
   searchParams,
@@ -16,7 +9,7 @@ export default async function RegisterPage({
   searchParams: Promise<{ callbackUrl?: string }>;
 }) {
   const params = await searchParams;
-  const callbackUrl = sanitizeCallbackUrl(params.callbackUrl);
+  const callbackUrl = sanitizeAuthCallbackUrl(params.callbackUrl);
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
