@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { auth } from "@/lib/auth";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
 
 const navLinks = [
@@ -14,17 +13,8 @@ const navLinks = [
   { href: "/account", label: "Account" },
 ];
 
-export async function SiteHeader() {
+export function SiteHeader() {
   const authRuntimeReady = isPasswordAuthEnabled() && Boolean(process.env.NEXTAUTH_SECRET);
-
-  let session = null;
-  if (authRuntimeReady) {
-    try {
-      session = await auth();
-    } catch {
-      session = null;
-    }
-  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/78 backdrop-blur-xl">
@@ -53,31 +43,11 @@ export async function SiteHeader() {
                   {link.label}
                 </Link>
               ))}
-              {session?.user?.role === "ADMIN" ? (
-                <Link
-                  href="/admin/service-requests"
-                  className="focus-ring rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 font-medium text-amber-800 transition hover:bg-amber-100"
-                >
-                  Admin
-                </Link>
-              ) : null}
             </nav>
           </div>
 
           <div className="text-sm text-slate-700">
-            {session?.user?.email ? (
-              <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                <span className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-600">
-                  {session.user.email}
-                </span>
-                <Link
-                  href="/api/auth/signout?callbackUrl=/"
-                  className="focus-ring rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-100"
-                >
-                  Sign out
-                </Link>
-              </div>
-            ) : authRuntimeReady ? (
+            {authRuntimeReady ? (
               <div className="flex flex-wrap items-center gap-2 md:justify-end">
                 <Link
                   href="/login"

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ServiceRequestType = "CONSULTATION" | "DELIVERY" | "SUPPORT";
 
@@ -26,13 +26,44 @@ type SubmissionResponse = {
 };
 
 type ServiceRequestPanelProps = {
-  signedIn: boolean;
+  signedIn?: boolean;
 };
 
-export function ServiceRequestPanel({ signedIn }: ServiceRequestPanelProps) {
+export function ServiceRequestPanel({ signedIn = false }: ServiceRequestPanelProps) {
+  const [isSignedIn, setIsSignedIn] = useState(signedIn);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncSession() {
+      try {
+        const response = await fetch("/api/auth/session", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as { user?: { email?: string } };
+        if (isMounted) {
+          setIsSignedIn(Boolean(data.user?.email));
+        }
+      } catch {
+        // Keep static fallback state if session endpoint is unavailable.
+      }
+    }
+
+    void syncSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const submitLabel = useMemo(() => {
     if (isSubmitting) {
@@ -45,7 +76,7 @@ export function ServiceRequestPanel({ signedIn }: ServiceRequestPanelProps) {
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!signedIn) {
+    if (!isSignedIn) {
       setError("Please sign in first so your service request can be tracked in your account.");
       return;
     }
@@ -111,7 +142,7 @@ export function ServiceRequestPanel({ signedIn }: ServiceRequestPanelProps) {
         Submit what you need and ZoKorp will triage, schedule, and update status in your account timeline.
       </p>
 
-      {!signedIn ? (
+      {!isSignedIn ? (
         <div className="mt-5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
           <p>Sign in to submit a request and track milestones from your account.</p>
           <Link
@@ -191,7 +222,7 @@ export function ServiceRequestPanel({ signedIn }: ServiceRequestPanelProps) {
         <div className="flex items-end">
           <button
             type="submit"
-            disabled={isSubmitting || !signedIn}
+            disabled={isSubmitting || !isSignedIn}
             className="focus-ring rounded-md bg-gradient-to-r from-slate-900 to-[#174f7f] px-4 py-2 text-sm font-semibold text-white transition hover:from-slate-800 hover:to-[#1d628f] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitLabel}
