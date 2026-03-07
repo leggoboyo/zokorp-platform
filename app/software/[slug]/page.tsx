@@ -2,11 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AccessModel, CreditTier, EntitlementStatus, PriceKind, Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
+import type { ComponentProps } from "react";
 
 import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutFlashBanner } from "@/components/checkout-flash-banner";
 import { ArchitectureDiagramReviewerForm } from "@/components/architecture-diagram-reviewer/ArchitectureDiagramReviewerForm";
 import { LandingZoneReadinessCheckerForm } from "@/components/landing-zone-readiness/LandingZoneReadinessCheckerForm";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { ToolPageLayout } from "@/components/ui/tool-page-layout";
 import { ValidatorForm } from "@/components/validator-form";
 import { auth } from "@/lib/auth";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
@@ -14,6 +20,7 @@ import { validatorPriceTierFromAmount, validatorProfileCreditsFromTiers, validat
 import { db } from "@/lib/db";
 import { getProductBySlug } from "@/lib/catalog";
 import { buildPageMetadata } from "@/lib/site";
+import { cn } from "@/lib/utils";
 import { getValidatorTargetOptions } from "@/lib/validator-library";
 import type { ValidationProfile } from "@/lib/zokorp-validator-engine";
 
@@ -87,7 +94,22 @@ function getPriceTitle(productSlug: string, amount: number, kind: PriceKind) {
   return kind.replaceAll("_", " ");
 }
 
-type Tone = "emerald" | "amber" | "sky";
+type Tone = "success" | "warning" | "info";
+
+function getAccessModelLabel(accessModel: AccessModel) {
+  switch (accessModel) {
+    case AccessModel.FREE:
+      return "Free";
+    case AccessModel.ONE_TIME_CREDIT:
+      return "Credit";
+    case AccessModel.SUBSCRIPTION:
+      return "Subscription";
+    case AccessModel.METERED:
+      return "Metered";
+    default:
+      return "Access";
+  }
+}
 
 function entitlementMessage(input: {
   signedIn: boolean;
@@ -102,14 +124,14 @@ function entitlementMessage(input: {
 }): { tone: Tone; text: string } {
   if (input.authUnavailable) {
     return {
-      tone: "amber",
+      tone: "warning",
       text: "Login setup is still in progress. Purchases and tool runs will unlock after authentication email delivery is connected.",
     };
   }
 
   if (input.emailOnlyFreeTool) {
     return {
-      tone: input.signedIn ? "emerald" : "sky",
+      tone: input.signedIn ? "success" : "info",
       text: input.signedIn
         ? "This checker is free. Results are emailed to your business address unless you change it below."
         : "This checker is free. Enter a business email and the full report will be emailed to you.",
@@ -118,21 +140,21 @@ function entitlementMessage(input: {
 
   if (!input.signedIn && input.accessModel === AccessModel.FREE && input.requiresSignInForFree) {
     return {
-      tone: "sky",
+      tone: "info",
       text: "Sign in with your business email to run this architecture review.",
     };
   }
 
   if (!input.signedIn) {
     return {
-      tone: "sky",
+      tone: "info",
       text: "Sign in first, then purchase the correct tier to unlock this tool.",
     };
   }
 
   if (input.billingUnavailable) {
     return {
-      tone: "amber",
+      tone: "warning",
       text: "You are signed in. Billing is still being finalized in test mode, so checkout is temporarily unavailable.",
     };
   }
@@ -141,19 +163,19 @@ function entitlementMessage(input: {
     if (input.entitlementStatus === EntitlementStatus.ACTIVE && input.remainingUses > 0) {
       if (input.isTieredValidator) {
         return {
-          tone: "emerald",
+          tone: "success",
           text: "Credits are active in one or more wallet tiers. Select a validation profile below to see exact usable credits.",
         };
       }
 
       return {
-        tone: "emerald",
+        tone: "success",
         text: `Access active. You currently have ${input.remainingUses} credit${input.remainingUses === 1 ? "" : "s"} available.`,
       };
     }
 
     return {
-      tone: "amber",
+      tone: "warning",
       text: "No active credits found. Purchase a tier below to run this tool.",
     };
   }
@@ -161,7 +183,7 @@ function entitlementMessage(input: {
   if (input.accessModel === AccessModel.FREE) {
     if (input.requiresSignInForFree) {
       return {
-        tone: input.signedIn ? "emerald" : "sky",
+        tone: input.signedIn ? "success" : "info",
         text: input.signedIn
           ? "Run the architecture review and the results will be emailed to your signed-in business address."
           : "Sign in with a business email before running this architecture review.",
@@ -169,7 +191,7 @@ function entitlementMessage(input: {
     }
 
     return {
-      tone: "emerald",
+      tone: "success",
       text: input.signedIn
         ? "This product is free to use. Sign-in keeps usage history and future account-linked settings."
         : "This product is free to use. Sign in if you want usage history and account-linked features.",
@@ -177,17 +199,26 @@ function entitlementMessage(input: {
   }
 
   if (input.entitlementStatus === EntitlementStatus.ACTIVE) {
-    return { tone: "emerald", text: "Access active for this product." };
+    return { tone: "success", text: "Access active for this product." };
   }
 
-  return { tone: "amber", text: "Purchase or subscribe to unlock this product." };
+  return { tone: "warning", text: "Purchase or subscribe to unlock this product." };
 }
 
-const toneStyles = {
-  emerald: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  amber: "border-amber-200 bg-amber-50 text-amber-800",
-  sky: "border-sky-200 bg-sky-50 text-sky-800",
-} satisfies Record<Tone, string>;
+function accessBadgeVariant(accessModel: AccessModel): ComponentProps<typeof Badge>["variant"] {
+  switch (accessModel) {
+    case AccessModel.FREE:
+      return "success";
+    case AccessModel.ONE_TIME_CREDIT:
+      return "warning";
+    case AccessModel.SUBSCRIPTION:
+      return "info";
+    case AccessModel.METERED:
+      return "brand";
+    default:
+      return "secondary";
+  }
+}
 
 function isRealStripePriceId(priceId: string) {
   return priceId.startsWith("price_");
@@ -368,52 +399,54 @@ export default async function SoftwareDetailPage({
   const checkoutState =
     query.checkout === "success" ? "success" : query.checkout === "cancelled" ? "cancelled" : null;
 
-  return (
-    <div className="space-y-6 md:space-y-8">
-      <section className="glass-surface animate-fade-up rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Software Tool</p>
-        <h1 className="font-display mt-2 text-balance text-4xl font-semibold text-slate-900">{product.name}</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">{productDescription}</p>
+  const toolMeta = (
+    <>
+      <Badge variant={accessBadgeVariant(product.accessModel)}>{getAccessModelLabel(product.accessModel)}</Badge>
+      <Badge variant="secondary">{signedIn ? "Signed in" : "Account optional"}</Badge>
+      {isValidator ? <Badge variant="outline">1 credit per run</Badge> : null}
+      {isArchitectureReviewer ? <Badge variant="outline">Email-only review</Badge> : null}
+      {isLandingZoneChecker ? <Badge variant="outline">Deterministic score</Badge> : null}
+      {!isValidator && !isArchitectureReviewer && !isLandingZoneChecker ? (
+        <Badge variant="outline">Account-linked access</Badge>
+      ) : null}
+    </>
+  );
 
-        <div className={`mt-5 rounded-xl border px-4 py-3 text-sm ${toneStyles[message.tone]}`}>
-          {message.text}
-        </div>
-
-        <CheckoutFlashBanner state={checkoutState} />
-
-        {shouldShowSignInCta ? (
-          <div className="mt-4">
-            <Link
-              href={`/login?callbackUrl=/software/${product.slug}`}
-              className="focus-ring inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Sign in to continue
-            </Link>
-          </div>
-        ) : null}
-      </section>
+  const pricingSection = (
+    <section className="space-y-4">
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Access Options</p>
+        <h2 className="font-display text-3xl font-semibold text-slate-900">Pricing and entitlement path</h2>
+        <p className="max-w-3xl text-sm leading-6 text-slate-600 md:text-base">
+          Choose the entitlement model for this tool, then launch it under the same account.
+        </p>
+      </div>
 
       {displayPrices.length > 0 ? (
-        <section className="grid gap-4 md:grid-cols-3">
+        <div className={cn("grid gap-4", displayPrices.length === 1 ? "md:grid-cols-2" : "md:grid-cols-3")}>
           {displayPrices.map((price) => (
-            <article key={price.id} className="surface lift-card rounded-2xl p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                {getPriceTitle(product.slug, price.amount, price.kind)}
-              </p>
-              <p className="mt-2 font-display text-4xl font-semibold text-slate-900">
-                {formatAmount(price.amount, price.currency)}
-              </p>
-              <p className="mt-2 text-sm text-slate-600">
-                {price.kind === PriceKind.CREDIT_PACK
-                  ? `Runs per purchase: ${price.creditsGranted}`
-                  : "Billed through Stripe checkout"}
-              </p>
-              {product.slug === "zokorp-validator" && price.kind === PriceKind.CREDIT_PACK ? (
-                <p className="mt-1 text-xs text-slate-500">
-                  Wallet tier: {validatorTierLabel(getValidatorPriceTier(price))}
+            <Card key={price.id} lift className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5">
+              <CardHeader>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  {getPriceTitle(product.slug, price.amount, price.kind)}
                 </p>
-              ) : null}
-              <div className="mt-4">
+                <p className="font-display text-4xl font-semibold text-slate-900">
+                  {formatAmount(price.amount, price.currency)}
+                </p>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-6 text-slate-600">
+                  {price.kind === PriceKind.CREDIT_PACK
+                    ? `Runs per purchase: ${price.creditsGranted}`
+                    : "Billed through Stripe checkout"}
+                </p>
+                {product.slug === "zokorp-validator" && price.kind === PriceKind.CREDIT_PACK ? (
+                  <p className="text-xs text-slate-500">
+                    Wallet tier: {validatorTierLabel(getValidatorPriceTier(price))}
+                  </p>
+                ) : null}
+              </CardContent>
+              <CardFooter>
                 <CheckoutButton
                   productSlug={product.slug}
                   priceId={price.stripePriceId}
@@ -421,32 +454,125 @@ export default async function SoftwareDetailPage({
                   requiresAuth={!signedIn}
                   authUnavailable={authUnavailable}
                   billingUnavailable={
-                    requiresBilling
-                      ? billingUnavailable || !isRealStripePriceId(price.stripePriceId)
-                      : false
+                    requiresBilling ? billingUnavailable || !isRealStripePriceId(price.stripePriceId) : false
                   }
                 />
-              </div>
-            </article>
+              </CardFooter>
+            </Card>
           ))}
-        </section>
+        </div>
       ) : (
-        <section className="surface-muted rounded-2xl p-6">
-          <h2 className="font-display text-2xl font-semibold text-slate-900">Pricing availability</h2>
-          {product.accessModel === AccessModel.FREE ? (
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              No purchase is required for this product. Sign in for account-linked usage history and
-              access management as this tool evolves.
+        <Card tone={product.accessModel === AccessModel.FREE ? "default" : "muted"} className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+          <CardHeader>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Default access</p>
+            <h3 className="font-display text-3xl font-semibold text-slate-900">
+              {product.accessModel === AccessModel.FREE ? "Free access" : "Pricing availability"}
+            </h3>
+          </CardHeader>
+          <CardContent>
+            <p className="max-w-2xl text-sm leading-6 text-slate-600">
+              {product.accessModel === AccessModel.FREE
+                ? "No purchase is required for this product. Sign in when you want usage history and account-linked access management."
+                : "Pricing for this software item is being finalized. Once Stripe prices are mapped, checkout will appear here automatically."}
             </p>
-          ) : (
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              Pricing for this software item is being finalized. Once Stripe prices are mapped, checkout
-              will appear here automatically.
-            </p>
-          )}
-        </section>
+          </CardContent>
+          <CardFooter>
+            <Link href="/pricing" className={buttonVariants({ variant: "secondary" })}>
+              View pricing overview
+            </Link>
+          </CardFooter>
+        </Card>
       )}
+    </section>
+  );
 
+  const secondarySection = (
+    <div className={cn("grid gap-4", isArchitectureReviewer ? "lg:grid-cols-[1.15fr_0.85fr]" : "md:grid-cols-2")}>
+      {isArchitectureReviewer ? (
+        <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+          <CardHeader>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Benchmark Library</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-900">Compare recurring architecture patterns</h2>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-6 text-slate-600">
+              Review anonymized provider patterns, monthly digests, and remediation snippets before submitting your own diagram.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Link href="/software/architecture-diagram-reviewer/benchmarks" className={buttonVariants()}>
+              Open benchmark library
+            </Link>
+            <Link
+              href="/software/architecture-diagram-reviewer/benchmarks/monthly"
+              className={buttonVariants({ variant: "secondary" })}
+            >
+              View monthly digest
+            </Link>
+          </CardFooter>
+        </Card>
+      ) : null}
+
+      <Card tone="glass" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+        <CardHeader>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Need hands-on help?</p>
+          <h2 className="font-display text-3xl font-semibold text-slate-900">Connect the tool to a scoped delivery engagement</h2>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm leading-6 text-slate-600">
+            Use the software for quick validation or review, then move into architecture guidance, remediation, or implementation support without leaving the platform.
+          </p>
+        </CardContent>
+        <CardFooter>
+          <Link href="/services#service-request" className={buttonVariants()}>
+            Request services
+          </Link>
+          <Link href="/support" className={buttonVariants({ variant: "secondary" })}>
+            Contact support
+          </Link>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+
+  return (
+    <ToolPageLayout
+      eyebrow="Software Tool"
+      title={product.name}
+      description={productDescription}
+      meta={toolMeta}
+      alert={
+        <div className="space-y-3">
+          <Alert tone={message.tone}>
+            <AlertTitle>Access status</AlertTitle>
+            <AlertDescription>{message.text}</AlertDescription>
+          </Alert>
+          <CheckoutFlashBanner state={checkoutState} />
+        </div>
+      }
+      actions={
+        <>
+          {shouldShowSignInCta ? (
+            <Link href={`/login?callbackUrl=/software/${product.slug}`} className={buttonVariants()}>
+              Sign in to continue
+            </Link>
+          ) : null}
+          <Link href="/account" className={buttonVariants({ variant: shouldShowSignInCta ? "secondary" : "primary" })}>
+            {signedIn ? "Open account" : "View account access"}
+          </Link>
+        </>
+      }
+      pricing={pricingSection}
+      bodyTitle={!isValidator && !isArchitectureReviewer && !isLandingZoneChecker ? "Tool workflow" : undefined}
+      bodyDescription={
+        !isValidator && !isArchitectureReviewer && !isLandingZoneChecker
+          ? product.accessModel === AccessModel.FREE
+            ? "This product is free to use today and can later connect to account-linked history and access controls."
+            : "This product is configured for account-based access. Sign in, purchase access, then launch it from your account context."
+          : undefined
+      }
+      secondary={secondarySection}
+    >
       {isValidator ? (
         <ValidatorForm
           requiresAuth={!signedIn}
@@ -455,48 +581,29 @@ export default async function SoftwareDetailPage({
           profileCredits={validatorProfileCredits}
         />
       ) : isArchitectureReviewer ? (
-        <div className="space-y-5">
-          <ArchitectureDiagramReviewerForm requiresAuth={!signedIn} authUnavailable={authUnavailable} />
-          <section className="surface rounded-2xl p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Organic Discovery</p>
-            <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">Architecture benchmark library</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-              Compare anonymized provider patterns, recurring deductions, and remediation snippets before submitting your own diagram.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link
-                href="/software/architecture-diagram-reviewer/benchmarks"
-                className="focus-ring inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-              >
-                Open benchmark library
-              </Link>
-              <Link
-                href="/software/architecture-diagram-reviewer/benchmarks/monthly"
-                className="focus-ring inline-flex rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              >
-                View monthly benchmark digest
-              </Link>
-            </div>
-          </section>
-        </div>
+        <ArchitectureDiagramReviewerForm requiresAuth={!signedIn} authUnavailable={authUnavailable} />
       ) : isLandingZoneChecker ? (
         <LandingZoneReadinessCheckerForm initialEmail={currentEmail ?? ""} initialName={session?.user?.name ?? ""} />
       ) : (
-        <section className="surface lift-card rounded-2xl p-6">
-          <h2 className="font-display text-2xl font-semibold text-slate-900">Product workflow</h2>
-          {product.accessModel === AccessModel.FREE ? (
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              This product is free. Sign in to keep usage history and access updates as the feature set
-              expands.
+        <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+          <CardHeader>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Product workflow</p>
+            <h3 className="font-display text-3xl font-semibold text-slate-900">Account-based launch path</h3>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-6 text-slate-600">
+              {product.accessModel === AccessModel.FREE
+                ? "This product is free. Sign in to keep usage history and access updates as the feature set expands."
+                : "This product is configured for account-based access. Sign in, purchase access, then launch it from your account context."}
             </p>
-          ) : (
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              This product is configured for account-based access. Sign in, purchase access, then launch
-              it from your account context.
-            </p>
-          )}
-        </section>
+          </CardContent>
+          <CardFooter>
+            <Link href="/account" className={buttonVariants()}>
+              Open account
+            </Link>
+          </CardFooter>
+        </Card>
       )}
-    </div>
+    </ToolPageLayout>
   );
 }

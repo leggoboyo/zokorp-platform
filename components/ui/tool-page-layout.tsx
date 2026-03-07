@@ -1,6 +1,5 @@
 import * as React from "react";
 
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 type ToolPageLayoutProps = {
@@ -11,6 +10,8 @@ type ToolPageLayoutProps = {
   alert?: React.ReactNode;
   actions?: React.ReactNode;
   pricing?: React.ReactNode;
+  bodyTitle?: string;
+  bodyDescription?: string;
   secondary?: React.ReactNode;
   heroTone?: "glass" | "hero";
   children: React.ReactNode;
@@ -24,6 +25,8 @@ export function ToolPageLayout({
   alert,
   actions,
   pricing,
+  bodyTitle,
+  bodyDescription,
   secondary,
   heroTone = "glass",
   children,
@@ -68,9 +71,17 @@ export function ToolPageLayout({
 
       {pricing ? <div>{pricing}</div> : null}
 
-      <div className="space-y-6">
-        <Card className="rounded-2xl p-0 shadow-none">{children}</Card>
-      </div>
+      <section className="space-y-4">
+        {bodyTitle || bodyDescription ? (
+          <div className="space-y-2">
+            {bodyTitle ? <h2 className="font-display text-3xl font-semibold text-slate-900">{bodyTitle}</h2> : null}
+            {bodyDescription ? (
+              <p className="max-w-3xl text-sm leading-6 text-slate-600 md:text-base">{bodyDescription}</p>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="space-y-4">{children}</div>
+      </section>
 
       {secondary ? <div>{secondary}</div> : null}
     </div>
