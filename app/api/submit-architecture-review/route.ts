@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
@@ -13,6 +14,7 @@ import { submitArchitectureReviewMetadataSchema } from "@/lib/architecture-revie
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
 import { ensureLeadLogSchemaReady } from "@/lib/lead-log-schema";
+import { normalizeIdempotencyKey, readIdempotencyEntry, writeIdempotencyEntry } from "@/lib/idempotency-cache";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { maxUploadBytes } from "@/lib/security";
 import { archiveArchitectureReviewToWorkDrive } from "@/lib/zoho-workdrive";
@@ -20,6 +22,15 @@ import { archiveArchitectureReviewToWorkDrive } from "@/lib/zoho-workdrive";
 export const runtime = "nodejs";
 
 const ARCHITECTURE_REVIEW_MAX_MB = Number(process.env.ARCHITECTURE_REVIEW_UPLOAD_MAX_MB ?? "8");
+const ARCH_REVIEW_RATE_LIMIT = 8;
+const ARCH_REVIEW_WINDOW_MS = 60 * 60 * 1000;
+const MAX_METADATA_JSON_CHARS = 40_000;
+
+type RateLimitResult = {
+  allowed: boolean;
+  remaining: number;
+  retryAfterSeconds: number;
+};
 
 type ParsedDiagram = {
   filename: string;
@@ -28,6 +39,43 @@ type ParsedDiagram = {
   mimeType: "image/png" | "image/svg+xml";
   svgEvidence: { text: string; dimensions: { width: number; height: number } | null } | null;
 };
+
+function responseHeaders(requestId: string, limiter?: RateLimitResult) {
+  const headers: Record<string, string> = {
+    "Cache-Control": "no-store",
+    "X-Request-Id": requestId,
+  };
+
+  if (limiter) {
+    headers["X-RateLimit-Limit"] = String(ARCH_REVIEW_RATE_LIMIT);
+    headers["X-RateLimit-Remaining"] = String(limiter.remaining);
+    headers["X-RateLimit-Reset"] = String(Math.floor(Date.now() / 1000) + limiter.retryAfterSeconds);
+  }
+
+  return headers;
+}
+
+function jsonResponse(
+  requestId: string,
+  body: Record<string, unknown>,
+  status = 200,
+  limiter?: RateLimitResult,
+  extraHeaders?: Record<string, string>,
+) {
+  return NextResponse.json(
+    {
+      ...body,
+      requestId,
+    },
+    {
+      status,
+      headers: {
+        ...responseHeaders(requestId, limiter),
+        ...(extraHeaders ?? {}),
+      },
+    },
+  );
+}
 
 function emlSecret() {
   return process.env.ARCH_REVIEW_EML_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
@@ -51,9 +99,12 @@ async function parsePayloadFromRequest(request: Request) {
   const formData = await request.formData();
   const metadataRaw = formData.get("metadata");
   const diagramRaw = formData.get("diagram");
-  const reportRaw = formData.get("report");
 
-  if ((reportRaw !== null && typeof reportRaw !== "string") || typeof metadataRaw !== "string" || !(diagramRaw instanceof File)) {
+  if (typeof metadataRaw !== "string" || !(diagramRaw instanceof File)) {
+    throw new Error("INVALID_PAYLOAD");
+  }
+
+  if (metadataRaw.length <= 0 || metadataRaw.length > MAX_METADATA_JSON_CHARS) {
     throw new Error("INVALID_PAYLOAD");
   }
 
@@ -70,6 +121,10 @@ async function parsePayloadFromRequest(request: Request) {
 
   const lowerName = diagramRaw.name.toLowerCase();
   if (lowerName.endsWith(".png")) {
+    if (metadata.diagramFormat && metadata.diagramFormat !== "png") {
+      throw new Error("DIAGRAM_FORMAT_MISMATCH");
+    }
+
     if (!isPngBytes(bytes)) {
       throw new Error("INVALID_DIAGRAM_FILE");
     }
@@ -90,6 +145,10 @@ async function parsePayloadFromRequest(request: Request) {
     throw new Error("INVALID_DIAGRAM_FILE");
   }
 
+  if (metadata.diagramFormat && metadata.diagramFormat !== "svg") {
+    throw new Error("DIAGRAM_FORMAT_MISMATCH");
+  }
+
   return {
     metadata,
     diagram: {
@@ -103,26 +162,49 @@ async function parsePayloadFromRequest(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const requestId = randomUUID();
+  let limiterContext: RateLimitResult | undefined;
+
   try {
     const user = await requireUser();
     if (!user.email) {
-      return NextResponse.json({ error: "Account email is required." }, { status: 400 });
+      return jsonResponse(requestId, { error: "Account email is required." }, 400);
+    }
+
+    const incomingIdempotencyKey = normalizeIdempotencyKey(request.headers.get("x-idempotency-key"));
+    const idempotencyCacheKey = incomingIdempotencyKey
+      ? `arch-review:${user.id}:${incomingIdempotencyKey}`
+      : null;
+
+    if (idempotencyCacheKey) {
+      const cached = readIdempotencyEntry(idempotencyCacheKey);
+      if (cached) {
+        const cachedRequestId = typeof cached.body.requestId === "string" ? cached.body.requestId : requestId;
+        return NextResponse.json(cached.body, {
+          status: cached.status,
+          headers: {
+            ...responseHeaders(cachedRequestId),
+            "X-Idempotent-Replay": "1",
+          },
+        });
+      }
     }
 
     const limiter = consumeRateLimit({
       key: `arch-review:${user.id}:${getRequestFingerprint(request)}`,
-      limit: 8,
-      windowMs: 60 * 60 * 1000,
+      limit: ARCH_REVIEW_RATE_LIMIT,
+      windowMs: ARCH_REVIEW_WINDOW_MS,
     });
+    limiterContext = limiter;
 
     if (!limiter.allowed) {
-      return NextResponse.json(
+      return jsonResponse(
+        requestId,
         { error: "Too many architecture review requests. Please retry later." },
+        429,
+        limiter,
         {
-          status: 429,
-          headers: {
-            "Retry-After": String(limiter.retryAfterSeconds),
-          },
+          "Retry-After": String(limiter.retryAfterSeconds),
         },
       );
     }
@@ -168,13 +250,14 @@ export async function POST(request: Request) {
       (finding) => finding.ruleId === "INPUT-NOT-ARCH-DIAGRAM" && finding.pointsDeducted > 0,
     );
     if (hasNonArchitectureFinding) {
-      return NextResponse.json(
-        {
-          error:
-            "Uploaded diagram appears to be non-architecture content. No review email was sent. Upload a real architecture diagram.",
-        },
-        { status: 422 },
-      );
+      const body = {
+        error:
+          "Uploaded diagram appears to be non-architecture content. No review email was sent. Upload a real architecture diagram.",
+      } as const;
+      if (idempotencyCacheKey) {
+        writeIdempotencyEntry(idempotencyCacheKey, { status: 422, body: { ...body, requestId } });
+      }
+      return jsonResponse(requestId, body, 422, limiterContext);
     }
 
     const resolvedUserName = user.name?.trim() || user.email.split("@")[0] || "user";
@@ -284,6 +367,7 @@ export async function POST(request: Request) {
             emailProvider: sendResult.provider,
             emailError: sendResult.error ?? null,
             workdriveStatus,
+            requestId,
           },
         },
       });
@@ -294,9 +378,11 @@ export async function POST(request: Request) {
     }
 
     if (sendResult.ok) {
-      return NextResponse.json({
-        status: "sent",
-      });
+      const body = { status: "sent" } as const;
+      if (idempotencyCacheKey) {
+        writeIdempotencyEntry(idempotencyCacheKey, { status: 200, body: { ...body, requestId } });
+      }
+      return jsonResponse(requestId, body, 200, limiterContext);
     }
 
     const mailtoUrl = buildMailtoUrl({
@@ -308,18 +394,24 @@ export async function POST(request: Request) {
     const secret = emlSecret();
     if (!secret) {
       if (mailtoUrl) {
-        return NextResponse.json({
+        const body = {
           status: "fallback",
           reason: "Email sending failed. Use the mailto draft fallback.",
           mailtoUrl,
-        });
+        } as const;
+        if (idempotencyCacheKey) {
+          writeIdempotencyEntry(idempotencyCacheKey, { status: 200, body: { ...body, requestId } });
+        }
+        return jsonResponse(requestId, body, 200, limiterContext);
       }
 
-      return NextResponse.json(
+      return jsonResponse(
+        requestId,
         {
           error: "Email fallback is not configured. Set ARCH_REVIEW_EML_SECRET to enable .eml downloads.",
         },
-        { status: 503 },
+        503,
+        limiterContext,
       );
     }
 
@@ -332,44 +424,65 @@ export async function POST(request: Request) {
       secret,
     );
 
-    return NextResponse.json({
+    const body = {
       status: "fallback",
       reason: sendResult.error ?? "Email delivery fallback triggered.",
       mailtoUrl,
       emlDownloadToken,
-    });
+    } as const;
+    if (idempotencyCacheKey) {
+      writeIdempotencyEntry(idempotencyCacheKey, { status: 200, body: { ...body, requestId } });
+    }
+    return jsonResponse(requestId, body, 200, limiterContext);
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonResponse(requestId, { error: "Unauthorized" }, 401, limiterContext);
     }
 
     if (error instanceof Error && (error.message === "INVALID_DIAGRAM_FILE" || error.message === "INVALID_SVG_FILE")) {
-      return NextResponse.json({ error: "Invalid diagram file. Upload a safe PNG or SVG." }, { status: 400 });
+      return jsonResponse(requestId, { error: "Invalid diagram file. Upload a safe PNG or SVG." }, 400, limiterContext);
+    }
+
+    if (error instanceof Error && error.message === "DIAGRAM_FORMAT_MISMATCH") {
+      return jsonResponse(
+        requestId,
+        { error: "Diagram metadata format does not match the uploaded file type." },
+        400,
+        limiterContext,
+      );
     }
 
     if (error instanceof Error && error.message === "DIAGRAM_TOO_LARGE") {
-      return NextResponse.json(
+      return jsonResponse(
+        requestId,
         { error: `Diagram too large. Max allowed is ${ARCHITECTURE_REVIEW_MAX_MB}MB.` },
-        { status: 413 },
+        413,
+        limiterContext,
       );
     }
 
     if (error instanceof Error && error.message === "INVALID_PAYLOAD") {
-      return NextResponse.json({ error: "Invalid review payload." }, { status: 400 });
+      return jsonResponse(requestId, { error: "Invalid review payload." }, 400, limiterContext);
     }
 
     if (isOcrTimeoutError(error)) {
-      return NextResponse.json(
+      return jsonResponse(
+        requestId,
         { error: "OCR timed out while processing the diagram. Retry with a clearer or smaller PNG." },
-        { status: 504 },
+        504,
+        limiterContext,
       );
     }
 
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Invalid review payload." }, { status: 400 });
+    if (error instanceof SyntaxError) {
+      return jsonResponse(requestId, { error: "Invalid review payload." }, 400, limiterContext);
     }
 
-    console.error(error);
-    return NextResponse.json({ error: "Unable to submit architecture review." }, { status: 500 });
+    if (error instanceof z.ZodError) {
+      return jsonResponse(requestId, { error: "Invalid review payload." }, 400, limiterContext);
+    }
+
+    console.error("submit-architecture-review unhandled error", { requestId, error });
+    return jsonResponse(requestId, { error: "Unable to submit architecture review." }, 500, limiterContext);
   }
 }

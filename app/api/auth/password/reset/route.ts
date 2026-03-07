@@ -1,9 +1,11 @@
+import { Role } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
 import { hashPassword, hashOpaqueToken, validatePasswordStrength } from "@/lib/password-auth";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
+import { parseAdminEmails } from "@/lib/security";
 import { ensureUserAuthSchemaReady } from "@/lib/user-auth-schema";
 
 const resetSchema = z.object({
@@ -62,6 +64,12 @@ export async function POST(request: Request) {
       },
       select: {
         userId: true,
+        user: {
+          select: {
+            email: true,
+            emailVerified: true,
+          },
+        },
       },
     });
 
@@ -70,27 +78,60 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await hashPassword(parsed.data.password);
+    const now = new Date();
+    const normalizedEmail = userAuth.user.email?.trim().toLowerCase() ?? null;
+    const shouldAutoVerify = Boolean(normalizedEmail && !userAuth.user.emailVerified);
+    const shouldPromoteToAdmin =
+      Boolean(normalizedEmail) && parseAdminEmails(process.env.ZOKORP_ADMIN_EMAILS).has(normalizedEmail!);
+    const verificationIdentifier = normalizedEmail ? `verify-email:${normalizedEmail}` : null;
 
-    await db.userAuth.update({
-      where: { userId: userAuth.userId },
-      data: {
-        passwordHash,
-        passwordUpdatedAt: new Date(),
-        resetTokenHash: null,
-        resetTokenExpiresAt: null,
-        failedLoginAttempts: 0,
-        lockedUntil: null,
-      },
+    await db.$transaction(async (tx) => {
+      await tx.userAuth.update({
+        where: { userId: userAuth.userId },
+        data: {
+          passwordHash,
+          passwordUpdatedAt: now,
+          resetTokenHash: null,
+          resetTokenExpiresAt: null,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      });
+
+      if (shouldAutoVerify) {
+        await tx.user.update({
+          where: { id: userAuth.userId },
+          data: {
+            emailVerified: now,
+            ...(shouldPromoteToAdmin ? { role: Role.ADMIN } : {}),
+          },
+        });
+      }
+
+      if (verificationIdentifier) {
+        await tx.verificationToken.deleteMany({
+          where: {
+            identifier: verificationIdentifier,
+          },
+        });
+      }
     });
 
     await db.auditLog.create({
       data: {
         userId: userAuth.userId,
         action: "auth.password_reset_completed",
+        metadataJson: {
+          autoVerifiedEmail: shouldAutoVerify,
+        },
       },
     });
 
-    return NextResponse.json({ message: "Password updated successfully." });
+    return NextResponse.json({
+      message: shouldAutoVerify
+        ? "Password updated and email verified. You can sign in now."
+        : "Password updated successfully.",
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Unable to reset password." }, { status: 500 });

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
+import { FetchTimeoutError, fetchWithTimeout, readResponseBodySnippet } from "@/lib/http";
 import { ensureLeadLogSchemaReady } from "@/lib/lead-log-schema";
 
 export const runtime = "nodejs";
@@ -39,6 +41,17 @@ function hasZohoRefreshCredentials() {
   );
 }
 
+function safeSecretEqual(expected: string, provided: string) {
+  const expectedBuffer = Buffer.from(expected);
+  const providedBuffer = Buffer.from(provided);
+
+  if (expectedBuffer.length !== providedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(expectedBuffer, providedBuffer);
+}
+
 async function refreshZohoAccessToken() {
   if (!hasZohoRefreshCredentials()) {
     return null;
@@ -52,13 +65,22 @@ async function refreshZohoAccessToken() {
     client_secret: process.env.ZOHO_CLIENT_SECRET!,
   });
 
-  const response = await fetch(`${accountsDomain}/oauth/v2/token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-  });
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      `${accountsDomain}/oauth/v2/token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+      },
+      10_000,
+    );
+  } catch {
+    return null;
+  }
 
   if (!response.ok) {
     return null;
@@ -87,7 +109,7 @@ export async function POST(request: Request) {
     request.headers.get("x-sync-secret") ??
     request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
 
-  if (!syncSecret || !providedSecret || providedSecret !== syncSecret) {
+  if (!syncSecret || !providedSecret || !safeSecretEqual(syncSecret, providedSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -197,14 +219,18 @@ export async function POST(request: Request) {
     });
 
     async function sendUpsertRequest(token: string) {
-      const response = await fetch(`${zohoBase}/crm/v8/Leads`, {
-        method: "POST",
-        headers: {
-          Authorization: `Zoho-oauthtoken ${token}`,
-          "Content-Type": "application/json",
+      const response = await fetchWithTimeout(
+        `${zohoBase}/crm/v8/Leads`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Zoho-oauthtoken ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: requestBody,
         },
-        body: requestBody,
-      });
+        15_000,
+      );
 
       const rawBody = await response.text();
       let body: {
@@ -223,14 +249,48 @@ export async function POST(request: Request) {
         body = JSON.parse(rawBody) as typeof body;
       } catch {
         body = {
-          rawBody: rawBody.slice(0, 1200),
+          rawBody: readResponseBodySnippet(rawBody, 1200),
         };
       }
 
       return { response, body };
     }
 
-    let { response, body } = await sendUpsertRequest(accessToken);
+    let response: Response;
+    let body: {
+      data?: Array<{
+        status?: string;
+        code?: string;
+        message?: string;
+        details?: {
+          id?: string;
+        };
+      }>;
+      rawBody?: string;
+    };
+
+    try {
+      const initial = await sendUpsertRequest(accessToken);
+      response = initial.response;
+      body = initial.body;
+    } catch (error) {
+      if (error instanceof FetchTimeoutError) {
+        return NextResponse.json(
+          {
+            error: "Zoho sync timed out.",
+          },
+          { status: 504 },
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error: "Zoho sync request failed before response.",
+          details: error instanceof Error ? error.message : "unknown_error",
+        },
+        { status: 502 },
+      );
+    }
     const needsRetry =
       (!response.ok && hasZohoRefreshCredentials()) ||
       body.data?.some((item) => item.code === "INVALID_TOKEN" || item.code === "INVALID_OAUTHTOKEN");
@@ -239,9 +299,28 @@ export async function POST(request: Request) {
       const refreshed = await refreshZohoAccessToken();
       if (refreshed) {
         accessToken = refreshed;
-        const retried = await sendUpsertRequest(accessToken);
-        response = retried.response;
-        body = retried.body;
+        try {
+          const retried = await sendUpsertRequest(accessToken);
+          response = retried.response;
+          body = retried.body;
+        } catch (error) {
+          if (error instanceof FetchTimeoutError) {
+            return NextResponse.json(
+              {
+                error: "Zoho sync retry timed out.",
+              },
+              { status: 504 },
+            );
+          }
+
+          return NextResponse.json(
+            {
+              error: "Zoho sync retry failed before response.",
+              details: error instanceof Error ? error.message : "unknown_error",
+            },
+            { status: 502 },
+          );
+        }
       }
     }
 

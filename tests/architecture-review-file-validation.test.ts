@@ -35,4 +35,34 @@ describe("architecture diagram file validation", () => {
       error: "SVG with script tags is not allowed.",
     });
   });
+
+  it("rejects svg files with external href references", async () => {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.com/track.svg" /><text>api gateway</text></svg>';
+    const file = new File([svg], "diagram.svg", { type: "image/svg+xml" });
+    await expect(isStrictDiagramFile(file)).resolves.toEqual({
+      ok: false,
+      error: "SVG with external or data URI references is not allowed.",
+    });
+  });
+
+  it("allows root-relative icon references used by generated diagrams", async () => {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg"><image href="/architecture-icons/aws/api-gateway.svg" /><text>api gateway</text></svg>';
+    const file = new File([svg], "diagram.svg", { type: "image/svg+xml" });
+    await expect(isStrictDiagramFile(file)).resolves.toEqual({
+      ok: true,
+      format: "svg",
+      mimeType: "image/svg+xml",
+    });
+  });
+
+  it("rejects svg files with oversized dimensions", async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50000 50000"><text>api gateway</text></svg>';
+    const file = new File([svg], "diagram.svg", { type: "image/svg+xml" });
+    await expect(isStrictDiagramFile(file)).resolves.toEqual({
+      ok: false,
+      error: "SVG dimensions are too large.",
+    });
+  });
 });

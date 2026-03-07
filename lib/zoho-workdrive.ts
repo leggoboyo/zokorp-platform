@@ -1,4 +1,5 @@
 import type { ArchitectureReviewReport } from "@/lib/architecture-review/types";
+import { FetchTimeoutError, fetchWithTimeout, readResponseBodySnippet } from "@/lib/http";
 
 function hasWorkDriveRefreshCredentials() {
   return (
@@ -34,13 +35,17 @@ async function refreshWorkDriveAccessToken() {
 
   let response: Response;
   try {
-    response = await fetch(`${getAccountsDomain().replace(/\/$/, "")}/oauth/v2/token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+    response = await fetchWithTimeout(
+      `${getAccountsDomain().replace(/\/$/, "")}/oauth/v2/token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
       },
-      body: params.toString(),
-    });
+      10_000,
+    );
   } catch {
     return null;
   }
@@ -101,14 +106,26 @@ async function uploadFile(input: {
 
   let response: Response;
   try {
-    response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${input.token}`,
+    response = await fetchWithTimeout(
+      endpoint,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${input.token}`,
+        },
+        body: form,
       },
-      body: form,
-    });
+      20_000,
+    );
   } catch (error) {
+    if (error instanceof FetchTimeoutError) {
+      return {
+        ok: false,
+        fileId: null,
+        error: "WORKDRIVE_TIMEOUT",
+      } as const;
+    }
+
     return {
       ok: false,
       fileId: null,
@@ -125,10 +142,15 @@ async function uploadFile(input: {
   }
 
   if (!response.ok) {
+    const bodySnippet =
+      typeof parsedBody === "string"
+        ? readResponseBodySnippet(parsedBody, 300)
+        : readResponseBodySnippet(JSON.stringify(parsedBody), 300);
+
     return {
       ok: false,
       fileId: null,
-      error: `WORKDRIVE_${response.status}:${typeof parsedBody === "string" ? parsedBody.slice(0, 300) : JSON.stringify(parsedBody).slice(0, 300)}`,
+      error: `WORKDRIVE_${response.status}:${bodySnippet}`,
     } as const;
   }
 
@@ -171,6 +193,7 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
         error: "WORKDRIVE_ACCESS_TOKEN_NOT_AVAILABLE",
       } as const;
     }
+    let activeToken = token;
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const emailPart = sanitizeFilenamePart(input.report.userEmail);
@@ -178,7 +201,7 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
     const diagramMimeType = input.diagramMimeType === "image/svg+xml" ? "image/svg+xml" : "image/png";
 
     let diagramUpload = await uploadFile({
-      token,
+      token: activeToken,
       folderId,
       filename: diagramName,
       mimeType: diagramMimeType,
@@ -196,8 +219,9 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
         } as const;
       }
 
+      activeToken = refreshed;
       diagramUpload = await uploadFile({
-        token: refreshed,
+        token: activeToken,
         folderId,
         filename: diagramName,
         mimeType: diagramMimeType,
@@ -223,13 +247,27 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
     const reportBytes = new TextEncoder().encode(JSON.stringify(reportPayload, null, 2));
     const reportName = `${timestamp}_${emailPart}_architecture-review.json`;
 
-    const reportUpload = await uploadFile({
-      token,
+    let reportUpload = await uploadFile({
+      token: activeToken,
       folderId,
       filename: reportName,
       mimeType: "application/json",
       bytes: reportBytes,
     });
+
+    if (!reportUpload.ok) {
+      const refreshed = await refreshWorkDriveAccessToken();
+      if (refreshed) {
+        activeToken = refreshed;
+        reportUpload = await uploadFile({
+          token: activeToken,
+          folderId,
+          filename: reportName,
+          mimeType: "application/json",
+          bytes: reportBytes,
+        });
+      }
+    }
 
     if (!reportUpload.ok) {
       return {

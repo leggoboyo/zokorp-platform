@@ -15,139 +15,13 @@ import {
   type ArchitectureReviewReport,
   type LlmRefinement,
 } from "@/lib/architecture-review/types";
+import { extractSvgLabelText, parseSvgDimensions, validateSvgMarkup } from "@/lib/architecture-review/svg-safety";
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const MAX_DIAGRAM_FILE_BYTES = 8 * 1024 * 1024;
 
 function isPngBytes(bytes: Uint8Array) {
   return PNG_SIGNATURE.every((byte, index) => bytes[index] === byte);
-}
-
-function parseSvgLabelText(rawSvg: string) {
-  const textFragments: string[] = [];
-
-  if (typeof DOMParser !== "undefined") {
-    const doc = new DOMParser().parseFromString(rawSvg, "image/svg+xml");
-    const parserError = doc.querySelector("parsererror");
-    if (!parserError) {
-      for (const node of doc.querySelectorAll("text, title, desc")) {
-        const value = node.textContent?.trim();
-        if (value) {
-          textFragments.push(value);
-        }
-      }
-    }
-  }
-
-  if (textFragments.length === 0) {
-    const regex = /<(?:text|title|desc)\b[^>]*>([\s\S]*?)<\/(?:text|title|desc)>/gi;
-    let match: RegExpExecArray | null = null;
-    while ((match = regex.exec(rawSvg)) !== null) {
-      const value = match[1]?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-      if (value) {
-        textFragments.push(value);
-      }
-    }
-  }
-
-  return textFragments.join(" ").replace(/\s+/g, " ").trim();
-}
-
-function parseSvgSizeAttribute(value: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  const numeric = Number.parseFloat(value.replace(/px$/i, "").trim());
-  if (!Number.isFinite(numeric) || numeric <= 0) {
-    return null;
-  }
-
-  return numeric;
-}
-
-function parseSvgDimensions(rawSvg: string) {
-  if (typeof DOMParser !== "undefined") {
-    const doc = new DOMParser().parseFromString(rawSvg, "image/svg+xml");
-    const parserError = doc.querySelector("parsererror");
-    if (!parserError) {
-      const svg = doc.querySelector("svg");
-      if (svg) {
-        const width = parseSvgSizeAttribute(svg.getAttribute("width"));
-        const height = parseSvgSizeAttribute(svg.getAttribute("height"));
-        const viewBox = svg.getAttribute("viewBox");
-
-        if (width && height) {
-          return { width, height };
-        }
-
-        if (viewBox) {
-          const values = viewBox
-            .split(/[\s,]+/)
-            .map((value) => Number.parseFloat(value))
-            .filter((value) => Number.isFinite(value));
-          if (values.length === 4 && values[2] > 0 && values[3] > 0) {
-            return { width: values[2], height: values[3] };
-          }
-        }
-      }
-    }
-  }
-
-  const viewBoxMatch = rawSvg.match(/viewBox\s*=\s*["']([^"']+)["']/i);
-  if (viewBoxMatch?.[1]) {
-    const values = viewBoxMatch[1]
-      .split(/[\s,]+/)
-      .map((value) => Number.parseFloat(value))
-      .filter((value) => Number.isFinite(value));
-    if (values.length === 4 && values[2] > 0 && values[3] > 0) {
-      return { width: values[2], height: values[3] };
-    }
-  }
-
-  return null;
-}
-
-function validateSvgMarkup(rawSvg: string) {
-  const normalized = rawSvg.trim();
-  if (!/<svg\b/i.test(normalized)) {
-    return {
-      ok: false,
-      error: "Invalid SVG payload.",
-    } as const;
-  }
-
-  if (/<script\b/i.test(normalized)) {
-    return {
-      ok: false,
-      error: "SVG with script tags is not allowed.",
-    } as const;
-  }
-
-  if (/\son[a-z]+\s*=/i.test(normalized)) {
-    return {
-      ok: false,
-      error: "SVG with inline event handlers is not allowed.",
-    } as const;
-  }
-
-  if (/javascript:/i.test(normalized)) {
-    return {
-      ok: false,
-      error: "SVG with javascript: links is not allowed.",
-    } as const;
-  }
-
-  if (/<foreignObject\b/i.test(normalized)) {
-    return {
-      ok: false,
-      error: "SVG with foreignObject is not allowed.",
-    } as const;
-  }
-
-  return {
-    ok: true,
-  } as const;
 }
 
 export async function extractSvgEvidence(file: File) {
@@ -157,7 +31,7 @@ export async function extractSvgEvidence(file: File) {
     throw new Error(validation.error);
   }
 
-  const text = parseSvgLabelText(rawSvg);
+  const text = extractSvgLabelText(rawSvg);
   const dimensions = parseSvgDimensions(rawSvg);
   return {
     text,

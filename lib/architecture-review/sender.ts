@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { FetchTimeoutError, fetchWithTimeout, readResponseBodySnippet } from "@/lib/http";
 
 type SendEmailInput = {
   to: string;
@@ -26,12 +27,14 @@ async function sendWithResend(input: SendEmailInput): Promise<SendEmailResult> {
   }
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+    const response = await fetchWithTimeout(
+      "https://api.resend.com/emails",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
       body: JSON.stringify({
         from,
         to: [input.to],
@@ -39,14 +42,16 @@ async function sendWithResend(input: SendEmailInput): Promise<SendEmailResult> {
         text: input.text,
         html: input.html,
       }),
-    });
+      },
+      12_000,
+    );
 
     if (!response.ok) {
-      const errorBody = await response.text();
+      const errorBody = readResponseBodySnippet(await response.text(), 400);
       return {
         ok: false,
         provider: "resend",
-        error: `RESEND_${response.status}:${errorBody.slice(0, 400)}`,
+        error: `RESEND_${response.status}:${errorBody}`,
       };
     }
 
@@ -55,6 +60,14 @@ async function sendWithResend(input: SendEmailInput): Promise<SendEmailResult> {
       provider: "resend",
     };
   } catch (error) {
+    if (error instanceof FetchTimeoutError) {
+      return {
+        ok: false,
+        provider: "resend",
+        error: "RESEND_TIMEOUT",
+      };
+    }
+
     return {
       ok: false,
       provider: "resend",
@@ -82,9 +95,16 @@ async function sendWithSmtp(input: SendEmailInput): Promise<SendEmailResult> {
     const transport = nodemailer.createTransport({
       host,
       port: Number(port),
+      secure: Number(port) === 465,
       auth: {
         user,
         pass,
+      },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
+      tls: {
+        minVersion: "TLSv1.2",
       },
     });
 
