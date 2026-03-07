@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type {
   ValidationCheckStatus,
   ValidationProfile,
@@ -55,6 +64,17 @@ const profileOptions: Array<{
   },
 ];
 
+function statusVariant(status: ValidationCheckStatus): "success" | "warning" | "danger" {
+  switch (status) {
+    case "PASS":
+      return "success";
+    case "PARTIAL":
+      return "warning";
+    case "MISSING":
+      return "danger";
+  }
+}
+
 export function ValidatorForm({
   requiresAuth = false,
   authUnavailable = false,
@@ -67,12 +87,6 @@ export function ValidatorForm({
   const [selectedTargetId, setSelectedTargetId] = useState<string>("");
   const [targetSearch, setTargetSearch] = useState("");
   const [selectedFileName, setSelectedFileName] = useState("");
-
-  const statusBadgeClass: Record<ValidationCheckStatus, string> = {
-    PASS: "border-emerald-300 bg-emerald-50 text-emerald-700",
-    PARTIAL: "border-amber-300 bg-amber-50 text-amber-800",
-    MISSING: "border-rose-300 bg-rose-50 text-rose-700",
-  };
 
   const targetsByProfile = useMemo(() => {
     const grouped: Record<ValidationProfile, ValidationTargetOption[]> = {
@@ -187,8 +201,8 @@ export function ValidatorForm({
 
     const binary = window.atob(result.reviewedWorkbookBase64);
     const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-      bytes[i] = binary.charCodeAt(i);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
     }
 
     const blob = new Blob([bytes], {
@@ -211,333 +225,529 @@ export function ValidatorForm({
       ? "Download Edit Guide (CSV)"
       : "Download Reviewed Excel";
 
+  const report = result?.report ?? null;
+  const hasReviewedWorkbook = Boolean(result?.reviewedWorkbookBase64 && result?.reviewedWorkbookFileName);
+  const remainingUses = result?.remainingUses;
+  const rawOutput = result?.output ?? "";
+  const actionableChecks = report?.checks.filter((check) => check.status !== "PASS") ?? [];
+  const calibrationControls = report?.controlCalibration?.controls ?? [];
+
   if (authUnavailable) {
     return (
-      <section className="surface-muted rounded-xl p-5">
-        <h3 className="font-display text-2xl font-semibold text-slate-900">Run ZoKorpValidator</h3>
-        <p className="mt-2 text-sm text-slate-700">
-          Login must be connected before this tool can process files.
-        </p>
-      </section>
+      <Card tone="muted" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5">
+        <CardHeader>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Validator Access</p>
+          <h3 className="font-display text-2xl font-semibold text-slate-900">Run ZoKorpValidator</h3>
+        </CardHeader>
+        <CardContent>
+          <Alert tone="warning">
+            <AlertTitle>Authentication required</AlertTitle>
+            <AlertDescription>Login must be connected before this tool can process files.</AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
     );
   }
 
   if (requiresAuth) {
     return (
-      <section className="surface-muted rounded-xl p-5">
-        <h3 className="font-display text-2xl font-semibold text-slate-900">Run ZoKorpValidator</h3>
-        <p className="mt-2 text-sm text-slate-700">
-          Sign in first, then purchase the correct validation credit and upload your file.
-        </p>
-        <Link
-          href="/login?callbackUrl=/software/zokorp-validator"
-          className="focus-ring mt-4 inline-flex rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
-        >
-          Sign in to continue
-        </Link>
-      </section>
+      <Card tone="muted" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5">
+        <CardHeader>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Validator Access</p>
+          <h3 className="font-display text-2xl font-semibold text-slate-900">Run ZoKorpValidator</h3>
+        </CardHeader>
+        <CardContent>
+          <Alert tone="info">
+            <AlertTitle>Sign in first</AlertTitle>
+            <AlertDescription>
+              Sign in first, then purchase the correct validation credit and upload your file.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+        <CardFooter>
+          <Link href="/login?callbackUrl=/software/zokorp-validator" className={buttonVariants()}>
+            Sign in to continue
+          </Link>
+        </CardFooter>
+      </Card>
     );
   }
 
   return (
-    <section className="surface animate-fade-up rounded-xl p-5">
-      <h3 className="font-display text-2xl font-semibold text-slate-900">Run ZoKorpValidator</h3>
-      <p className="mt-2 text-sm text-slate-600">
-        Upload one PDF or Excel file (.pdf, .xlsx). Processing runs server-side with entitlement checks.
-      </p>
-      <p className="mt-1 text-xs text-slate-500">
-        Sensitive values like emails, phone numbers, and long account-like numbers are redacted before scoring output.
-      </p>
-      <p className="mt-1 text-xs text-slate-500">
-        Available credits for selected profile: {selectedProfileCredits}. Each run uses 1 credit.
-      </p>
-      <p className="mt-1 text-xs text-slate-500">
-        Wallets: FTR {profileCredits.FTR} · SDP {profileCredits.SDP} · SRP {profileCredits.SRP} · Competency{" "}
-        {profileCredits.COMPETENCY}
-      </p>
-
-      <form onSubmit={onSubmit} className="mt-4 space-y-3">
-        <div className="grid gap-3 md:grid-cols-2">
-          <label className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Validation Profile
-            </span>
-            <select
-              name="validationProfile"
-              value={selectedProfile}
-              onChange={(event) => {
-                setSelectedProfile(event.target.value as ValidationProfile);
-                setTargetSearch("");
-              }}
-              className="focus-ring block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-              required
-            >
-              {profileOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-slate-500">
-              {profileOptions.find((option) => option.value === selectedProfile)?.help}
-            </p>
-          </label>
-
-          <label className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Optional Context
-            </span>
-            <textarea
-              name="additionalContext"
-              maxLength={1200}
-              placeholder="Examples: “Service Offering FTR for AI advisory with 3 consultants and a fixed 6-week scope.” “Prioritize IAM least privilege, evidence references, and owner accountability.” “Flag controls missing measurable outcomes or review dates.”"
-              className="focus-ring min-h-24 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-            />
-            <p className="text-xs text-slate-500">
-              Optional. Add review priorities like control ownership, test evidence quality, risk mitigations, or approval traceability.
-            </p>
-          </label>
-        </div>
-
-        {activeTargets.length > 0 ? (
-          <div className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Checklist Target
-            </span>
-            {activeTargets.length > 12 ? (
-              <input
-                value={targetSearch}
-                onChange={(event) => setTargetSearch(event.target.value)}
-                placeholder="Filter checklist targets by name/domain"
-                className="focus-ring block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-              />
-            ) : null}
-            <select
-              name="validationTargetId"
-              value={selectedTargetId}
-              onChange={(event) => setSelectedTargetId(event.target.value)}
-              className="focus-ring block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-              required
-            >
-              {filteredTargets.length > 0 ? (
-                filteredTargets.map((target) => (
-                  <option key={target.id} value={target.id}>
-                    {target.label}
-                  </option>
-                ))
-              ) : (
-                <option value="">No matching target in current filter</option>
-              )}
-            </select>
-            <p className="text-xs text-slate-500">
-              Select the exact checklist type you are validating against.
-              {targetSearch.trim() ? ` Showing ${filteredTargets.length} of ${activeTargets.length} targets.` : ""}
-            </p>
-            {targetSearch.trim() && filteredTargets.length === 0 ? (
-              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                No checklist targets match this filter. Clear the filter to see all options.
+    <div className="space-y-4">
+      <Card className="animate-fade-up rounded-[calc(var(--radius-xl)+0.25rem)] p-5 md:p-6">
+        <CardHeader className="gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Validation Workflow</p>
+              <h3 className="font-display text-3xl font-semibold text-slate-900">Run ZoKorpValidator</h3>
+              <p className="max-w-3xl text-sm leading-6 text-slate-600">
+                Upload one PDF or Excel file (.pdf, .xlsx). Processing runs server-side with entitlement checks.
               </p>
-            ) : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary">Selected credits: {selectedProfileCredits}</Badge>
+              <Badge variant="outline">FTR {profileCredits.FTR}</Badge>
+              <Badge variant="outline">SDP {profileCredits.SDP}</Badge>
+              <Badge variant="outline">SRP {profileCredits.SRP}</Badge>
+              <Badge variant="outline">Competency {profileCredits.COMPETENCY}</Badge>
+            </div>
           </div>
-        ) : (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Checklist targets are unavailable for this profile right now.
+          <p className="text-xs leading-5 text-slate-500">
+            Sensitive values like emails, phone numbers, and long account-like numbers are redacted before scoring output.
+            Each run uses 1 credit from the selected profile wallet.
           </p>
-        )}
+        </CardHeader>
 
-        <div className="space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Upload Checklist</span>
-          <input
-            id="validator-file"
-            name="file"
-            type="file"
-            accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            required
-            className="sr-only"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              setSelectedFileName(file?.name ?? "");
-            }}
-          />
-          <label
-            htmlFor="validator-file"
-            className="focus-ring flex cursor-pointer items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-3 text-sm"
-          >
-            <span className="truncate text-slate-700">{selectedFileName || "No file selected yet"}</span>
-            <span className="ml-3 rounded-md border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800">
-              Choose File
-            </span>
-          </label>
-        </div>
+        <CardContent className="space-y-4">
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  Validation Profile
+                </span>
+                <Select
+                  name="validationProfile"
+                  value={selectedProfile}
+                  onChange={(event) => {
+                    setSelectedProfile(event.target.value as ValidationProfile);
+                    setTargetSearch("");
+                  }}
+                  required
+                >
+                  {profileOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-xs leading-5 text-slate-500">
+                  {profileOptions.find((option) => option.value === selectedProfile)?.help}
+                </p>
+              </label>
 
-        <button
-          type="submit"
-          disabled={!canSubmitNow}
-          className="focus-ring rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-        >
-          {isLoading ? "Processing..." : "Process File"}
-        </button>
+              <label className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  Optional Context
+                </span>
+                <Textarea
+                  name="additionalContext"
+                  maxLength={1200}
+                  className="min-h-28"
+                  placeholder="Examples: “Service Offering FTR for AI advisory with 3 consultants and a fixed 6-week scope.” “Prioritize IAM least privilege, evidence references, and owner accountability.” “Flag controls missing measurable outcomes or review dates.”"
+                />
+                <p className="text-xs leading-5 text-slate-500">
+                  Optional. Add review priorities like control ownership, test evidence quality, risk mitigations, or approval traceability.
+                </p>
+              </label>
+            </div>
 
-        {selectedProfileCredits <= 0 ? (
-          <p className="text-sm text-amber-700">{submitDisabledReason ?? "Purchase a credit first, then run the validator."}</p>
-        ) : null}
-      </form>
-
-      {result?.error ? <p className="mt-3 text-sm text-red-600">{result.error}</p> : null}
-
-      {result?.report ? (
-        <div className="mt-4 space-y-4 rounded-xl border border-slate-200 bg-slate-50/85 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Validation Report</p>
-              <h4 className="font-display text-xl font-semibold text-slate-900">
-                {result.report.profileLabel} · Score {result.report.score}%
-              </h4>
-              <p className="mt-1 text-sm text-slate-600">{result.report.summary}</p>
-              {result.report.target ? (
-                <div className="mt-1 text-xs text-slate-500">
-                  <p>Checklist target: {result.report.target.label}</p>
-                  <p>
-                    Rulepack: {result.report.rulepack.id} (v{result.report.rulepack.version}) · {result.report.rulepack.ruleCount} checks
-                  </p>
+            {activeTargets.length > 0 ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Checklist Target
+                  </span>
+                  <Badge variant="secondary">
+                    {filteredTargets.length} of {activeTargets.length} available
+                  </Badge>
                 </div>
-              ) : null}
-            </div>
 
-            {typeof result.remainingUses === "number" ? (
-              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                Remaining uses: {result.remainingUses}
-              </span>
-            ) : null}
-          </div>
+                {activeTargets.length > 12 ? (
+                  <Input
+                    value={targetSearch}
+                    onChange={(event) => setTargetSearch(event.target.value)}
+                    placeholder="Filter checklist targets by name or domain"
+                  />
+                ) : null}
 
-          {result.reviewedWorkbookBase64 && result.reviewedWorkbookFileName ? (
-            <div className="flex items-center gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
-              <p className="text-xs text-emerald-900">
-                Download the edit guide and copy suggested values into the original checklist&apos;s Partner Response cells.
-              </p>
-              <button
-                type="button"
-                onClick={downloadReviewedWorkbook}
-                className="focus-ring rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-800"
+                <Select
+                  name="validationTargetId"
+                  value={selectedTargetId}
+                  onChange={(event) => setSelectedTargetId(event.target.value)}
+                  required
+                >
+                  {filteredTargets.length > 0 ? (
+                    filteredTargets.map((target) => (
+                      <option key={target.id} value={target.id}>
+                        {target.label}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">No matching target in current filter</option>
+                  )}
+                </Select>
+
+                <p className="text-xs leading-5 text-slate-500">
+                  Select the exact checklist type you are validating against.
+                  {targetSearch.trim() ? ` Showing ${filteredTargets.length} of ${activeTargets.length} targets.` : ""}
+                </p>
+
+                {targetSearch.trim() && filteredTargets.length === 0 ? (
+                  <Alert tone="warning">
+                    <AlertTitle>No matching targets</AlertTitle>
+                    <AlertDescription>
+                      Clear the current filter to see the full checklist target list for this profile.
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+              </div>
+            ) : (
+              <Alert tone="warning">
+                <AlertTitle>Checklist targets unavailable</AlertTitle>
+                <AlertDescription>
+                  Checklist targets are unavailable for this profile right now.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Upload Checklist</span>
+              <input
+                id="validator-file"
+                aria-label="Upload checklist"
+                name="file"
+                type="file"
+                accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                required
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  setSelectedFileName(file?.name ?? "");
+                }}
+              />
+              <label
+                htmlFor="validator-file"
+                className={cn(
+                  "focus-ring flex cursor-pointer items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm shadow-[var(--shadow-soft)] transition hover:border-slate-300",
+                  !selectedFileName && "text-slate-500",
+                )}
               >
-                {downloadLabel}
-              </button>
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
-              PASS: {result.report.counts.PASS}
-            </span>
-            <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 font-semibold text-amber-800">
-              PARTIAL: {result.report.counts.PARTIAL}
-            </span>
-            <span className="rounded-full border border-rose-300 bg-rose-50 px-2.5 py-1 font-semibold text-rose-700">
-              MISSING: {result.report.counts.MISSING}
-            </span>
-          </div>
-
-          {result.report.controlCalibration ? (
-            <div className="rounded-md border border-slate-200 bg-white p-3 text-xs text-slate-600">
-              <p className="font-semibold text-slate-800">How to read this result</p>
-              <p className="mt-1">
-                The <span className="font-semibold">Score {result.report.score}%</span> is based on{" "}
-                {result.report.rulepack.ruleCount} high-level checklist readiness checks.
-              </p>
-              <p className="mt-1">
-                The <span className="font-semibold">Control-by-Control Calibration</span> is a stricter row-level
-                audit of {result.report.controlCalibration.totalControls} controls and can show many
-                missing items even when the high-level score is strong.
-              </p>
-            </div>
-          ) : null}
-
-          {result.report.topGaps.length > 0 ? (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Priority Improvements</p>
-              <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-amber-900">
-                {result.report.topGaps.map((gap) => (
-                  <li key={gap}>{gap}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {result.report.processingNotes.length > 0 ? (
-            <div className="rounded-md border border-sky-200 bg-sky-50 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Processing Notes</p>
-              <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-sky-900">
-                {result.report.processingNotes.map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {result.report.controlCalibration ? (
-            <div className="space-y-3 rounded-md border border-slate-200 bg-white p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Control-by-Control Calibration</p>
-                <p className="text-xs text-slate-500">{result.report.controlCalibration.totalControls} controls analyzed</p>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
-                  PASS: {result.report.controlCalibration.counts.PASS}
+                <span className="truncate">{selectedFileName || "No file selected yet"}</span>
+                <span className="rounded-xl border border-border bg-background-elevated px-3 py-1.5 text-xs font-semibold text-slate-800">
+                  Choose File
                 </span>
-                <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 font-semibold text-amber-800">
-                  PARTIAL: {result.report.controlCalibration.counts.PARTIAL}
-                </span>
-                <span className="rounded-full border border-rose-300 bg-rose-50 px-2.5 py-1 font-semibold text-rose-700">
-                  MISSING: {result.report.controlCalibration.counts.MISSING}
-                </span>
+              </label>
+            </div>
+
+            {selectedProfileCredits <= 0 ? (
+              <Alert tone="warning">
+                <AlertTitle>No credits available</AlertTitle>
+                <AlertDescription>
+                  {submitDisabledReason ?? "Purchase a credit first, then run the validator."}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" loading={isLoading} disabled={!canSubmitNow}>
+                {isLoading ? "Processing..." : "Process File"}
+              </Button>
+              <p className="text-xs text-slate-500">Results stay on this page and include downloadable edit guidance when available.</p>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {result?.error ? (
+        <Alert tone="danger">
+          <AlertTitle>Validation failed</AlertTitle>
+          <AlertDescription>{result.error}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {report ? (
+        <Card tone="glass" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5 md:p-6">
+          <CardHeader className="gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Validation Report</p>
+                <h4 className="font-display text-3xl font-semibold text-slate-900">
+                  {report.profileLabel} · Score {report.score}%
+                </h4>
+                <p className="max-w-3xl text-sm leading-6 text-slate-600">{report.summary}</p>
+                {report.target ? (
+                  <div className="text-xs leading-5 text-slate-500">
+                    <p>Checklist target: {report.target.label}</p>
+                    <p>
+                      Rulepack: {report.rulepack.id} (v{report.rulepack.version}) · {report.rulepack.ruleCount} checks
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-2">
-                {result.report.controlCalibration.controls.map((control) => (
-                  <article
-                    key={`${control.sheetName}-${control.rowNumber}-${control.controlId}`}
-                    className="lift-card rounded-md border border-slate-200 bg-white p-3"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-slate-900">
-                        {control.controlId} · {control.sheetName} row {control.rowNumber}
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="brand">Score {report.score}%</Badge>
+                {typeof remainingUses === "number" ? (
+                  <Badge variant="secondary">Remaining uses: {remainingUses}</Badge>
+                ) : null}
+                <Badge variant="success">PASS {report.counts.PASS}</Badge>
+                <Badge variant="warning">PARTIAL {report.counts.PARTIAL}</Badge>
+                <Badge variant="danger">MISSING {report.counts.MISSING}</Badge>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-5">
+            {hasReviewedWorkbook ? (
+              <Alert tone="success">
+                <AlertTitle>Reviewed workbook ready</AlertTitle>
+                <AlertDescription>
+                  Download the edit guide and copy suggested values into the original checklist&apos;s Partner Response cells.
+                </AlertDescription>
+                <div className="mt-3">
+                  <Button type="button" variant="secondary" onClick={downloadReviewedWorkbook}>
+                    {downloadLabel}
+                  </Button>
+                </div>
+              </Alert>
+            ) : null}
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-border bg-white/90 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Source</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{report.documentMetrics.sourceType}</p>
+                <p className="mt-1 text-xs text-slate-500">{report.documentMetrics.filename}</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-white/90 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Document size</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">
+                  {report.documentMetrics.wordCount.toLocaleString()} words
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {report.documentMetrics.characterCount.toLocaleString()} characters
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-white/90 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Control review</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">
+                  {report.controlCalibration ? `${report.controlCalibration.totalControls} controls` : "Not available"}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {report.controlCalibration ? "Row-level calibration included" : "High-level checklist scoring only"}
+                </p>
+              </div>
+            </div>
+
+            <Tabs defaultValue="recommendations" className="space-y-4">
+              <TabsList className="w-full justify-start">
+                <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+                <TabsTrigger value="calibration">Calibration</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+                <TabsTrigger value="raw">Raw</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="recommendations" className="space-y-4">
+                {report.topGaps.length > 0 ? (
+                  <Card className="rounded-3xl p-5">
+                    <CardHeader>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Priority Improvements</p>
+                      <h5 className="font-display text-2xl font-semibold text-slate-900">What to fix first</h5>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-3 text-sm text-slate-700">
+                        {report.topGaps.map((gap) => (
+                          <li key={gap} className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 leading-6 text-amber-900">
+                            {gap}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Alert tone="neutral">
+                    <AlertTitle>No priority gaps surfaced</AlertTitle>
+                    <AlertDescription>
+                      The validator did not identify high-priority checklist issues in this run.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <Card className="rounded-3xl p-5">
+                  <CardHeader>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Check Findings</p>
+                    <h5 className="font-display text-2xl font-semibold text-slate-900">Non-pass checklist checks</h5>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {actionableChecks.length > 0 ? (
+                      actionableChecks.map((check) => (
+                        <article key={check.id} className="rounded-2xl border border-border bg-white p-4 shadow-[var(--shadow-soft)]">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold text-slate-900">{check.title}</p>
+                              <p className="text-sm leading-6 text-slate-600">{check.description}</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant={statusVariant(check.status)}>{check.status}</Badge>
+                              <Badge variant="secondary">{check.severity}</Badge>
+                            </div>
+                          </div>
+                          <p className="mt-3 text-sm leading-6 text-slate-700">
+                            <span className="font-semibold">Guidance:</span> {check.guidance}
+                          </p>
+                          {check.evidence ? (
+                            <p className="mt-2 text-xs leading-5 text-slate-500">
+                              <span className="font-semibold text-slate-700">Evidence:</span> {check.evidence}
+                            </p>
+                          ) : null}
+                        </article>
+                      ))
+                    ) : (
+                      <p className="text-sm leading-6 text-slate-600">
+                        All high-level checklist checks passed in this run.
                       </p>
-                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusBadgeClass[control.status]}`}>
-                        {control.status}
-                      </span>
-                    </div>
-                    {control.responseCell ? (
-                      <p className="mt-1 text-xs text-slate-500">
-                        Partner Response cell: <span className="font-mono">{control.responseCell}</span>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="calibration" className="space-y-4">
+                {report.controlCalibration ? (
+                  <Card className="rounded-3xl p-5">
+                    <CardHeader>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Control-by-Control Calibration</p>
+                          <h5 className="font-display text-2xl font-semibold text-slate-900">
+                            {report.controlCalibration.totalControls} controls analyzed
+                          </h5>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="success">PASS {report.controlCalibration.counts.PASS}</Badge>
+                          <Badge variant="warning">PARTIAL {report.controlCalibration.counts.PARTIAL}</Badge>
+                          <Badge variant="danger">MISSING {report.controlCalibration.counts.MISSING}</Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {calibrationControls.map((control) => (
+                        <article
+                          key={`${control.sheetName}-${control.rowNumber}-${control.controlId}`}
+                          className="rounded-2xl border border-border bg-white p-4 shadow-[var(--shadow-soft)]"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {control.controlId} · {control.sheetName} row {control.rowNumber}
+                              </p>
+                              {control.responseCell ? (
+                                <p className="text-xs text-slate-500">
+                                  Partner Response cell: <span className="font-mono">{control.responseCell}</span>
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant={statusVariant(control.status)}>{control.status}</Badge>
+                              <Badge variant="secondary">Confidence {control.confidence}</Badge>
+                            </div>
+                          </div>
+                          <p className="mt-3 text-sm leading-6 text-slate-700">
+                            <span className="font-semibold">Requirement:</span> {control.requirement}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-slate-600">
+                            <span className="font-semibold text-slate-700">Current response:</span>{" "}
+                            {control.response || "No response provided."}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-amber-900">
+                            <span className="font-semibold">Recommendation:</span> {control.recommendation || "No recommendation."}
+                          </p>
+                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                            Missing signals: {control.missingSignals.length ? control.missingSignals.join(", ") : "none"}
+                          </p>
+                          <p className="mt-2 text-xs leading-5 text-slate-600">
+                            Suggested edit (no new facts): {control.suggestedEdit}
+                          </p>
+                        </article>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Alert tone="neutral">
+                    <AlertTitle>No calibration details</AlertTitle>
+                    <AlertDescription>
+                      This run returned the high-level checklist score without the row-level control calibration view.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </TabsContent>
+
+              <TabsContent value="notes" className="space-y-4">
+                <Card className="rounded-3xl p-5">
+                  <CardHeader>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">How to read this result</p>
+                    <h5 className="font-display text-2xl font-semibold text-slate-900">Scoring context</h5>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm leading-6 text-slate-600">
+                    <p>
+                      The <span className="font-semibold text-slate-900">Score {report.score}%</span> is based on{" "}
+                      {report.rulepack.ruleCount} high-level checklist readiness checks.
+                    </p>
+                    {report.controlCalibration ? (
+                      <p>
+                        The <span className="font-semibold text-slate-900">Control-by-Control Calibration</span> is a stricter row-level
+                        audit of {report.controlCalibration.totalControls} controls and can show many missing items even when the
+                        high-level score is strong.
                       </p>
                     ) : null}
-                    <p className="mt-1 text-xs text-slate-500">Confidence: {control.confidence}</p>
-                    <p className="mt-2 text-sm text-slate-700">
-                      <span className="font-semibold">Requirement:</span> {control.requirement}
+                    <p>
+                      Profile overview: <span className="text-slate-900">{report.overview}</span>
                     </p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      <span className="font-semibold">Current response:</span> {control.response || "No response provided."}
-                    </p>
-                    <p className="mt-1 text-sm text-amber-900">
-                      <span className="font-semibold">Recommendation:</span> {control.recommendation || "No recommendation."}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Missing signals: {control.missingSignals.length ? control.missingSignals.join(", ") : "none"}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-600">Suggested edit (no new facts): {control.suggestedEdit}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-          ) : null}
+                  </CardContent>
+                </Card>
 
-          <details className="rounded-md border border-slate-200 bg-white p-3">
-            <summary className="cursor-pointer text-sm font-semibold text-slate-800">View raw output</summary>
-            <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-700">{result.output}</pre>
-          </details>
-        </div>
+                <Card className="rounded-3xl p-5">
+                  <CardHeader>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Processing Notes</p>
+                    <h5 className="font-display text-2xl font-semibold text-slate-900">Validator context and metadata</h5>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {report.processingNotes.length > 0 ? (
+                      <ul className="space-y-3 text-sm text-slate-700">
+                        {report.processingNotes.map((note) => (
+                          <li key={note} className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 leading-6 text-sky-900">
+                            {note}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm leading-6 text-slate-600">No additional processing notes were returned for this run.</p>
+                    )}
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="rounded-2xl border border-border bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rulepack</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-900">{report.rulepack.id}</p>
+                        <p className="mt-1 text-xs text-slate-500">Version {report.rulepack.version}</p>
+                      </div>
+                      <div className="rounded-2xl border border-border bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Checklist target</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-900">
+                          {report.target?.label ?? "No explicit target metadata"}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">{report.target?.track ?? "General review"}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="raw">
+                <Card className="rounded-3xl p-5">
+                  <CardHeader>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Raw Output</p>
+                    <h5 className="font-display text-2xl font-semibold text-slate-900">Full validator response text</h5>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="overflow-x-auto whitespace-pre-wrap rounded-2xl border border-border bg-slate-950 p-4 text-xs leading-6 text-slate-100">
+                      {rawOutput}
+                    </pre>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       ) : null}
-    </section>
+    </div>
   );
 }
