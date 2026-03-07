@@ -140,7 +140,12 @@ export default async function ServicesPage() {
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           {engagementSteps.map((step, index) => (
             <article key={step.title} className="lift-card rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-teal-700">Step 0{index + 1}</p>
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-teal-700">
+                <span>Step</span>
+                <span className="rounded-full bg-teal-50 px-2 py-1 font-mono tracking-[0.18em] text-teal-800">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+              </p>
               <h3 className="font-display mt-1 text-xl font-semibold text-slate-900">{step.title}</h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">{step.detail}</p>
             </article>
