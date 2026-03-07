@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutFlashBanner } from "@/components/checkout-flash-banner";
+import { AiDeciderForm } from "@/components/ai-decider/AiDeciderForm";
 import { ArchitectureDiagramReviewerForm } from "@/components/architecture-diagram-reviewer/ArchitectureDiagramReviewerForm";
 import { LandingZoneReadinessCheckerForm } from "@/components/landing-zone-readiness/LandingZoneReadinessCheckerForm";
 import { ValidatorForm } from "@/components/validator-form";
@@ -111,8 +112,8 @@ function entitlementMessage(input: {
     return {
       tone: input.signedIn ? "emerald" : "sky",
       text: input.signedIn
-        ? "This checker is free. Results are emailed to your business address unless you change it below."
-        : "This checker is free. Enter a business email and the full report will be emailed to you.",
+        ? "This diagnostic is free. Results are emailed to your business address unless you change it below."
+        : "This diagnostic is free. Enter a business email and the full report will be emailed to you.",
     };
   }
 
@@ -259,10 +260,13 @@ export default async function SoftwareDetailPage({
   const currentEmail = session?.user?.email;
   const signedIn = Boolean(currentEmail);
   const isValidator = product.slug === "zokorp-validator";
+  const isAiDecider = product.slug === "ai-decider";
   const isArchitectureReviewer = product.slug === "architecture-diagram-reviewer";
   const isLandingZoneChecker = product.slug === "landing-zone-readiness-checker";
   const productDescription = isArchitectureReviewer
     ? "Free cloud architecture diagram reviewer for PNG/SVG uploads with deterministic findings delivered by email."
+    : isAiDecider
+      ? "Free deterministic consulting diagnostic for SMB teams. Describe the business problem, answer targeted follow-up questions, and receive the verdict, findings, and quote range by email."
     : isLandingZoneChecker
       ? "Free deterministic landing-zone assessment for SMB teams. Answer structured questions and receive your score, top gaps, and consultation quote by email."
     : product.description;
@@ -357,7 +361,7 @@ export default async function SoftwareDetailPage({
     remainingUses: entitlement?.remainingUses ?? 0,
     isTieredValidator: isValidator,
     requiresSignInForFree: isArchitectureReviewer,
-    emailOnlyFreeTool: isLandingZoneChecker,
+    emailOnlyFreeTool: isLandingZoneChecker || isAiDecider,
   });
 
   const shouldShowSignInCta =
@@ -456,6 +460,8 @@ export default async function SoftwareDetailPage({
         />
       ) : isArchitectureReviewer ? (
         <ArchitectureDiagramReviewerForm requiresAuth={!signedIn} authUnavailable={authUnavailable} />
+      ) : isAiDecider ? (
+        <AiDeciderForm initialEmail={currentEmail ?? ""} initialName={session?.user?.name ?? ""} />
       ) : isLandingZoneChecker ? (
         <LandingZoneReadinessCheckerForm initialEmail={currentEmail ?? ""} initialName={session?.user?.name ?? ""} />
       ) : (

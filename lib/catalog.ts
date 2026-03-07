@@ -42,6 +42,16 @@ const fallbackCatalog = [
     ],
   },
   {
+    id: "fallback-ai-decider",
+    slug: "ai-decider",
+    name: "AI Decider",
+    description:
+      "Free deterministic consulting diagnostic that tells SMB teams whether their problem needs AI, automation, analytics, or more discovery before any build.",
+    active: true,
+    accessModel: "FREE" as const,
+    prices: [],
+  },
+  {
     id: "fallback-architecture-reviewer",
     slug: "architecture-diagram-reviewer",
     name: "Architecture Diagram Reviewer",
