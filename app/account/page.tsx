@@ -7,6 +7,11 @@ import {
 } from "@prisma/client";
 import { redirect } from "next/navigation";
 
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TimelineCard } from "@/components/ui/timeline-card";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
@@ -20,6 +25,18 @@ export const dynamic = "force-dynamic";
 
 function isServiceRequestOpen(status: ServiceRequestStatus) {
   return status !== ServiceRequestStatus.DELIVERED && status !== ServiceRequestStatus.CLOSED;
+}
+
+function formatTierLabel(tier: CreditTier) {
+  if (tier === CreditTier.SDP_SRP) {
+    return "SDP/SRP";
+  }
+
+  if (tier === CreditTier.COMPETENCY) {
+    return "Competency";
+  }
+
+  return tier;
 }
 
 export default async function AccountPage() {
@@ -91,21 +108,20 @@ export default async function AccountPage() {
   if (!user) {
     return (
       <div className="space-y-6">
-        <section className="surface rounded-2xl p-6">
-          <h1 className="font-display text-3xl font-semibold text-slate-900">Account</h1>
-          <p className="mt-3 text-sm text-slate-600">
-            We could not load your account data yet. This usually means database settings are still
-            being finalized in the deployment environment.
-          </p>
-          <div className="mt-5">
-            <Link
-              href="/software"
-              className="focus-ring inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
+        <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+          <CardHeader>
+            <h1 className="font-display text-3xl font-semibold text-slate-900">Account</h1>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm leading-6 text-slate-600">
+              We could not load your account data yet. This usually means database settings are still
+              being finalized in the deployment environment.
+            </p>
+            <Link href="/software" className={buttonVariants()}>
               Return to Software
             </Link>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -120,181 +136,233 @@ export default async function AccountPage() {
 
   return (
     <div className="space-y-6">
-      <section className="glass-surface animate-fade-up rounded-2xl p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Account Hub</p>
-            <h1 className="font-display mt-1 text-4xl font-semibold text-slate-900">Welcome back</h1>
-            <p className="mt-2 text-sm text-slate-600">Signed in as {user.email}</p>
+      <Card tone="glass" className="animate-fade-up rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+        <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Account Hub</p>
+              <h1 className="font-display mt-1 text-4xl font-semibold text-slate-900">Welcome back</h1>
+              <p className="mt-2 text-sm text-slate-600">Signed in as {user.email}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary">{openServiceRequests.length} open requests</Badge>
+              <Badge variant="secondary">{activeSubscriptions.length} active subscriptions</Badge>
+              <Badge variant="secondary">{activeCredits.length} active credit wallets</Badge>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/account/billing"
-              className="focus-ring inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
+
+          <div className="flex flex-wrap gap-3">
+            <Link href="/account/billing" className={buttonVariants()}>
               Billing and Invoices
             </Link>
-            <Link
-              href="/services#service-request"
-              className="focus-ring inline-flex rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
+            <Link href="/services#service-request" className={buttonVariants({ variant: "secondary" })}>
               New Service Request
             </Link>
           </div>
-        </div>
-      </section>
+        </CardHeader>
+      </Card>
 
       <section className="grid gap-3 md:grid-cols-4">
-        <article className="surface lift-card rounded-2xl p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Open Requests</p>
-          <p className="font-display mt-1 text-3xl font-semibold text-slate-900">{openServiceRequests.length}</p>
-        </article>
-        <article className="surface lift-card rounded-2xl p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Active Subscriptions</p>
-          <p className="font-display mt-1 text-3xl font-semibold text-slate-900">{activeSubscriptions.length}</p>
-        </article>
-        <article className="surface lift-card rounded-2xl p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Credit Wallets</p>
-          <p className="font-display mt-1 text-3xl font-semibold text-slate-900">{activeCredits.length}</p>
-        </article>
-        <article className="surface lift-card rounded-2xl p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Recent Purchases</p>
-          <p className="font-display mt-1 text-3xl font-semibold text-slate-900">{user.checkoutFulfillments.length}</p>
-        </article>
+        {[
+          { label: "Open Requests", value: openServiceRequests.length },
+          { label: "Active Subscriptions", value: activeSubscriptions.length },
+          { label: "Credit Wallets", value: activeCredits.length },
+          { label: "Recent Purchases", value: user.checkoutFulfillments.length },
+        ].map((item) => (
+          <Card key={item.label} lift className="rounded-3xl p-4">
+            <CardHeader>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
+            </CardHeader>
+            <CardContent>
+              <p className="font-display text-3xl font-semibold text-slate-900">{item.value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </section>
 
-      <section className="surface lift-card rounded-2xl p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-display text-2xl font-semibold text-slate-900">Service Requests</h2>
-          <Link
-            href="/services#service-request"
-            className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-700 underline-offset-2 hover:underline"
-          >
-            Submit another request
-          </Link>
-        </div>
-        <div className="mt-3 space-y-3">
-          {serviceRequests.length === 0 ? (
-            <p className="text-sm text-slate-600">No service requests yet.</p>
-          ) : (
-            serviceRequests.map((request) => (
-              <article key={request.id} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold text-slate-900">{request.title}</p>
-                  <span
-                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${SERVICE_REQUEST_STATUS_STYLE[request.status]}`}
-                  >
-                    {SERVICE_REQUEST_STATUS_LABEL[request.status]}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  {request.trackingCode} · {SERVICE_REQUEST_TYPE_LABEL[request.type]} · Submitted{" "}
-                  {new Date(request.createdAt).toLocaleDateString("en-US")}
+      <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+        <CardHeader className="gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Workspace</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-900">Account activity and access</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Service delivery stays first, with credits, entitlements, purchases, and activity close behind in one account view.
+            </p>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <Tabs defaultValue="service-requests" className="space-y-5">
+            <TabsList className="w-full justify-start">
+              <TabsTrigger value="service-requests">Service Requests</TabsTrigger>
+              <TabsTrigger value="credits">Credits</TabsTrigger>
+              <TabsTrigger value="entitlements">Entitlements</TabsTrigger>
+              <TabsTrigger value="purchases">Purchases</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="service-requests" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-slate-600">
+                  Track customer-visible request status, delivery notes, and preferred timing in one timeline.
                 </p>
-                <p className="mt-2 text-slate-700">{request.summary}</p>
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-                  {request.preferredStart ? (
-                    <p>Preferred start: {new Date(request.preferredStart).toLocaleDateString("en-US")}</p>
-                  ) : null}
-                  {request.budgetRange ? <p>Budget: {request.budgetRange}</p> : null}
-                </div>
-                {request.latestNote ? (
-                  <p className="mt-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
-                    Latest update: {request.latestNote}
-                  </p>
-                ) : null}
-              </article>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className="surface lift-card rounded-2xl p-6">
-        <h2 className="font-display text-2xl font-semibold text-slate-900">Entitlements</h2>
-        <div className="mt-3 space-y-2">
-          {user.entitlements.length === 0 ? (
-            <p className="text-sm text-slate-600">No active purchases yet.</p>
-          ) : (
-            user.entitlements.map((entitlement) => (
-              <div key={entitlement.id} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-                <p className="font-semibold text-slate-900">{entitlement.product.name}</p>
-                <p className="text-slate-600">Status: {entitlement.status}</p>
-                <p className="text-slate-600">Remaining uses: {entitlement.remainingUses}</p>
-                {entitlement.validUntil ? (
-                  <p className="text-slate-600">Valid until: {entitlement.validUntil.toLocaleDateString("en-US")}</p>
-                ) : null}
+                <Link href="/services#service-request" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                  Submit another request
+                </Link>
               </div>
-            ))
-          )}
-        </div>
-      </section>
 
-      <section className="surface lift-card rounded-2xl p-6">
-        <h2 className="font-display text-2xl font-semibold text-slate-900">Credit Wallets</h2>
-        <div className="mt-3 space-y-2">
-          {user.creditBalances.length === 0 ? (
-            <p className="text-sm text-slate-600">No credit wallets found yet.</p>
-          ) : (
-            user.creditBalances.map((wallet) => (
-              <div key={wallet.id} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-                <p className="font-semibold text-slate-900">
-                  {wallet.product.name} ·{" "}
-                  {wallet.tier === CreditTier.SDP_SRP
-                    ? "SDP/SRP"
-                    : wallet.tier === CreditTier.COMPETENCY
-                      ? "Competency"
-                      : wallet.tier}
-                </p>
-                <p className="text-slate-600">Remaining uses: {wallet.remainingUses}</p>
-                <p className="text-slate-600">Status: {wallet.status}</p>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className="surface lift-card rounded-2xl p-6">
-        <h2 className="font-display text-2xl font-semibold text-slate-900">Recent Purchases</h2>
-        <ul className="mt-3 space-y-2 text-sm">
-          {user.checkoutFulfillments.length === 0 ? (
-            <li className="text-slate-600">No completed checkouts yet.</li>
-          ) : (
-            user.checkoutFulfillments.map((purchase) => (
-              <li key={purchase.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-slate-700">
-                <p className="font-medium text-slate-900">{purchase.product.name}</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Checkout session: <span className="font-mono">{purchase.stripeCheckoutSessionId}</span>
-                </p>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <span className="text-xs text-slate-500">{new Date(purchase.createdAt).toLocaleString()}</span>
-                  <Link
-                    href={`/software/${purchase.product.slug}`}
-                    className="text-xs font-semibold text-slate-800 underline-offset-2 hover:underline"
-                  >
-                    Open tool
-                  </Link>
+              {serviceRequests.length === 0 ? (
+                <Card tone="muted" className="rounded-3xl p-5">
+                  <CardContent>
+                    <p className="text-sm text-slate-600">No service requests yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {serviceRequests.map((request) => (
+                    <TimelineCard
+                      key={request.id}
+                      title={request.title}
+                      meta={`${request.trackingCode} · ${SERVICE_REQUEST_TYPE_LABEL[request.type]} · Submitted ${new Date(request.createdAt).toLocaleDateString("en-US")}`}
+                      badge={
+                        <span
+                          className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${SERVICE_REQUEST_STATUS_STYLE[request.status]}`}
+                        >
+                          {SERVICE_REQUEST_STATUS_LABEL[request.status]}
+                        </span>
+                      }
+                      summary={request.summary}
+                      details={
+                        <>
+                          {request.preferredStart ? (
+                            <span>Preferred start: {new Date(request.preferredStart).toLocaleDateString("en-US")}</span>
+                          ) : null}
+                          {request.budgetRange ? <span>Budget: {request.budgetRange}</span> : null}
+                        </>
+                      }
+                      footer={
+                        request.latestNote ? (
+                          <div className="rounded-xl border border-border bg-white px-3 py-2 text-xs text-slate-700">
+                            Latest update: {request.latestNote}
+                          </div>
+                        ) : undefined
+                      }
+                    />
+                  ))}
                 </div>
-              </li>
-            ))
-          )}
-        </ul>
-      </section>
+              )}
+            </TabsContent>
 
-      <section className="surface lift-card rounded-2xl p-6">
-        <h2 className="font-display text-2xl font-semibold text-slate-900">Recent Activity</h2>
-        <ul className="mt-3 space-y-2 text-sm">
-          {user.auditLogs.length === 0 ? (
-            <li className="text-slate-600">No activity logged yet.</li>
-          ) : (
-            user.auditLogs.map((log) => (
-              <li key={log.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
-                <span className="font-medium">{log.action}</span>
-                <span className="ml-2 text-slate-500">{new Date(log.createdAt).toLocaleString()}</span>
-              </li>
-            ))
-          )}
-        </ul>
-      </section>
+            <TabsContent value="credits" className="space-y-4">
+              {user.creditBalances.length === 0 ? (
+                <Card tone="muted" className="rounded-3xl p-5">
+                  <CardContent>
+                    <p className="text-sm text-slate-600">No credit wallets found yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {user.creditBalances.map((wallet) => (
+                    <Card key={wallet.id} className="rounded-3xl p-5">
+                      <CardHeader>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Credit wallet</p>
+                        <h3 className="font-display text-2xl font-semibold text-slate-900">
+                          {wallet.product.name} · {formatTierLabel(wallet.tier)}
+                        </h3>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm text-slate-600">
+                        <p>Remaining uses: {wallet.remainingUses}</p>
+                        <p>Status: {wallet.status}</p>
+                        <p>Last updated: {wallet.updatedAt.toLocaleString()}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="entitlements" className="space-y-4">
+              {user.entitlements.length === 0 ? (
+                <Card tone="muted" className="rounded-3xl p-5">
+                  <CardContent>
+                    <p className="text-sm text-slate-600">No active purchases yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {user.entitlements.map((entitlement) => (
+                    <Card key={entitlement.id} className="rounded-3xl p-5">
+                      <CardHeader>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Entitlement</p>
+                        <h3 className="font-display text-2xl font-semibold text-slate-900">{entitlement.product.name}</h3>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm text-slate-600">
+                        <p>Status: {entitlement.status}</p>
+                        <p>Remaining uses: {entitlement.remainingUses}</p>
+                        {entitlement.validUntil ? (
+                          <p>Valid until: {entitlement.validUntil.toLocaleDateString("en-US")}</p>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="purchases" className="space-y-4">
+              {user.checkoutFulfillments.length === 0 ? (
+                <Card tone="muted" className="rounded-3xl p-5">
+                  <CardContent>
+                    <p className="text-sm text-slate-600">No completed checkouts yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {user.checkoutFulfillments.map((purchase) => (
+                    <TimelineCard
+                      key={purchase.id}
+                      title={purchase.product.name}
+                      meta={new Date(purchase.createdAt).toLocaleString()}
+                      badge={<Badge variant="secondary">Fulfilled</Badge>}
+                      summary={
+                        <>
+                          Checkout session: <span className="font-mono">{purchase.stripeCheckoutSessionId}</span>
+                        </>
+                      }
+                      footer={
+                        <Link href={`/software/${purchase.product.slug}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                          Open tool
+                        </Link>
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="activity" className="space-y-4">
+              {user.auditLogs.length === 0 ? (
+                <Card tone="muted" className="rounded-3xl p-5">
+                  <CardContent>
+                    <p className="text-sm text-slate-600">No activity logged yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {user.auditLogs.map((log) => (
+                    <TimelineCard
+                      key={log.id}
+                      title={log.action}
+                      meta={new Date(log.createdAt).toLocaleString()}
+                      badge={<Badge variant="outline">Audit</Badge>}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }
