@@ -5,7 +5,6 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import {
   createArchitectureReviewJob,
-  processArchitectureReviewJob,
 } from "@/lib/architecture-review/jobs";
 import { isSafeSvgBytes } from "@/lib/architecture-review/server";
 import { submitArchitectureReviewMetadataSchema } from "@/lib/architecture-review/types";
@@ -236,8 +235,6 @@ export async function POST(request: Request) {
       diagramMimeType: diagram.mimeType,
       diagramBytes: diagram.bytes,
     });
-
-    void processArchitectureReviewJob(createdJob.id);
 
     const body = {
       status: "queued",

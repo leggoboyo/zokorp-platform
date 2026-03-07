@@ -909,17 +909,91 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
   }
 }
 
+export type ArchitectureReviewQueueDrainResult = {
+  scanned: number;
+  processed: number;
+  sent: number;
+  fallback: number;
+  rejected: number;
+  failed: number;
+  runningOrQueued: number;
+};
+
+export async function drainArchitectureReviewQueue(input?: { limit?: number }): Promise<ArchitectureReviewQueueDrainResult> {
+  const cappedLimit = Math.max(1, Math.min(50, Math.round(input?.limit ?? 10)));
+  const now = new Date();
+  const staleBefore = new Date(Date.now() - LEASE_STALE_MS);
+  const candidates = await db.architectureReviewJob.findMany({
+    where: {
+      status: {
+        in: ["queued", "running"],
+      },
+      AND: [
+        {
+          OR: [{ status: "queued" }, { lastHeartbeatAt: null }, { lastHeartbeatAt: { lt: staleBefore } }],
+        },
+        {
+          OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
+        },
+      ],
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+    take: cappedLimit,
+    select: {
+      id: true,
+    },
+  });
+
+  const summary: ArchitectureReviewQueueDrainResult = {
+    scanned: candidates.length,
+    processed: 0,
+    sent: 0,
+    fallback: 0,
+    rejected: 0,
+    failed: 0,
+    runningOrQueued: 0,
+  };
+
+  for (const candidate of candidates) {
+    const result = await processArchitectureReviewJob(candidate.id);
+    if (!result) {
+      continue;
+    }
+
+    summary.processed += 1;
+    if (result.status === "sent") {
+      summary.sent += 1;
+      continue;
+    }
+
+    if (result.status === "fallback") {
+      summary.fallback += 1;
+      continue;
+    }
+
+    if (result.status === "rejected") {
+      summary.rejected += 1;
+      continue;
+    }
+
+    if (result.status === "failed") {
+      summary.failed += 1;
+      continue;
+    }
+
+    if (result.status === "queued" || result.status === "running") {
+      summary.runningOrQueued += 1;
+    }
+  }
+
+  return summary;
+}
+
 export async function getArchitectureReviewJobStatus(jobId: string) {
   const job = await fetchJob(jobId);
-  if (!job) {
-    return null;
-  }
-
-  if (job.status === "queued" || job.status === "running") {
-    void processArchitectureReviewJob(job.id);
-  }
-
-  return job;
+  return job ?? null;
 }
 
 export function serializeArchitectureReviewJobStatus(job: ArchitectureReviewJob) {

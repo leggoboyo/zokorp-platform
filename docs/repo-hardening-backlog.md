@@ -4,7 +4,7 @@ Source of truth for repository hardening tasks and run-by-run verification.
 
 ## Priority Checklist
 - [x] Fix callbackUrl open redirects on login/register.
-- [ ] Replace request-driven architecture-review processing with a durable worker or queue model.
+- [x] Replace request-driven architecture-review processing with a durable worker or queue model.
 - [ ] Decouple public pages from auth-driven dynamic rendering.
 - [ ] Make typecheck independent from `.next` artifacts.
 - [ ] Move CSP to `Content-Security-Policy-Report-Only` first and align GA and Stripe domains while removing `unsafe-inline` and `unsafe-eval` where possible.
@@ -32,3 +32,12 @@ Source of truth for repository hardening tasks and run-by-run verification.
   - `npm run typecheck` ✅
   - `npm test` ✅
   - `npm run build` ✅
+
+### 2026-03-07 (run 2)
+- Completed: `replace request-driven architecture-review processing with a durable worker or queue model`.
+- Scope: removed request-triggered architecture-review processing from submit/status routes, added a secured queue-drain worker endpoint (`/api/architecture-review/worker`) with batch limits, added queue drain support in `lib/architecture-review/jobs.ts`, and scheduled the worker via `vercel.json` cron.
+- Verification:
+  - `npm run lint` ✅
+  - `npm run typecheck` ❌ (`.next/types/validator.ts` route type mismatches; Prisma client missing `cloudCostLeakFinderSubmission` in typecheck context)
+  - `npm test` ✅
+  - `npm run build` ❌ (same Prisma/typecheck issue in `app/api/submit-cloud-cost-leak-finder/route.ts`)
