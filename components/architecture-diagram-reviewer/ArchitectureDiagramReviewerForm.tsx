@@ -524,6 +524,8 @@ export function ArchitectureDiagramReviewerForm({
     }
 
     let clientPngOcrText: string | undefined;
+    let clientSvgText: string | undefined;
+    let clientSvgDimensions: { width: number; height: number } | undefined;
 
     if (diagramValidation.format === "png") {
       setPhase("ocr");
@@ -549,6 +551,8 @@ export function ArchitectureDiagramReviewerForm({
     if (diagramValidation.format === "svg") {
       try {
         const svgEvidence = await extractSvgEvidence(selectedFile);
+        clientSvgText = svgEvidence.text;
+        clientSvgDimensions = svgEvidence.dimensions ?? undefined;
         const normalizedSvgText = svgEvidence.text.toLowerCase();
         const nonArchHits = NON_ARCH_PRECHECK_TERMS.filter((term) => normalizedSvgText.includes(term)).length;
         const archHits = ARCH_PRECHECK_TERMS.filter((term) => normalizedSvgText.includes(term)).length;
@@ -590,6 +594,8 @@ export function ArchitectureDiagramReviewerForm({
             totalClientMs: Math.max(0, Math.round(performance.now() - startedAtMs)),
           },
           clientPngOcrText,
+          clientSvgText,
+          clientSvgDimensions,
         }),
       );
       submitData.append("diagram", selectedFile, selectedFile.name);

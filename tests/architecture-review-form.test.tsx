@@ -198,6 +198,62 @@ describe("ArchitectureDiagramReviewerForm", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("submits browser-extracted SVG evidence in metadata", async () => {
+    vi.spyOn(architectureReviewClient, "isStrictDiagramFile").mockResolvedValue({
+      ok: true,
+      format: "svg",
+      mimeType: "image/svg+xml",
+    });
+    vi.spyOn(architectureReviewClient, "extractSvgEvidence").mockResolvedValue({
+      text: "edge -> api -> database",
+      dimensions: { width: 1440, height: 900 },
+    });
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        status: "sent",
+      }),
+    });
+
+    render(<ArchitectureDiagramReviewerForm />);
+
+    const svgMarkup = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900"><text>edge</text></svg>';
+    const svgFile = new File([svgMarkup], "diagram.svg", { type: "image/svg+xml" });
+
+    const fileInput = screen.getByLabelText(/diagram file/i);
+    const submitButton = screen.getByRole("button", { name: /run review/i });
+    const form = submitButton.closest("form");
+
+    Object.defineProperty(fileInput, "files", {
+      value: [svgFile],
+      writable: false,
+    });
+    fireEvent.change(fileInput);
+
+    fireEvent.change(screen.getByLabelText(/architecture description/i), {
+      target: { value: "Users enter through edge and request flows to API and database services." },
+    });
+
+    if (!form) {
+      throw new Error("Expected form element.");
+    }
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const formData = requestInit.body as FormData;
+    const metadataRaw = formData.get("metadata");
+    expect(typeof metadataRaw).toBe("string");
+    const metadata = JSON.parse(String(metadataRaw)) as Record<string, unknown>;
+    expect(metadata.clientSvgText).toBe("edge -> api -> database");
+    expect(metadata.clientSvgDimensions).toEqual({ width: 1440, height: 900 });
+  });
+
   it("shows browser OCR progress before PNG submission is sent", async () => {
     vi.spyOn(architectureReviewClient, "isStrictDiagramFile").mockResolvedValue({
       ok: true,
