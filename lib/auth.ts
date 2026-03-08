@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 import { getAuthSecret } from "@/lib/auth-secret";
+import { sanitizeAuthRedirectTarget } from "@/lib/callback-url";
 import { db } from "@/lib/db";
 import { parseAdminEmails, isBusinessEmail } from "@/lib/security";
 import { verifyPassword } from "@/lib/password-auth";
@@ -129,6 +130,9 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      return sanitizeAuthRedirectTarget(url, baseUrl);
+    },
     async jwt({ token, user }) {
       const userId = user?.id ?? token.sub;
       if (!userId) {
