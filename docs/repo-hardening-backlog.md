@@ -10,7 +10,7 @@ Source of truth for repository hardening tasks and run-by-run verification.
 - [x] Move CSP to `Content-Security-Policy-Report-Only` first and align GA and Stripe domains while removing `unsafe-inline` and `unsafe-eval` where possible.
 - [x] Block placeholder Stripe prices and dead checkout states.
 - [x] Replace in-memory rate limiting with a shared store.
-- [ ] Remove silent catalog and account fallbacks that hide failures.
+- [x] Remove silent catalog and account fallbacks that hide failures.
 - [ ] Make sitemap deterministic.
 - [ ] Split `/software/[slug]` central dispatch into per-tool routes with a manifest-driven catalog.
 - [ ] Extract large tool forms into feature-local sections.
@@ -24,6 +24,26 @@ Source of truth for repository hardening tasks and run-by-run verification.
 - [ ] Harden Stripe customer creation and webhook idempotency.
 
 ## Run Log
+### 2026-03-08 (run 10)
+- Completed: `remove silent catalog and account fallbacks that hide failures`.
+- Scope:
+  - removed silent product fallback behavior in [`lib/catalog.ts`](/Users/zohaibkhawaja/Documents/Codex/zokorp-platform/lib/catalog.ts) by throwing `CatalogUnavailableError` when catalog data cannot be loaded instead of returning static fallback records
+  - updated [`app/software/page.tsx`](/Users/zohaibkhawaja/Documents/Codex/zokorp-platform/app/software/page.tsx) and [`app/pricing/page.tsx`](/Users/zohaibkhawaja/Documents/Codex/zokorp-platform/app/pricing/page.tsx) to render explicit unavailable-state alerts when catalog loading fails
+  - updated [`app/account/page.tsx`](/Users/zohaibkhawaja/Documents/Codex/zokorp-platform/app/account/page.tsx) to surface a clear account load error state and log backend failures instead of silently treating failures as missing account data
+- Preflight:
+  - path used: fallback (no `scripts/network-preflight.sh` present)
+  - git remote reachability: ❌ `git ls-remote --heads origin` failed (`Could not resolve host: github.com`)
+  - npm registry reachability: ❌ `curl -I --max-time 15 https://registry.npmjs.org` failed (`Could not resolve host: registry.npmjs.org`)
+  - fetch/sync: ❌ `git fetch origin --prune` failed (`Could not resolve host: github.com`)
+- Verification:
+  - `npm run lint` ✅
+  - `npm run typecheck` ❌ (`lib/utils.ts`: cannot find modules `clsx` and `tailwind-merge`)
+  - stopped remaining checks per automation rule after first failure (`npm test`, `npm run build` not run)
+- Git/PR status:
+  - branch: `codex/remove-silent-catalog-account-fallbacks`
+  - push: pending in this run (network blocked)
+  - PR update/create: pending in this run (network blocked)
+
 ### 2026-03-08 (run 9)
 - Completed: `replace in-memory rate limiting with a shared store`.
 - Scope:

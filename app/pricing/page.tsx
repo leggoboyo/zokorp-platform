@@ -2,9 +2,10 @@ import Link from "next/link";
 
 import { AccessModel } from "@prisma/client";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { getSoftwareCatalog } from "@/lib/catalog";
+import { CatalogUnavailableError, getSoftwareCatalog } from "@/lib/catalog";
 import { buildPageMetadata } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +46,18 @@ const serviceOffers = [
 ];
 
 export default async function PricingPage() {
-  const products = await getSoftwareCatalog();
+  let products: Awaited<ReturnType<typeof getSoftwareCatalog>> = [];
+  let catalogUnavailable = false;
+
+  try {
+    products = await getSoftwareCatalog();
+  } catch (error) {
+    if (error instanceof CatalogUnavailableError) {
+      catalogUnavailable = true;
+    } else {
+      throw error;
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -58,40 +70,49 @@ export default async function PricingPage() {
         </p>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        {products.map((product) => (
-          <article key={product.slug} className="surface lift-card rounded-2xl p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-display text-2xl font-semibold text-slate-900">{product.name}</h2>
-              <Badge variant="secondary">
-                {accessLabels[product.accessModel]}
-              </Badge>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{product.description}</p>
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              {product.prices.length > 0 ? (
-                <ul className="space-y-2 text-sm text-slate-700">
-                  {product.prices.map((price) => (
-                    <li key={price.id} className="flex items-center justify-between gap-4">
-                      <span>{price.kind.replaceAll("_", " ")}</span>
-                      <span className="font-semibold">{formatAmount(price.amount, price.currency)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-slate-700">
-                  {product.accessModel === AccessModel.FREE
-                    ? "No purchase required. Sign in to run the tool and keep account-linked history."
-                    : "Pricing is configured per product and appears when billing is active for that item."}
-                </p>
-              )}
-            </div>
-            <Link href={`/software/${product.slug}`} className={`${buttonVariants()} mt-5`}>
-              Open product
-            </Link>
-          </article>
-        ))}
-      </section>
+      {catalogUnavailable ? (
+        <Alert tone="warning" className="rounded-2xl border-amber-200 bg-amber-50/70">
+          <AlertTitle>Pricing catalog temporarily unavailable</AlertTitle>
+          <AlertDescription>
+            Product pricing could not be loaded from the account catalog right now. Please retry shortly.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <section className="grid gap-4 lg:grid-cols-2">
+          {products.map((product) => (
+            <article key={product.slug} className="surface lift-card rounded-2xl p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-display text-2xl font-semibold text-slate-900">{product.name}</h2>
+                <Badge variant="secondary">
+                  {accessLabels[product.accessModel]}
+                </Badge>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{product.description}</p>
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                {product.prices.length > 0 ? (
+                  <ul className="space-y-2 text-sm text-slate-700">
+                    {product.prices.map((price) => (
+                      <li key={price.id} className="flex items-center justify-between gap-4">
+                        <span>{price.kind.replaceAll("_", " ")}</span>
+                        <span className="font-semibold">{formatAmount(price.amount, price.currency)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-700">
+                    {product.accessModel === AccessModel.FREE
+                      ? "No purchase required. Sign in to run the tool and keep account-linked history."
+                      : "Pricing is configured per product and appears when billing is active for that item."}
+                  </p>
+                )}
+              </div>
+              <Link href={`/software/${product.slug}`} className={`${buttonVariants()} mt-5`}>
+                Open product
+              </Link>
+            </article>
+          ))}
+        </section>
+      )}
 
       <section className="surface soft-grid rounded-2xl p-6 md:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Services</p>
