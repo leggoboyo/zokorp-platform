@@ -98,6 +98,11 @@ export const architectureClientTimingSchema = z.object({
 });
 export type ArchitectureClientTiming = z.infer<typeof architectureClientTimingSchema>;
 
+const architectureSvgDimensionsSchema = z.object({
+  width: z.number().positive().max(12_000),
+  height: z.number().positive().max(12_000),
+});
+
 export const architectureReviewMetadataSchema = z.object({
   diagramFormat: architectureDiagramFormatSchema.optional(),
   title: z.string().trim().max(160).optional(),
@@ -117,6 +122,8 @@ export const architectureReviewMetadataSchema = z.object({
   submissionContext: architectureSubmissionContextSchema.optional(),
   clientTiming: architectureClientTimingSchema.optional(),
   clientPngOcrText: z.string().trim().max(50_000).optional(),
+  clientSvgText: z.string().trim().max(50_000).optional(),
+  clientSvgDimensions: architectureSvgDimensionsSchema.optional(),
   analysisConfidence: architectureAnalysisConfidenceSchema.optional(),
 });
 export type ArchitectureReviewMetadata = z.infer<typeof architectureReviewMetadataSchema>;

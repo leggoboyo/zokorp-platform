@@ -546,9 +546,10 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
     job = await updatePhase(job, "diagram-precheck", "complete");
     job = await updatePhase(job, "ocr", "start");
 
+    const fallbackSvgEvidence = isSvg && !metadata.clientSvgText?.trim() ? extractSvgEvidenceFromBytes(diagramBytes) : null;
     const ocrText = isPng
       ? metadata.clientPngOcrText?.trim() ?? ""
-      : (extractSvgEvidenceFromBytes(diagramBytes).text ?? "");
+      : (metadata.clientSvgText?.trim() || fallbackSvgEvidence?.text || "");
 
     if (isPng && ocrText.length === 0) {
       return rejectJob(job, "Missing browser PNG OCR evidence. Re-upload the diagram and retry.");

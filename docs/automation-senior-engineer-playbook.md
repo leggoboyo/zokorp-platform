@@ -23,6 +23,9 @@ This file is the operating contract for the `ZoKorp release hardening` automatio
 6. Add a short evidence note directly below the updated backlog item.
 7. Run validation:
    - `npm install` only if dependencies are missing or lockfiles changed.
+   - If `npm install` fails because Prisma postinstall cannot reach `binaries.prisma.sh`, retry the install up to 3 times before changing strategy.
+   - If install still cannot complete, use `npm install --ignore-scripts`, then run `npm run prisma:generate` up to 3 times before treating Prisma generation as blocked.
+   - If typecheck, tests, or build fail only because generated `@prisma/client` artifacts are missing, repair Prisma generation before treating the backlog item as unverified.
    - `npm run lint`
    - `npm run typecheck`
    - `npm test`

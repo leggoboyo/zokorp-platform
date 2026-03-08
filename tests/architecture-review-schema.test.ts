@@ -82,6 +82,11 @@ describe("architecture review schema", () => {
         totalClientMs: 4900,
       },
       clientPngOcrText: "api gateway lambda dynamodb cloudwatch",
+      clientSvgText: "edge ingress api service database",
+      clientSvgDimensions: {
+        width: 1280,
+        height: 720,
+      },
     });
 
     expect(parsed.success).toBe(true);
