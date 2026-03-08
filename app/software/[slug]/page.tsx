@@ -16,9 +16,9 @@ import { ToolPageLayout } from "@/components/ui/tool-page-layout";
 import { ValidatorForm } from "@/components/validator-form";
 import { auth } from "@/lib/auth";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
+import { CatalogUnavailableError, getProductBySlug } from "@/lib/catalog";
 import { validatorPriceTierFromAmount, validatorProfileCreditsFromTiers, validatorTierLabel } from "@/lib/credit-tiers";
 import { db } from "@/lib/db";
-import { getProductBySlug } from "@/lib/catalog";
 import { buildPageMetadata } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { getValidatorTargetOptions } from "@/lib/validator-library";
@@ -246,7 +246,15 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  let product = null;
+
+  try {
+    product = await getProductBySlug(slug);
+  } catch (error) {
+    if (!(error instanceof CatalogUnavailableError)) {
+      throw error;
+    }
+  }
 
   if (!product) {
     return buildPageMetadata({
@@ -272,7 +280,39 @@ export default async function SoftwareDetailPage({
 }) {
   const { slug } = await params;
   const query = await searchParams;
-  const product = await getProductBySlug(slug);
+  let product = null;
+  let catalogUnavailable = false;
+
+  try {
+    product = await getProductBySlug(slug);
+  } catch (error) {
+    if (error instanceof CatalogUnavailableError) {
+      catalogUnavailable = true;
+    } else {
+      throw error;
+    }
+  }
+
+  if (catalogUnavailable) {
+    return (
+      <div className="space-y-6">
+        <Alert tone="warning" className="rounded-[calc(var(--radius-xl)+0.25rem)] border-amber-200 bg-amber-50/70">
+          <AlertTitle>Product catalog temporarily unavailable</AlertTitle>
+          <AlertDescription>
+            We could not load this software product from the account catalog right now. Please retry shortly.
+          </AlertDescription>
+        </Alert>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/software" className={buttonVariants()}>
+            Return to software
+          </Link>
+          <Link href="/pricing" className={buttonVariants({ variant: "secondary" })}>
+            View pricing
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (!product || !product.active) {
     notFound();

@@ -48,7 +48,7 @@ export default async function SoftwarePage() {
       throw error;
     }
   }
-  const activeProductCount = products.length;
+  const activeProductBadge = catalogUnavailable ? "Catalog unavailable" : `${products.length} active products`;
 
   return (
     <div className="space-y-8 md:space-y-10">
@@ -67,7 +67,7 @@ export default async function SoftwarePage() {
           and Stripe-backed billing experience.
         </p>
         <div className="mt-6 flex flex-wrap gap-2">
-          <Badge className="bg-white/90 text-slate-800">{activeProductCount} active products</Badge>
+          <Badge className="bg-white/90 text-slate-800">{activeProductBadge}</Badge>
           <Badge className="bg-white/90 text-slate-800">Hosted checkout + portal</Badge>
           <Badge className="bg-white/90 text-slate-800">Entitlement-protected access</Badge>
         </div>
