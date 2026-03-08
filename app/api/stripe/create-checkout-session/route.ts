@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const limiter = consumeRateLimit({
+    const limiter = await consumeRateLimit({
       key: `checkout:${user.id}:${parsed.data.productSlug}:${getRequestFingerprint(request)}`,
       limit: 20,
       windowMs: 10 * 60 * 1000,

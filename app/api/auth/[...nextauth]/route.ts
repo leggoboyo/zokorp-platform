@@ -15,7 +15,7 @@ export function GET(request: Request, context: NextAuthRouteContext) {
 export async function POST(request: Request, context: NextAuthRouteContext) {
   const pathname = new URL(request.url).pathname;
   if (pathname.endsWith("/callback/credentials") || pathname.endsWith("/signin/credentials")) {
-    const limiter = consumeRateLimit({
+    const limiter = await consumeRateLimit({
       key: `auth:password:${getRequestFingerprint(request)}`,
       limit: 25,
       windowMs: 10 * 60 * 1000,

@@ -196,7 +196,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const limiter = consumeRateLimit({
+    const limiter = await consumeRateLimit({
       key: `arch-review:${user.id}:${getRequestFingerprint(request)}`,
       limit: ARCH_REVIEW_RATE_LIMIT,
       windowMs: ARCH_REVIEW_WINDOW_MS,

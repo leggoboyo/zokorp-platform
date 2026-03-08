@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   const requestId = randomUUID();
 
   try {
-    const limiter = consumeRateLimit({
+    const limiter = await consumeRateLimit({
       key: `cloud-cost-leak-finder:${getRequestFingerprint(request)}`,
       limit: RATE_LIMIT,
       windowMs: RATE_LIMIT_WINDOW_MS,
