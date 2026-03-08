@@ -4,6 +4,7 @@ import type { NextAuthOptions, Session } from "next-auth";
 import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+import { getAuthSecret } from "@/lib/auth-secret";
 import { db } from "@/lib/db";
 import { parseAdminEmails, isBusinessEmail } from "@/lib/security";
 import { verifyPassword } from "@/lib/password-auth";
@@ -32,7 +33,7 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET ?? process.env.ARCH_REVIEW_EML_SECRET,
+  secret: getAuthSecret(),
   providers: [
     CredentialsProvider({
       id: "credentials",
