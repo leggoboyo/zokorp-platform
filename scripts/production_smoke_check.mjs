@@ -45,8 +45,10 @@ const routeChecks = [
 
 const controlHosts = ["http://example.com", "https://vercel.com"];
 const networkErrorCodes = new Set([
+  "ABORT_ERR",
   "ENOTFOUND",
   "EAI_AGAIN",
+  "ENETUNREACH",
   "ETIMEDOUT",
   "ECONNREFUSED",
   "ECONNRESET",
