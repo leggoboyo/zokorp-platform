@@ -47,6 +47,25 @@ async function main() {
     },
   });
 
+  const aiDecider = await prisma.product.upsert({
+    where: { slug: "ai-decider" },
+    update: {
+      name: "AI Decider",
+      description:
+        "Free deterministic consulting diagnostic that tells SMB teams whether their problem needs AI, automation, analytics, or more discovery before any build.",
+      accessModel: AccessModel.FREE,
+      active: true,
+    },
+    create: {
+      slug: "ai-decider",
+      name: "AI Decider",
+      description:
+        "Free deterministic consulting diagnostic that tells SMB teams whether their problem needs AI, automation, analytics, or more discovery before any build.",
+      accessModel: AccessModel.FREE,
+      active: true,
+    },
+  });
+
   const landingZoneChecker = await prisma.product.upsert({
     where: { slug: "landing-zone-readiness-checker" },
     update: {
@@ -177,7 +196,7 @@ async function main() {
   }
 
   console.log(
-    `Seeded products: ${validator.slug}, ${freeReviewer.slug}, ${landingZoneChecker.slug}, ${cloudCostLeakFinder.slug}, ${mlopsPlatform.slug}`,
+    `Seeded products: ${validator.slug}, ${aiDecider.slug}, ${freeReviewer.slug}, ${landingZoneChecker.slug}, ${cloudCostLeakFinder.slug}, ${mlopsPlatform.slug}`,
   );
 }
 
