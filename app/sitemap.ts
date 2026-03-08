@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { getMediaArticles } from "@/data/media-articles";
 import { ARCHITECTURE_BENCHMARK_LIBRARY } from "@/lib/architecture-benchmarks";
-import { getSoftwareCatalog } from "@/lib/catalog";
+import { CatalogUnavailableError, getSoftwareCatalog } from "@/lib/catalog";
 import { getSiteUrl } from "@/lib/site";
 
 const staticRoutes = [
@@ -25,7 +25,15 @@ const staticRoutes = [
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getSiteUrl();
   const now = new Date();
-  const products = await getSoftwareCatalog();
+  let products: Awaited<ReturnType<typeof getSoftwareCatalog>> = [];
+
+  try {
+    products = await getSoftwareCatalog();
+  } catch (error) {
+    if (!(error instanceof CatalogUnavailableError)) {
+      throw error;
+    }
+  }
   const mediaArticles = getMediaArticles();
   const benchmarkRoutes = ARCHITECTURE_BENCHMARK_LIBRARY.flatMap((provider) => {
     const providerPath = `/software/architecture-diagram-reviewer/benchmarks/${provider.provider}`;

@@ -1,10 +1,11 @@
 import Link from "next/link";
 
 import { SoftwareCatalogShell } from "@/components/software-catalog-shell";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { getSoftwareCatalog } from "@/lib/catalog";
+import { CatalogUnavailableError, getSoftwareCatalog } from "@/lib/catalog";
 import { buildPageMetadata } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -35,8 +36,19 @@ const roadmapItems = [
 ];
 
 export default async function SoftwarePage() {
-  const products = await getSoftwareCatalog();
-  const activeProductCount = products.length;
+  let products: Awaited<ReturnType<typeof getSoftwareCatalog>> = [];
+  let catalogUnavailable = false;
+
+  try {
+    products = await getSoftwareCatalog();
+  } catch (error) {
+    if (error instanceof CatalogUnavailableError) {
+      catalogUnavailable = true;
+    } else {
+      throw error;
+    }
+  }
+  const activeProductBadge = catalogUnavailable ? "Catalog unavailable" : `${products.length} active products`;
 
   return (
     <div className="space-y-8 md:space-y-10">
@@ -55,7 +67,7 @@ export default async function SoftwarePage() {
           and Stripe-backed billing experience.
         </p>
         <div className="mt-6 flex flex-wrap gap-2">
-          <Badge className="bg-white/90 text-slate-800">{activeProductCount} active products</Badge>
+          <Badge className="bg-white/90 text-slate-800">{activeProductBadge}</Badge>
           <Badge className="bg-white/90 text-slate-800">Hosted checkout + portal</Badge>
           <Badge className="bg-white/90 text-slate-800">Entitlement-protected access</Badge>
         </div>
@@ -75,7 +87,16 @@ export default async function SoftwarePage() {
         </div>
       </section>
 
-      <SoftwareCatalogShell products={products} />
+      {catalogUnavailable ? (
+        <Alert tone="warning" className="rounded-2xl border-amber-200 bg-amber-50/70">
+          <AlertTitle>Software catalog temporarily unavailable</AlertTitle>
+          <AlertDescription>
+            We could not load product data from the account catalog right now. Please retry shortly.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <SoftwareCatalogShell products={products} />
+      )}
 
       <section className="surface soft-grid rounded-[calc(var(--radius-xl)+0.25rem)] p-6 md:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">

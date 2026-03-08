@@ -23,7 +23,7 @@ const formSchema = z.object({
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
-    const limiter = consumeRateLimit({
+    const limiter = await consumeRateLimit({
       key: `validator:${user.id}:${getRequestFingerprint(request)}`,
       limit: 25,
       windowMs: 60 * 60 * 1000,

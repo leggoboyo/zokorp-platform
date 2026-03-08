@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const limiter = consumeRateLimit({
+    const limiter = await consumeRateLimit({
       key: `auth:reset:complete:${getRequestFingerprint(request)}`,
       limit: 20,
       windowMs: 60 * 60 * 1000,

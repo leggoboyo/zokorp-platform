@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
 
-    const limiter = consumeRateLimit({
+    const limiter = await consumeRateLimit({
       key: `service-request:${user.id}:${getRequestFingerprint(request)}`,
       limit: 6,
       windowMs: 10 * 60 * 1000,

@@ -49,6 +49,7 @@ export default async function AccountPage() {
 
   let user = null;
   let serviceRequests: ServiceRequest[] = [];
+  let accountLoadError = false;
 
   try {
     user = await db.user.findUnique({
@@ -101,8 +102,29 @@ export default async function AccountPage() {
         }
       }
     }
-  } catch {
-    user = null;
+  } catch (error) {
+    console.error("Failed to load account page data.", { email, error });
+    accountLoadError = true;
+  }
+
+  if (accountLoadError) {
+    return (
+      <div className="space-y-6">
+        <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+          <CardHeader>
+            <h1 className="font-display text-3xl font-semibold text-slate-900">Account</h1>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm leading-6 text-slate-600">
+              We could not load your account right now due to a backend error. Please try again in a few minutes.
+            </p>
+            <Link href="/software" className={buttonVariants()}>
+              Return to Software
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!user) {

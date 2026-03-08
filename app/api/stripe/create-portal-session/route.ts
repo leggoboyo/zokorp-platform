@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     const user = await requireUser();
-    const limiter = consumeRateLimit({
+    const limiter = await consumeRateLimit({
       key: `billing-portal:${user.id}:${getRequestFingerprint(request)}`,
       limit: 15,
       windowMs: 10 * 60 * 1000,
