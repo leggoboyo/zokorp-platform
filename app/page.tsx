@@ -132,14 +132,18 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-[calc(var(--radius-xl)+0.25rem)] border border-white/12 bg-[linear-gradient(155deg,rgba(11,24,45,0.76),rgba(13,48,73,0.64))] p-6 text-white shadow-[0_28px_70px_rgba(15,23,42,0.28)] backdrop-blur-md">
+          <div className="relative overflow-hidden rounded-[calc(var(--radius-xl)+0.25rem)] border border-white/12 bg-[radial-gradient(circle_at_top_right,rgba(125,240,255,0.14),transparent_28%),linear-gradient(155deg,rgba(7,18,35,0.88),rgba(8,34,56,0.82)_54%,rgba(8,85,108,0.72))] p-6 text-white shadow-[0_28px_70px_rgba(15,23,42,0.34)] ring-1 ring-white/8 backdrop-blur-sm">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent)]" />
             <CardHeader className="gap-3">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-100/75">Operating Signal</p>
               <h2 className="font-display text-3xl font-semibold">Move from discovery to delivery without switching surfaces</h2>
             </CardHeader>
             <CardContent className="space-y-3">
               {operatingSignals.map((signal) => (
-                <div key={signal} className="rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-slate-100/92">
+                <div
+                  key={signal}
+                  className="rounded-2xl border border-white/10 bg-slate-950/26 px-4 py-3 text-sm font-medium text-slate-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                >
                   {signal}
                 </div>
               ))}
