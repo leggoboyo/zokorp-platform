@@ -1,5 +1,6 @@
 import { AI_DECIDER_FINDING_CATEGORY_LABELS, AI_DECIDER_RECOMMENDATION_LABELS, CONSULTATION_CTA_PATH } from "@/lib/ai-decider/config";
 import type { AiDeciderLeadInput, AiDeciderReport } from "@/lib/ai-decider/types";
+import { formatUsdRange, renderQuoteLineItemsHtml, quoteLineItemText } from "@/lib/quote-line-items";
 import { getSiteUrl } from "@/lib/site";
 
 function escapeHtml(value: string) {
@@ -13,14 +14,6 @@ function escapeHtml(value: string) {
 
 function firstName(fullName: string) {
   return fullName.trim().split(/\s+/)[0] ?? "there";
-}
-
-function formatUsd(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
 }
 
 function consultationUrl() {
@@ -78,8 +71,10 @@ function buildTextEmail(input: {
     ...input.report.nextSteps.map((step) => `- ${step}`),
     "",
     `Suggested engagement: ${input.report.quote.engagementType}`,
-    `Estimated quote range: ${formatUsd(input.report.quote.priceLow)} - ${formatUsd(input.report.quote.priceHigh)}`,
+    `Estimated quote range: ${formatUsdRange(input.report.quote.priceLow, input.report.quote.priceHigh)}`,
     `Quote confidence: ${input.report.quote.confidence}`,
+    "Quote breakdown:",
+    ...input.report.quote.lineItems.map((item) => `- ${quoteLineItemText(item)}`),
     ...input.report.quote.rationaleLines.map((line) => `- ${line}`),
     "",
     `Book a consultation: ${consultationUrl()}`,
@@ -160,8 +155,12 @@ function buildHtmlEmail(input: {
 
           <div style="margin-top:18px;border:1px solid #d7e2ef;border-radius:12px;padding:14px;">
             <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote range</div>
-            <p style="margin:8px 0 0;font-size:20px;font-weight:700;color:#0f172a;">${escapeHtml(formatUsd(input.report.quote.priceLow))} - ${escapeHtml(formatUsd(input.report.quote.priceHigh))}</p>
+            <p style="margin:8px 0 0;font-size:20px;font-weight:700;color:#0f172a;">${escapeHtml(formatUsdRange(input.report.quote.priceLow, input.report.quote.priceHigh))}</p>
             <p style="margin:8px 0 0;font-size:14px;line-height:1.7;color:#334155;">Suggested engagement: <strong>${escapeHtml(input.report.quote.engagementType)}</strong><br />Quote confidence: ${escapeHtml(input.report.quote.confidence)}</p>
+            <div style="margin-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote breakdown</div>
+            <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.7;">
+              ${renderQuoteLineItemsHtml(input.report.quote.lineItems)}
+            </ul>
             <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.7;">
               ${input.report.quote.rationaleLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
             </ul>

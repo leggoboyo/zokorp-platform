@@ -1,5 +1,6 @@
 import {
   calculateAnalysisConfidence,
+  buildArchitectureConsultationQuote,
   calculateConsultationQuoteUSD,
   calculateFixCostUSD,
   calculateOverallScore,
@@ -137,6 +138,12 @@ export function buildArchitectureReviewReport(input: {
       regulatoryScope: input.quoteContext?.regulatoryScope,
     });
   const consultationQuoteUSD = calculateConsultationQuoteUSD(findings, overallScore, input.quoteContext);
+  const consultationQuote = buildArchitectureConsultationQuote({
+    findings,
+    consultationQuoteUSD,
+    quoteTier,
+    analysisConfidence,
+  });
 
   const report: ArchitectureReviewReport = {
     reportVersion: ARCHITECTURE_REVIEW_VERSION,
@@ -147,6 +154,7 @@ export function buildArchitectureReviewReport(input: {
     flowNarrative: truncate(input.flowNarrative, 2000),
     findings,
     consultationQuoteUSD,
+    consultationQuote,
     generatedAtISO: input.generatedAtISO ?? new Date().toISOString(),
     userEmail: input.userEmail.trim().toLowerCase(),
   };

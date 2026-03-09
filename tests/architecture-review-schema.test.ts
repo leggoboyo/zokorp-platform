@@ -28,6 +28,7 @@ describe("architecture review schema", () => {
     expect(report.analysisConfidence).toBe("high");
     expect(report.quoteTier).toBe("advisory-review");
     expect(report.findings[0].fixCostUSD).toBeGreaterThan(0);
+    expect(report.consultationQuote.lineItems[0]?.label).toBe("Advisory review baseline");
   });
 
   it("rejects overlong finding messages", () => {
@@ -50,6 +51,20 @@ describe("architecture review schema", () => {
         },
       ],
       consultationQuoteUSD: 300,
+      consultationQuote: {
+        quoteLow: 300,
+        quoteHigh: 300,
+        lineItems: [
+          {
+            code: "architecture-advisory-baseline",
+            label: "Advisory review baseline",
+            amountLow: 300,
+            amountHigh: 300,
+            reason: "Baseline",
+          },
+        ],
+        rationaleLines: ["Baseline only."],
+      },
       generatedAtISO: "2026-03-05T12:00:00.000Z",
       userEmail: "architect@zokorp.com",
     });

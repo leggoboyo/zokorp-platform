@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildLandingZoneReadinessReport, buildCategoryScores, maturityBandFromScore, sortLandingZoneFindings } from "@/lib/landing-zone-readiness/engine";
 import { isAllowedLandingZoneBusinessEmail } from "@/lib/landing-zone-readiness/input";
 import { landingZoneReadinessAnswersSchema, type LandingZoneReadinessAnswers } from "@/lib/landing-zone-readiness/types";
+import { sumQuoteLineItems } from "@/lib/quote-line-items";
 
 function makeAnswers(overrides: Partial<LandingZoneReadinessAnswers> = {}): LandingZoneReadinessAnswers {
   return landingZoneReadinessAnswersSchema.parse({
@@ -105,6 +106,11 @@ describe("landing zone readiness engine", () => {
     expect(first.quote.estimatedDaysLow).toBe(8.5);
     expect(first.quote.estimatedDaysHigh).toBe(19);
     expect(first.quote.confidence).toBe("low");
+    expect(first.quote.lineItems[0]?.label).toContain("base scope");
+    expect(sumQuoteLineItems(first.quote.lineItems)).toEqual({
+      low: first.quote.quoteLow,
+      high: first.quote.quoteHigh,
+    });
   });
 
   it("computes category scores from weighted deductions", () => {

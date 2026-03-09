@@ -5,6 +5,7 @@ import type {
   CloudCostLeakFinderReport,
   WasteCategory,
 } from "@/lib/cloud-cost-leak-finder/types";
+import { renderQuoteLineItemsHtml, quoteLineItemText } from "@/lib/quote-line-items";
 import { getSiteUrl } from "@/lib/site";
 
 function escapeHtml(value: string) {
@@ -40,9 +41,7 @@ function categoryLines(categories: WasteCategory[]) {
 }
 
 function quoteLineItems(report: CloudCostLeakFinderReport) {
-  return report.quote.lineItems.map(
-    (item) => `${item.label}: ${formatUsdRange(item.amountLow, item.amountHigh)}. ${item.reason}`,
-  );
+  return report.quote.lineItems.map((item) => quoteLineItemText(item));
 }
 
 function buildTextEmail(input: {
@@ -159,7 +158,7 @@ function buildHtmlEmail(input: {
             <p style="margin:8px 0 0;color:#334155;font-size:14px;line-height:1.6;">Deterministic quote range: ${escapeHtml(formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh))}</p>
             <div style="margin-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote breakdown</div>
             <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.6;">
-              ${quoteLineItems(input.report).map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
+              ${renderQuoteLineItemsHtml(input.report.quote.lineItems)}
             </ul>
             <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.6;">
               ${input.report.quote.rationaleLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { quoteLineItemSchema } from "@/lib/quote-line-items";
+
 export const LANDING_ZONE_READINESS_VERSION = "1.0" as const;
 
 export const cloudProviderSchema = z.enum(["aws", "azure", "gcp"]);
@@ -166,6 +168,7 @@ export const landingZoneReadinessQuoteSchema = z.object({
   estimatedDaysLow: z.number().min(0),
   estimatedDaysHigh: z.number().min(0),
   confidence: quoteConfidenceSchema,
+  lineItems: z.array(quoteLineItemSchema).min(1).max(10),
   rationaleLines: z.array(z.string().trim().min(1).max(140)).max(3),
 });
 export type LandingZoneReadinessQuote = z.infer<typeof landingZoneReadinessQuoteSchema>;

@@ -1,5 +1,6 @@
-import { DEFAULT_QUOTE_PRICING_CONFIG } from "@/lib/landing-zone-readiness/config";
+import { DEFAULT_QUOTE_PRICING_CONFIG, READINESS_CATEGORY_LABELS } from "@/lib/landing-zone-readiness/config";
 import { LANDING_ZONE_CORE_CONTROL_RULE_IDS } from "@/lib/landing-zone-readiness/rules";
+import { scaleQuoteLineItems, type QuoteLineItem } from "@/lib/quote-line-items";
 import type {
   LandingZoneReadinessAnswers,
   LandingZoneReadinessFinding,
@@ -90,6 +91,154 @@ function formatDayRange(low: number, high: number) {
   }
 
   return `${low}-${high} days`;
+}
+
+function tierBaseItem(tier: QuoteTier, dayRateUsd: number): QuoteLineItem {
+  const config = DEFAULT_QUOTE_PRICING_CONFIG.tiers[tier];
+
+  return {
+    code: `landing-zone-base-${tier.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-")}`,
+    label: `${tier} base scope`,
+    amountLow: Math.round(config.minimumDaysLow * dayRateUsd),
+    amountHigh: Math.round(config.minimumDaysHigh * dayRateUsd),
+    reason:
+      tier === "Advisory Review"
+        ? "Covers a short advisory pass to sequence the remaining landing-zone fixes."
+        : tier === "Foundation Fix Sprint"
+          ? "Covers the minimum sprint needed to tighten the highest-impact foundation gaps."
+          : tier === "Landing Zone Hardening"
+            ? "Covers the baseline coordination needed when the gaps span multiple landing-zone layers."
+            : "Covers the minimum scoping block before a broader delivery proposal is safe.",
+  };
+}
+
+function summarizeSeverityMix(findings: LandingZoneReadinessFinding[]) {
+  const high = findings.filter((finding) => finding.severity === "high").length;
+  const medium = findings.filter((finding) => finding.severity === "medium").length;
+
+  if (high > 0) {
+    return `${high} high-severity and ${medium} medium-severity gap${high + medium === 1 ? "" : "s"}`;
+  }
+
+  if (medium > 0) {
+    return `${medium} medium-severity gap${medium === 1 ? "" : "s"}`;
+  }
+
+  return `${findings.length} low-severity gap${findings.length === 1 ? "" : "s"}`;
+}
+
+function buildCategoryLineItems(input: {
+  findings: LandingZoneReadinessFinding[];
+  dayRateUsd: number;
+}) {
+  const grouped = new Map<ReadinessCategory, LandingZoneReadinessFinding[]>();
+
+  for (const finding of input.findings) {
+    const bucket = grouped.get(finding.category);
+    if (bucket) {
+      bucket.push(finding);
+    } else {
+      grouped.set(finding.category, [finding]);
+    }
+  }
+
+  return [...grouped.entries()]
+    .map(([category, findings]) => {
+      const effort = findings.reduce(
+        (totals, finding) => {
+          const days = FINDING_EFFORT_DAYS[finding.category][finding.severity];
+          totals.low += days.low;
+          totals.high += days.high;
+          return totals;
+        },
+        { low: 0, high: 0 },
+      );
+
+      return {
+        code: `landing-zone-category-${category}`,
+        label: `${READINESS_CATEGORY_LABELS[category]} hardening`,
+        amountLow: Math.round(effort.low * input.dayRateUsd),
+        amountHigh: Math.round(effort.high * input.dayRateUsd),
+        reason: `${summarizeSeverityMix(findings)} in ${READINESS_CATEGORY_LABELS[category].toLowerCase()} drive targeted remediation work.`,
+      } satisfies QuoteLineItem;
+    })
+    .sort((left, right) => right.amountHigh - left.amountHigh);
+}
+
+function buildScopeLineItems(input: {
+  coreControlsMissing: number;
+  multiCloud: boolean;
+  handlesSensitiveData: boolean;
+  dayRateUsd: number;
+}) {
+  const items: QuoteLineItem[] = [];
+
+  if (input.coreControlsMissing > 0) {
+    items.push({
+      code: "landing-zone-core-controls",
+      label: "Core control backfill",
+      amountLow: Math.round(
+        input.coreControlsMissing *
+          DEFAULT_QUOTE_PRICING_CONFIG.labor.missingCoreControlDaysLow *
+          input.dayRateUsd,
+      ),
+      amountHigh: Math.round(
+        input.coreControlsMissing *
+          DEFAULT_QUOTE_PRICING_CONFIG.labor.missingCoreControlDaysHigh *
+          input.dayRateUsd,
+      ),
+      reason: `${input.coreControlsMissing} core landing-zone control gap${input.coreControlsMissing === 1 ? "" : "s"} add sequencing and verification work.`,
+    });
+  }
+
+  if (input.multiCloud) {
+    items.push({
+      code: "landing-zone-multi-cloud",
+      label: "Multi-cloud coordination",
+      amountLow: Math.round(DEFAULT_QUOTE_PRICING_CONFIG.labor.multiCloudDaysLow * input.dayRateUsd),
+      amountHigh: Math.round(DEFAULT_QUOTE_PRICING_CONFIG.labor.multiCloudDaysHigh * input.dayRateUsd),
+      reason: "Cross-cloud standardization and rollout planning add coordination beyond a single-cloud baseline.",
+    });
+  }
+
+  if (input.handlesSensitiveData) {
+    items.push({
+      code: "landing-zone-sensitive-data",
+      label: "Sensitive-data control review",
+      amountLow: Math.round(DEFAULT_QUOTE_PRICING_CONFIG.labor.sensitiveDataDaysLow * input.dayRateUsd),
+      amountHigh: Math.round(DEFAULT_QUOTE_PRICING_CONFIG.labor.sensitiveDataDaysHigh * input.dayRateUsd),
+      reason: "Sensitive-data handling raises the minimum control and verification burden for the work.",
+    });
+  }
+
+  return items;
+}
+
+function condenseLineItems(baseItem: QuoteLineItem, extras: QuoteLineItem[]) {
+  const rankedExtras = [...extras].sort((left, right) => {
+    if (right.amountHigh !== left.amountHigh) {
+      return right.amountHigh - left.amountHigh;
+    }
+
+    return right.amountLow - left.amountLow;
+  });
+
+  if (rankedExtras.length <= 8) {
+    return [baseItem, ...rankedExtras];
+  }
+
+  const kept = rankedExtras.slice(0, 7);
+  const overflow = rankedExtras.slice(7);
+
+  const overflowItem: QuoteLineItem = {
+    code: "landing-zone-additional-gaps",
+    label: "Additional foundation gaps",
+    amountLow: overflow.reduce((sum, item) => sum + item.amountLow, 0),
+    amountHigh: overflow.reduce((sum, item) => sum + item.amountHigh, 0),
+    reason: "Combines the remaining smaller gap clusters so the quote stays readable without hiding scope.",
+  };
+
+  return [baseItem, ...kept, overflowItem];
 }
 
 function selectQuoteTier(input: {
@@ -278,6 +427,22 @@ export function buildLandingZoneQuote(input: QuoteInput): LandingZoneReadinessQu
     Math.max(estimatedDays.high * dayRateUsd, quoteLow + dayRateUsd),
     500,
   );
+  const rawLineItems = condenseLineItems(
+    tierBaseItem(tier, dayRateUsd),
+    [
+      ...buildCategoryLineItems({
+        findings: input.findings,
+        dayRateUsd,
+      }),
+      ...buildScopeLineItems({
+        coreControlsMissing,
+        multiCloud,
+        handlesSensitiveData: input.answers.handlesSensitiveData,
+        dayRateUsd,
+      }),
+    ],
+  );
+  const lineItems = scaleQuoteLineItems(rawLineItems, quoteLow, quoteHigh);
 
   return {
     quoteTier: tier,
@@ -293,6 +458,7 @@ export function buildLandingZoneQuote(input: QuoteInput): LandingZoneReadinessQu
       multiCloud,
       handlesSensitiveData: input.answers.handlesSensitiveData,
     }),
+    lineItems,
     rationaleLines: buildRationaleLines({
       tier,
       findingsCount: input.findings.length,
