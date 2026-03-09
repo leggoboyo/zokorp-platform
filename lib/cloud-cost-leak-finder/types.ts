@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { quoteLineItemSchema } from "@/lib/quote-line-items";
+
 export const CLOUD_COST_LEAK_FINDER_VERSION = "1.0" as const;
 
 export const cloudProviderSchema = z.enum(["aws", "azure", "gcp", "other"]);
@@ -249,12 +251,7 @@ export const cloudCostLeakFinderFindingSchema = z.object({
 });
 export type CloudCostLeakFinderFinding = z.infer<typeof cloudCostLeakFinderFindingSchema>;
 
-export const cloudCostLeakFinderQuoteLineItemSchema = z.object({
-  label: z.string().trim().min(1).max(140),
-  amountLow: z.number().int().min(0),
-  amountHigh: z.number().int().min(0),
-  reason: z.string().trim().min(1).max(180),
-});
+export const cloudCostLeakFinderQuoteLineItemSchema = quoteLineItemSchema;
 export type CloudCostLeakFinderQuoteLineItem = z.infer<typeof cloudCostLeakFinderQuoteLineItemSchema>;
 
 export const cloudCostLeakFinderQuoteSchema = z.object({

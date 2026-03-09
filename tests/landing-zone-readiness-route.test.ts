@@ -271,6 +271,15 @@ describe("submit landing zone readiness route", () => {
         estimatedDaysLow: 1,
         estimatedDaysHigh: 2,
         confidence: "high",
+        lineItems: [
+          {
+            code: "landing-zone-base-advisory-review",
+            label: "Advisory Review base scope",
+            amountLow: 2000,
+            amountHigh: 3500,
+            reason: "Already sent.",
+          },
+        ],
         rationaleLines: ["Already sent."],
       },
       emailDeliveryStatus: "sent",

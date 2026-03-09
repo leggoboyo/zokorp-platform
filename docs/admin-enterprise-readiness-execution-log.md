@@ -5,12 +5,12 @@
 - Mission start: 2026-03-08 17:17:44 CDT
 - Main checkout preserved untouched: `/Users/zohaibkhawaja/Documents/Codex/zokorp-platform`
 - Main checkout status at this slice start: clean on `main` and safe for isolated branching
-- Active worktree: `/Users/zohaibkhawaja/Documents/Codex/zokorp-worktrees/production-migration-direct-url`
-- Active branch: `codex/production-migration-direct-url`
-- Repo root: `/Users/zohaibkhawaja/Documents/Codex/zokorp-worktrees/production-migration-direct-url`
+- Active worktree: `/Users/zohaibkhawaja/Documents/Codex/zokorp-worktrees/shared-quote-line-items`
+- Active branch: `codex/shared-quote-line-items`
+- Repo root: `/Users/zohaibkhawaja/Documents/Codex/zokorp-worktrees/shared-quote-line-items`
 - Remote: `origin https://github.com/leggoboyo/zokorp-platform.git`
 - Existing open `codex/` PR for this mission: none found
-- Current slice: harden production migration workflow to prefer a dedicated direct Postgres URL and fail early on malformed secrets
+- Current slice: standardize shared deterministic quote line items across the free diagnostic tools
 
 ## Execution Entries
 
@@ -28,6 +28,8 @@
 | 2026-03-09 03:00:00 CDT | Remove raw architecture-diagram byte persistence from the job model, require browser evidence for queued jobs, and split WorkDrive archival into request-time diagram upload plus report-only follow-up upload | done | Created isolated worktree `/Users/zohaibkhawaja/Documents/Codex/zokorp-worktrees/architecture-review-storage-privacy` on branch `codex/architecture-review-storage-privacy`; updated `app/api/submit-architecture-review/route.ts` so PNG/SVG uploads are validated during the request, browser-extracted evidence is required before queueing, and optional archival uploads the original diagram immediately instead of storing it in Postgres; updated `lib/architecture-review/jobs.ts` to process queued jobs using stored evidence metadata only and to upload only the report JSON during follow-up archival; split `lib/zoho-workdrive.ts` into diagram/report archival helpers and added status formatting; removed `diagramBytes` from `prisma/schema.prisma`, added migration `prisma/migrations/0011_architecture_review_remove_raw_bytes/migration.sql`, removed dead server-side PNG OCR code from `lib/architecture-review/server.ts`, and updated `tests/architecture-review-route.test.ts` plus the backlog to prove raw bytes are no longer queued into the job model | `npm install`, Prisma client generation, `npm run lint`, `npm run typecheck`, `npm test -- architecture-review-route architecture-review-worker-route architecture-review-form architecture-review-schema architecture-review-svg-safety`, `npm test`, `npm run build`, `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/zokorp npx prisma validate`, and `node scripts/production_smoke_check.mjs` all passed | `https://github.com/leggoboyo/zokorp-platform/pull/41` | Applying the migration to a real database still needs a real `DATABASE_URL` in the execution environment; no browser-side manual work is required for this slice. |
 | 2026-03-09 03:20:00 CDT | Add a safe manual GitHub Actions path for production Prisma migrations and document the required production secret/trigger flow | done | Added `.github/workflows/production-prisma-migrate.yml` as a manual `workflow_dispatch` job bound to the GitHub Actions `production` environment; the workflow checks out `main`, runs `npm ci`, runs `npm run prisma:migrate:deploy`, and performs a read-only `information_schema.columns` verification that `ArchitectureReviewJob.diagramBytes` is gone and WorkDrive tracking columns exist; updated `docs/08-how-to-operate.md`, `docs/03-environment-variables-template.md`, and `docs/07-open-questions.md` so the required `PRODUCTION_DATABASE_URL` secret and operator path are explicit | Local validation after adding the workflow/docs: `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` | `https://github.com/leggoboyo/zokorp-platform/pull/42` | A human still needs GitHub `production` environment access to set `PRODUCTION_DATABASE_URL` and click or API-trigger the workflow. |
 | 2026-03-09 03:50:00 CDT | Harden the production migration workflow so it prefers a dedicated direct DB secret and fails before Prisma when the secret is malformed | done | Updated `.github/workflows/production-prisma-migrate.yml` to resolve `PRODUCTION_DIRECT_DATABASE_URL` first, fall back to `PRODUCTION_DATABASE_URL`, and validate that the selected value starts with `postgres://` or `postgresql://`; updated `docs/08-how-to-operate.md`, `docs/03-environment-variables-template.md`, and `docs/07-open-questions.md` so the operator path explicitly prefers a direct Supabase connection string for migrations and no longer assumes a single secret name | Local validation after workflow/doc changes: `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` | `https://github.com/leggoboyo/zokorp-platform/pull/43` | A human still needs GitHub `production` environment access to set a valid direct connection string and trigger the workflow. |
+| 2026-03-09 04:08:00 CDT | Verify the production rollout for the architecture-review privacy migration after the workflow hardening landed | done | Atlas confirmed PR #43 merged, the `Production Prisma Migrate` workflow succeeded on `main`, Prisma applied `0011_architecture_review_remove_raw_bytes`, schema verification confirmed `ArchitectureReviewJob.diagramBytes` is removed and WorkDrive tracking columns exist, and `/`, `/login`, `/register`, plus `/software/architecture-diagram-reviewer` still load with verified-account enforcement intact | Credentialed production rollout report from Atlas; no further local code changes were required for this verification step | None | None |
+| 2026-03-09 04:45:00 CDT | Standardize shared deterministic quote line items across AI Decider, Landing Zone Readiness, Cloud Cost Leak Finder, and the Architecture Diagram Reviewer | done | Added shared quote helpers in `lib/quote-line-items.ts` plus internal documentation in `docs/shared-diagnostic-quote-line-items.md`; updated AI Decider, Landing Zone Readiness, and Cloud Cost quote schemas/email rendering to use shared line items; added `consultationQuote` packaging to Architecture Review while preserving `consultationQuoteUSD` and `quoteTier` compatibility fields; updated backlog items `CRIT-011` through `CRIT-014` and `MED-008`; added regression coverage in `tests/quote-line-items.test.ts`, `tests/ai-decider-email.test.ts`, `tests/landing-zone-readiness-email.test.ts`, and existing architecture/landing-zone tests | `npm install`, `npm run typecheck`, `npm test -- quote-line-items ai-decider-email landing-zone-readiness-email architecture-review-email architecture-review-schema landing-zone-readiness-engine landing-zone-readiness-route cloud-cost-leak-finder-email ai-decider-engine`, `npm run lint`, `npm test`, and `npm run build` all passed in `/Users/zohaibkhawaja/Documents/Codex/zokorp-worktrees/shared-quote-line-items` | None | None |
 
 ## Validation Summary
 
@@ -41,6 +43,7 @@
 - `SMOKE_BASE_URL=http://127.0.0.1:3001 node scripts/production_smoke_check.mjs`: pass
 - `SMOKE_BASE_URL=http://127.0.0.1:3005 node scripts/production_smoke_check.mjs`: pass
 - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/zokorp npx prisma validate`: pass
+- Production GitHub Actions workflow `Production Prisma Migrate`: pass
 
 ## PR Status
 
@@ -48,6 +51,7 @@
 - New privacy slice PR: `https://github.com/leggoboyo/zokorp-platform/pull/41`
 - New migration-runbook slice PR: `https://github.com/leggoboyo/zokorp-platform/pull/42`
 - New direct-URL workflow-hardening PR: `https://github.com/leggoboyo/zokorp-platform/pull/43`
+- New shared quote-line-items PR: not created yet
 
 ## Blocked Items Requiring Human Input
 

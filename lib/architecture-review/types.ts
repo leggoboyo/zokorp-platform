@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { quoteLineItemSchema } from "@/lib/quote-line-items";
+
 export const ARCHITECTURE_REVIEW_VERSION = "1.0" as const;
 
 export const architectureProviderSchema = z.enum(["aws", "azure", "gcp"]);
@@ -75,6 +77,12 @@ export const architectureReviewReportSchema = z.object({
   flowNarrative: z.string().trim().min(1).max(2000),
   findings: z.array(architectureFindingSchema).max(20),
   consultationQuoteUSD: z.number().int().min(0),
+  consultationQuote: z.object({
+    quoteLow: z.number().int().min(0),
+    quoteHigh: z.number().int().min(0),
+    lineItems: z.array(quoteLineItemSchema).min(1).max(6),
+    rationaleLines: z.array(z.string().trim().min(1).max(180)).min(1).max(4),
+  }),
   generatedAtISO: z.string().datetime({ offset: true }),
   userEmail: z.string().email(),
 });

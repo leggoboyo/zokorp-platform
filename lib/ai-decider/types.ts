@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { quoteLineItemSchema } from "@/lib/quote-line-items";
+
 export const AI_DECIDER_VERSION = "1.0" as const;
 
 const websiteRegex = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i;
@@ -144,6 +146,7 @@ export const aiDeciderQuoteSchema = z.object({
   priceLow: z.number().int().min(0),
   priceHigh: z.number().int().min(0),
   confidence: z.enum(["high", "medium", "low"]),
+  lineItems: z.array(quoteLineItemSchema).min(3).max(5),
   rationaleLines: z.array(z.string().trim().min(1).max(160)).min(2).max(4),
 });
 export type AiDeciderQuote = z.infer<typeof aiDeciderQuoteSchema>;

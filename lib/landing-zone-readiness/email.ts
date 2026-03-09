@@ -4,6 +4,7 @@ import type {
   LandingZoneReadinessReport,
   ReadinessCategory,
 } from "@/lib/landing-zone-readiness/types";
+import { formatUsdRange, renderQuoteLineItemsHtml, quoteLineItemText } from "@/lib/quote-line-items";
 import { getSiteUrl } from "@/lib/site";
 
 function escapeHtml(value: string) {
@@ -13,20 +14,6 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-
-function toUsdRange(low: number, high: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(low) +
-    " - " +
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(high);
 }
 
 function firstName(fullName: string) {
@@ -60,7 +47,7 @@ function buildTextEmail(input: {
     `Maturity band: ${input.report.maturityBand}`,
     `Suggested engagement: ${input.report.quote.quoteTier}`,
     `Estimated solo-consulting effort: ${input.report.quote.estimatedDaysLow}-${input.report.quote.estimatedDaysHigh} working days`,
-    `Estimated quote range: ${toUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh)}`,
+    `Estimated quote range: ${formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh)}`,
     "",
     "Category snapshot:",
     ...buildCategoryLines(input.report).map((line) => `- ${line}`),
@@ -81,6 +68,8 @@ function buildTextEmail(input: {
 
   lines.push("");
   lines.push("Quote basis: deterministic remediation effort estimate from fixed rule matches, not AI-generated pricing.");
+  lines.push("Quote breakdown:");
+  lines.push(...input.report.quote.lineItems.map((item) => `- ${quoteLineItemText(item)}`));
   lines.push("");
   lines.push(...input.report.quote.rationaleLines.map((line) => `- ${line}`));
   lines.push("");
@@ -123,7 +112,7 @@ function buildHtmlEmail(input: {
               <td style="padding:0 0 8px 8px;">
                 <div style="border:1px solid #d7e2ef;border-radius:12px;padding:14px;">
                   <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote range</div>
-                  <div style="margin-top:6px;font-size:18px;font-weight:800;color:#0f172a;">${escapeHtml(toUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh))}</div>
+                  <div style="margin-top:6px;font-size:18px;font-weight:800;color:#0f172a;">${escapeHtml(formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh))}</div>
                 </div>
               </td>
             </tr>
@@ -173,6 +162,13 @@ function buildHtmlEmail(input: {
                 </div>`
               : ""
           }
+
+          <div style="margin-top:18px;border:1px solid #d7e2ef;border-radius:12px;padding:14px;background:#fbfcfe;">
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote breakdown</div>
+            <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.6;">
+              ${renderQuoteLineItemsHtml(input.report.quote.lineItems)}
+            </ul>
+          </div>
 
           <div style="margin-top:18px;border:1px solid #d7e2ef;border-radius:12px;padding:14px;background:#fbfcfe;">
             <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Why this quote range fits</div>

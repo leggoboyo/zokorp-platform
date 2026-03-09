@@ -1,5 +1,6 @@
 import type { ArchitectureQuoteTier, ArchitectureReviewReport } from "@/lib/architecture-review/types";
 import { getArchitectureReviewPricingCatalogEntry } from "@/lib/architecture-review/pricing-catalog";
+import { renderQuoteLineItemsHtml, quoteLineItemText } from "@/lib/quote-line-items";
 import { getSiteUrl } from "@/lib/site";
 
 function providerLabel(provider: ArchitectureReviewReport["provider"]) {
@@ -411,6 +412,20 @@ function buildHtmlEmail(report: ArchitectureReviewReport, ctaLinks: EmailCtaLink
                   ${escapeHtml(guidance.quoteBasisHtml)}
                 </div>
 
+                <div style="margin-top:22px;font-size:18px;font-weight:700;color:#0f172a;">Core Quote Breakdown</div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;border:1px solid #dbe3ef;border-radius:10px;background:#f8fafc;">
+                  <tr>
+                    <td style="padding:14px;">
+                      <ul style="margin:0;padding-left:18px;color:#334155;font-size:14px;line-height:1.6;">
+                        ${renderQuoteLineItemsHtml(report.consultationQuote.lineItems)}
+                      </ul>
+                      <ul style="margin:12px 0 0;padding-left:18px;color:#64748b;font-size:13px;line-height:1.6;">
+                        ${report.consultationQuote.rationaleLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
+                      </ul>
+                    </td>
+                  </tr>
+                </table>
+
                 <div style="margin-top:22px;font-size:18px;font-weight:700;color:#0f172a;">Optional Recommendations</div>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;border-collapse:collapse;border:1px solid #dbe3ef;border-radius:10px;overflow:hidden;">
                   ${optionalHtmlRows}
@@ -470,6 +485,10 @@ export function buildArchitectureReviewEmailContent(
       (pkg, index) =>
         `${index + 1}. ${pkg.name} | ${pkg.timeline} | ${pkg.priceLabel} | ${pkg.summary}${pkg.recommended ? " | RECOMMENDED" : ""}`,
     ),
+    "",
+    "Core quote breakdown:",
+    ...report.consultationQuote.lineItems.map((item) => `- ${quoteLineItemText(item)}`),
+    ...report.consultationQuote.rationaleLines.map((line) => `- ${line}`),
     "",
     "Next-step policy:",
     `- ${guidance.noteTitle}: ${guidance.noteBody}`,

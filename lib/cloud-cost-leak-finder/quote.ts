@@ -4,6 +4,7 @@ import {
   QUOTE_SCOPE_LINE_ITEMS,
   QUOTE_TIER_GUARDRAILS,
 } from "@/lib/cloud-cost-leak-finder/config";
+import { uniqueQuoteLineItems } from "@/lib/quote-line-items";
 import type { ExtractedCloudCostSignals } from "@/lib/cloud-cost-leak-finder/signal-extractor";
 import type {
   CloudCostLeakFinderAnswers,
@@ -112,19 +113,6 @@ function quoteConfidenceFromScores(input: {
   return "high" as QuoteConfidence;
 }
 
-function uniqueLineItems(items: CloudCostLeakFinderQuoteLineItem[]) {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    const key = item.label.toLowerCase();
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
-}
-
 function buildLineItems(input: {
   tier: QuoteTier;
   answers: CloudCostLeakFinderAnswers;
@@ -169,7 +157,7 @@ function buildLineItems(input: {
     lineItems.push({ ...QUOTE_SCOPE_LINE_ITEMS.highlySensitive });
   }
 
-  return uniqueLineItems(lineItems).slice(0, 8);
+  return uniqueQuoteLineItems(lineItems).slice(0, 8);
 }
 
 export function buildCloudCostLeakFinderQuote(input: {

@@ -8,6 +8,7 @@ import type {
   ArchitectureQuoteTier,
   ArchitectureWorkloadCriticality,
 } from "@/lib/architecture-review/types";
+import { scaleQuoteLineItems, type QuoteLineItem } from "@/lib/quote-line-items";
 
 const DEFAULT_REMEDIATION_RATE_USD_PER_HOUR = 225;
 
@@ -202,6 +203,44 @@ function remediationRateUsdPerHour() {
   return DEFAULT_REMEDIATION_RATE_USD_PER_HOUR;
 }
 
+function architectureServiceLineLabel(category: ArchitectureCategory) {
+  switch (category) {
+    case "clarity":
+      return "Diagram clarity cleanup";
+    case "security":
+      return "Security control hardening";
+    case "reliability":
+      return "Reliability and recovery planning";
+    case "operations":
+      return "Observability and runbook hardening";
+    case "performance":
+      return "Performance and scaling review";
+    case "cost":
+      return "Cost guardrail review";
+    case "sustainability":
+      return "Sustainability posture review";
+  }
+}
+
+function architectureQuoteBaseItem(consultationQuoteUSD: number): QuoteLineItem {
+  return {
+    code: "architecture-advisory-baseline",
+    label: "Advisory review baseline",
+    amountLow: consultationQuoteUSD,
+    amountHigh: consultationQuoteUSD,
+    reason: "Covers the fixed first-step review call used to validate findings, sequence fixes, and tighten next-step scope.",
+  };
+}
+
+function truncateReason(value: string, maxLength = 220) {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+
 function scoreToCost(points: number, low: number, high: number) {
   if (points <= 0) {
     return 0;
@@ -312,6 +351,68 @@ export function calculateConsultationQuoteUSD(
   const baseline = roundToNearest(249 + estimatedRemediationUsd, 25);
   const withMinimum = Math.max(499, baseline);
   return withMinimum;
+}
+
+export function buildArchitectureConsultationQuote(input: {
+  findings: ArchitectureFinding[];
+  consultationQuoteUSD: number;
+  quoteTier: ArchitectureQuoteTier;
+  analysisConfidence: ArchitectureAnalysisConfidence;
+}) {
+  if (
+    input.consultationQuoteUSD <= 249 ||
+    input.quoteTier !== "remediation-sprint" ||
+    input.analysisConfidence === "low"
+  ) {
+    return {
+      quoteLow: input.consultationQuoteUSD,
+      quoteHigh: input.consultationQuoteUSD,
+      lineItems: [architectureQuoteBaseItem(input.consultationQuoteUSD)],
+      rationaleLines:
+        input.analysisConfidence === "low"
+          ? [
+              "The fixed advisory review stays first because the current evidence bundle is not strong enough to pre-approve delivery work.",
+            ]
+          : input.quoteTier === "implementation-partner"
+            ? [
+                "The fixed advisory review stays first because broader delivery should move to custom scoping after the live call.",
+              ]
+            : [
+                "The fixed advisory review stays first because the remaining issues fit a lighter diagnostic follow-up, not a larger sprint.",
+              ],
+    };
+  }
+
+  const additionalBudget = Math.max(0, input.consultationQuoteUSD - 249);
+  const driverItems = scaleQuoteLineItems(
+    input.findings
+      .filter((finding) => finding.pointsDeducted > 0)
+      .slice(0, 4)
+      .map((finding) => ({
+        code: `architecture-driver-${finding.ruleId.toLowerCase()}`,
+        label: architectureServiceLineLabel(finding.category),
+        amountLow: Math.max(1, finding.fixCostUSD),
+        amountHigh: Math.max(1, finding.fixCostUSD),
+        reason: truncateReason(`${finding.message} Fix focus: ${finding.fix}`),
+      })),
+    additionalBudget,
+    additionalBudget,
+  );
+
+  return {
+    quoteLow: input.consultationQuoteUSD,
+    quoteHigh: input.consultationQuoteUSD,
+    lineItems: [
+      {
+        ...architectureQuoteBaseItem(249),
+      },
+      ...driverItems,
+    ],
+    rationaleLines: [
+      "The fixed advisory review stays first, then the strongest deduction clusters add bounded scope drivers for the suggested remediation sprint.",
+      "These line items are scope drivers for the core quote, not separate invoice promises from the free upload alone.",
+    ],
+  };
 }
 
 export function categoryDeductionCaps() {
