@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   normalizeIdempotencyKey: vi.fn(),
   architectureReviewJobCount: vi.fn(),
   isSchemaDriftError: vi.fn(),
+  archiveArchitectureDiagramToWorkDrive: vi.fn(),
 }));
 
 vi.mock("@/lib/architecture-review/jobs", () => ({
@@ -46,6 +47,12 @@ vi.mock("@/lib/db-errors", () => ({
   isSchemaDriftError: mocks.isSchemaDriftError,
 }));
 
+vi.mock("@/lib/zoho-workdrive", () => ({
+  archiveArchitectureDiagramToWorkDrive: mocks.archiveArchitectureDiagramToWorkDrive,
+  formatWorkDriveArchiveStatus: ({ status, error }: { status: string; error: string | null }) =>
+    error ? `${status}:${error}` : status,
+}));
+
 import { POST } from "@/app/api/submit-architecture-review/route";
 
 function makePngFile() {
@@ -54,16 +61,18 @@ function makePngFile() {
 }
 
 function makeMultipartRequest() {
+  return makeMultipartRequestWithMetadata({
+    provider: "aws",
+    paragraphInput: "Users enter through an edge layer, app services process requests, and data persists to a managed store.",
+    diagramFormat: "png",
+    clientPngOcrText: "edge app service data store",
+  });
+}
+
+function makeMultipartRequestWithMetadata(metadata: Record<string, unknown>, file?: File) {
   const formData = new FormData();
-  formData.append(
-    "metadata",
-    JSON.stringify({
-      provider: "aws",
-      paragraphInput: "Users enter through an edge layer, app services process requests, and data persists to a managed store.",
-      diagramFormat: "png",
-    }),
-  );
-  formData.append("diagram", makePngFile());
+  formData.append("metadata", JSON.stringify(metadata));
+  formData.append("diagram", file ?? makePngFile());
 
   return new Request("http://localhost/api/submit-architecture-review", {
     method: "POST",
@@ -90,6 +99,11 @@ describe("submit architecture review route", () => {
     mocks.normalizeIdempotencyKey.mockReturnValue(null);
     mocks.architectureReviewJobCount.mockResolvedValue(0);
     mocks.isSchemaDriftError.mockReturnValue(false);
+    mocks.archiveArchitectureDiagramToWorkDrive.mockResolvedValue({
+      status: "uploaded",
+      fileId: "wd-diagram-123",
+      error: null,
+    });
   });
 
   it("rejects unverified or unsigned access before queueing a job", async () => {
@@ -133,6 +147,7 @@ describe("submit architecture review route", () => {
   it("queues a valid verified PNG submission and locks delivery to the verified account email", async () => {
     const response = await POST(makeMultipartRequest());
     const body = await response.json();
+    const jobInput = mocks.createArchitectureReviewJob.mock.calls[0]?.[0] as Record<string, unknown>;
 
     expect(response.status).toBe(202);
     expect(body.status).toBe("queued");
@@ -143,12 +158,64 @@ describe("submit architecture review route", () => {
         userEmail: "owner@acmecloud.com",
         diagramFileName: "diagram.png",
         diagramMimeType: "image/png",
+        workdriveUploadStatus: "not_requested",
         metadata: expect.objectContaining({
           provider: "aws",
           paragraphInput: expect.stringContaining("Users enter through an edge layer"),
         }),
       }),
     );
+    expect(jobInput).not.toHaveProperty("diagramBytes");
+    expect(mocks.archiveArchitectureDiagramToWorkDrive).not.toHaveBeenCalled();
     expect(mocks.processArchitectureReviewJob).toHaveBeenCalledWith("job_123");
+  });
+
+  it("archives the original diagram immediately when follow-up archival is requested", async () => {
+    const response = await POST(
+      makeMultipartRequestWithMetadata({
+        provider: "aws",
+        paragraphInput: "Users enter through an edge layer, app services process requests, and data persists to a managed store.",
+        diagramFormat: "png",
+        clientPngOcrText: "edge app service data store",
+        archiveForFollowup: true,
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    expect(mocks.archiveArchitectureDiagramToWorkDrive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        diagramFileName: "diagram.png",
+        diagramMimeType: "image/png",
+      }),
+    );
+    expect(mocks.createArchitectureReviewJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workdriveDiagramFileId: "wd-diagram-123",
+        workdriveUploadStatus: "diagram_uploaded",
+      }),
+    );
+  });
+
+  it("rejects SVG uploads that do not include browser-extracted text evidence", async () => {
+    const svgFile = new File(['<svg xmlns="http://www.w3.org/2000/svg"><text>edge</text></svg>'], "diagram.svg", {
+      type: "image/svg+xml",
+    });
+
+    const response = await POST(
+      makeMultipartRequestWithMetadata(
+        {
+          provider: "aws",
+          paragraphInput: "Users enter through the edge and requests reach the API.",
+          diagramFormat: "svg",
+        },
+        svgFile,
+      ),
+    );
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Missing browser-extracted diagram evidence. Re-upload the file and retry.",
+    });
+    expect(mocks.createArchitectureReviewJob).not.toHaveBeenCalled();
   });
 });

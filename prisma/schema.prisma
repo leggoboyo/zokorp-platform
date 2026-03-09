@@ -270,7 +270,6 @@ model ArchitectureReviewJob {
   errorMessage         String?
   diagramFileName      String
   diagramMimeType      String
-  diagramBytes         Bytes
   metadataJson         Json
   submissionContextJson Json?
   clientTimingJson     Json?
@@ -283,6 +282,9 @@ model ArchitectureReviewJob {
   fallbackReason       String?
   fallbackMailtoUrl    String?
   fallbackEmlToken     String?
+  workdriveDiagramFileId String?
+  workdriveReportFileId  String?
+  workdriveUploadStatus  String?
   leadLogId            String?
   startedAt            DateTime?
   completedAt          DateTime?
