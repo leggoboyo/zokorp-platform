@@ -14,6 +14,7 @@ import { isFreeToolAccessError, requireVerifiedFreeToolAccess } from "@/lib/free
 import { normalizeIdempotencyKey, readIdempotencyEntry, writeIdempotencyEntry } from "@/lib/idempotency-cache";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { maxUploadBytes } from "@/lib/security";
+import { archiveArchitectureDiagramToWorkDrive, formatWorkDriveArchiveStatus } from "@/lib/zoho-workdrive";
 
 export const runtime = "nodejs";
 
@@ -121,6 +122,10 @@ async function parsePayloadFromRequest(request: Request) {
       throw new Error("INVALID_DIAGRAM_FILE");
     }
 
+    if (!metadata.clientPngOcrText?.trim()) {
+      throw new Error("MISSING_DIAGRAM_EVIDENCE");
+    }
+
     return {
       metadata,
       diagram: {
@@ -142,6 +147,10 @@ async function parsePayloadFromRequest(request: Request) {
 
   if (!isSafeSvgBytes(bytes)) {
     throw new Error("INVALID_DIAGRAM_FILE");
+  }
+
+  if (!metadata.clientSvgText?.trim()) {
+    throw new Error("MISSING_DIAGRAM_EVIDENCE");
   }
 
   return {
@@ -228,6 +237,17 @@ export async function POST(request: Request) {
     }
 
     const { metadata, diagram } = await parsePayloadFromRequest(request);
+    const diagramArchiveResult = metadata.archiveForFollowup
+      ? await archiveArchitectureDiagramToWorkDrive({
+          diagramFileName: diagram.filename,
+          diagramBytes: diagram.bytes,
+          diagramMimeType: diagram.mimeType,
+        })
+      : {
+          status: "not_requested",
+          fileId: null,
+          error: null,
+        };
 
     const createdJob = await createArchitectureReviewJob({
       userId: user.id,
@@ -235,7 +255,11 @@ export async function POST(request: Request) {
       metadata,
       diagramFileName: diagram.filename,
       diagramMimeType: diagram.mimeType,
-      diagramBytes: diagram.bytes,
+      workdriveDiagramFileId: diagramArchiveResult.fileId,
+      workdriveUploadStatus:
+        metadata.archiveForFollowup && diagramArchiveResult.fileId
+          ? "diagram_uploaded"
+          : formatWorkDriveArchiveStatus(diagramArchiveResult),
     });
 
     void processArchitectureReviewJob(createdJob.id);
@@ -272,6 +296,15 @@ export async function POST(request: Request) {
         requestId,
         { error: "Diagram metadata format does not match the uploaded file type." },
         400,
+        limiterContext,
+      );
+    }
+
+    if (error instanceof Error && error.message === "MISSING_DIAGRAM_EVIDENCE") {
+      return jsonResponse(
+        requestId,
+        { error: "Missing browser-extracted diagram evidence. Re-upload the file and retry." },
+        422,
         limiterContext,
       );
     }

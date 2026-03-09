@@ -165,39 +165,50 @@ function sanitizeFilenamePart(input: string) {
   return input.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 80);
 }
 
-export async function archiveArchitectureReviewToWorkDrive(input: {
+type WorkDriveArchiveResult = {
+  status: string;
+  fileId: string | null;
+  error: string | null;
+};
+
+export function formatWorkDriveArchiveStatus(
+  input: Pick<WorkDriveArchiveResult, "status" | "error">,
+  successStatus?: string,
+) {
+  if (input.error) {
+    return `${input.status}:${input.error}`;
+  }
+
+  return successStatus ?? input.status;
+}
+
+export async function archiveArchitectureDiagramToWorkDrive(input: {
   diagramFileName: string;
   diagramBytes: Uint8Array;
   diagramMimeType?: "image/png" | "image/svg+xml";
-  report: ArchitectureReviewReport;
-  userName: string | null;
-  paragraphInput: string;
 }) {
   try {
     const folderId = getWorkDriveFolderId();
     if (!folderId) {
       return {
         status: "skipped",
-        diagramFileId: null,
-        reportFileId: null,
+        fileId: null,
         error: "WORKDRIVE_FOLDER_NOT_CONFIGURED",
-      } as const;
+      } satisfies WorkDriveArchiveResult;
     }
 
     const token = await getWorkDriveAccessToken();
     if (!token) {
       return {
         status: "failed",
-        diagramFileId: null,
-        reportFileId: null,
+        fileId: null,
         error: "WORKDRIVE_ACCESS_TOKEN_NOT_AVAILABLE",
-      } as const;
+      } satisfies WorkDriveArchiveResult;
     }
     let activeToken = token;
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const emailPart = sanitizeFilenamePart(input.report.userEmail);
-    const diagramName = `${timestamp}_${emailPart}_${sanitizeFilenamePart(input.diagramFileName) || "diagram.png"}`;
+    const diagramName = `${timestamp}_${sanitizeFilenamePart(input.diagramFileName) || "diagram.png"}`;
     const diagramMimeType = input.diagramMimeType === "image/svg+xml" ? "image/svg+xml" : "image/png";
 
     let diagramUpload = await uploadFile({
@@ -213,10 +224,9 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
       if (!refreshed) {
         return {
           status: "failed",
-          diagramFileId: null,
-          reportFileId: null,
+          fileId: null,
           error: diagramUpload.error,
-        } as const;
+        } satisfies WorkDriveArchiveResult;
       }
 
       activeToken = refreshed;
@@ -231,13 +241,53 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
       if (!diagramUpload.ok) {
         return {
           status: "failed",
-          diagramFileId: null,
-          reportFileId: null,
+          fileId: null,
           error: diagramUpload.error,
-        } as const;
+        } satisfies WorkDriveArchiveResult;
       }
     }
 
+    return {
+      status: "uploaded",
+      fileId: diagramUpload.fileId,
+      error: null,
+    } satisfies WorkDriveArchiveResult;
+  } catch (error) {
+    return {
+      status: "failed",
+      fileId: null,
+      error: `WORKDRIVE_UNEXPECTED:${error instanceof Error ? error.message : "unknown_error"}`,
+    } satisfies WorkDriveArchiveResult;
+  }
+}
+
+export async function archiveArchitectureReviewReportToWorkDrive(input: {
+  report: ArchitectureReviewReport;
+  userName: string | null;
+  paragraphInput: string;
+}) {
+  try {
+    const folderId = getWorkDriveFolderId();
+    if (!folderId) {
+      return {
+        status: "skipped",
+        fileId: null,
+        error: "WORKDRIVE_FOLDER_NOT_CONFIGURED",
+      } satisfies WorkDriveArchiveResult;
+    }
+
+    const token = await getWorkDriveAccessToken();
+    if (!token) {
+      return {
+        status: "failed",
+        fileId: null,
+        error: "WORKDRIVE_ACCESS_TOKEN_NOT_AVAILABLE",
+      } satisfies WorkDriveArchiveResult;
+    }
+    let activeToken = token;
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const emailPart = sanitizeFilenamePart(input.report.userEmail);
     const reportPayload = {
       userEmail: input.report.userEmail,
       userName: input.userName,
@@ -272,24 +322,58 @@ export async function archiveArchitectureReviewToWorkDrive(input: {
     if (!reportUpload.ok) {
       return {
         status: "failed",
-        diagramFileId: diagramUpload.fileId,
-        reportFileId: null,
+        fileId: null,
         error: reportUpload.error,
-      } as const;
+      } satisfies WorkDriveArchiveResult;
     }
 
     return {
       status: "uploaded",
-      diagramFileId: diagramUpload.fileId,
-      reportFileId: reportUpload.fileId,
+      fileId: reportUpload.fileId,
       error: null,
-    } as const;
+    } satisfies WorkDriveArchiveResult;
   } catch (error) {
     return {
       status: "failed",
-      diagramFileId: null,
-      reportFileId: null,
+      fileId: null,
       error: `WORKDRIVE_UNEXPECTED:${error instanceof Error ? error.message : "unknown_error"}`,
+    } satisfies WorkDriveArchiveResult;
+  }
+}
+
+export async function archiveArchitectureReviewToWorkDrive(input: {
+  diagramFileName: string;
+  diagramBytes: Uint8Array;
+  diagramMimeType?: "image/png" | "image/svg+xml";
+  report: ArchitectureReviewReport;
+  userName: string | null;
+  paragraphInput: string;
+}) {
+  const diagramResult = await archiveArchitectureDiagramToWorkDrive({
+    diagramFileName: input.diagramFileName,
+    diagramBytes: input.diagramBytes,
+    diagramMimeType: input.diagramMimeType,
+  });
+
+  if (diagramResult.error || !diagramResult.fileId) {
+    return {
+      status: diagramResult.status,
+      diagramFileId: diagramResult.fileId,
+      reportFileId: null,
+      error: diagramResult.error,
     } as const;
   }
+
+  const reportResult = await archiveArchitectureReviewReportToWorkDrive({
+    report: input.report,
+    userName: input.userName,
+    paragraphInput: input.paragraphInput,
+  });
+
+  return {
+    status: reportResult.status,
+    diagramFileId: diagramResult.fileId,
+    reportFileId: reportResult.fileId,
+    error: reportResult.error,
+  } as const;
 }

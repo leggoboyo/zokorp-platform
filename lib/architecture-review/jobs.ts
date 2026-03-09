@@ -9,7 +9,6 @@ import { createEvidenceBundle } from "@/lib/architecture-review/evidence";
 import { calculateLeadScore } from "@/lib/architecture-review/lead";
 import { summarizeTopIssues } from "@/lib/architecture-review/report";
 import { sendArchitectureReviewEmail } from "@/lib/architecture-review/sender";
-import { extractSvgEvidenceFromBytes } from "@/lib/architecture-review/server";
 import {
   architectureReviewMetadataSchema,
   submitArchitectureReviewMetadataSchema,
@@ -19,7 +18,10 @@ import {
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
 import { ensureLeadLogSchemaReady } from "@/lib/lead-log-schema";
-import { archiveArchitectureReviewToWorkDrive } from "@/lib/zoho-workdrive";
+import {
+  archiveArchitectureReviewReportToWorkDrive,
+  formatWorkDriveArchiveStatus,
+} from "@/lib/zoho-workdrive";
 
 const PROCESSING_PHASES: ArchitectureReviewPhase[] = [
   "upload-validate",
@@ -272,15 +274,6 @@ function estimateProgressPct(input: {
   return Math.max(0, Math.min(99, Math.round(progress * 100)));
 }
 
-function isPngBytes(bytes: Uint8Array) {
-  const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-  if (bytes.length < signature.length) {
-    return false;
-  }
-
-  return signature.every((byte, index) => bytes[index] === byte);
-}
-
 function nonArchitectureParagraphPrecheck(paragraph: string) {
   const text = paragraph.toLowerCase();
   const nonArchHits = NON_ARCH_PARAGRAPH_TERMS.filter((term) => text.includes(term)).length;
@@ -409,11 +402,6 @@ async function failJob(job: ArchitectureReviewJob, errorMessage: string) {
       progressPct: retriable ? job.progressPct : 100,
       etaSeconds: retriable ? 45 : 0,
       completedAt: retriable ? null : new Date(),
-      ...(retriable
-        ? null
-        : {
-            diagramBytes: Buffer.alloc(0),
-          }),
     },
   });
 }
@@ -430,7 +418,6 @@ async function rejectJob(job: ArchitectureReviewJob, reason: string) {
       currentPhase: "completed",
       completedAt: new Date(),
       lastHeartbeatAt: new Date(),
-      diagramBytes: Buffer.alloc(0),
     },
   });
 }
@@ -484,7 +471,8 @@ export async function createArchitectureReviewJob(input: {
   metadata: SubmitArchitectureReviewMetadata;
   diagramFileName: string;
   diagramMimeType: "image/png" | "image/svg+xml";
-  diagramBytes: Uint8Array;
+  workdriveDiagramFileId?: string | null;
+  workdriveUploadStatus?: string | null;
 }) {
   return db.architectureReviewJob.create({
     data: {
@@ -499,7 +487,8 @@ export async function createArchitectureReviewJob(input: {
       clientTimingJson: toNullableJsonValue(input.metadata.clientTiming),
       diagramFileName: input.diagramFileName,
       diagramMimeType: input.diagramMimeType,
-      diagramBytes: Buffer.from(input.diagramBytes),
+      workdriveDiagramFileId: input.workdriveDiagramFileId ?? null,
+      workdriveUploadStatus: input.workdriveUploadStatus ?? null,
       phaseTimingsJson: {},
     },
   });
@@ -521,13 +510,8 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
 
     job = await updatePhase(job, "upload-validate", "start");
 
-    const diagramBytes = new Uint8Array(job.diagramBytes);
     const isPng = job.diagramMimeType === "image/png" || metadata.diagramFormat === "png" || job.diagramFileName.toLowerCase().endsWith(".png");
     const isSvg = job.diagramMimeType === "image/svg+xml" || metadata.diagramFormat === "svg" || job.diagramFileName.toLowerCase().endsWith(".svg");
-
-    if (isPng && !isPngBytes(diagramBytes)) {
-      return rejectJob(job, "Uploaded file is not a valid PNG diagram.");
-    }
 
     if (!isPng && !isSvg) {
       return rejectJob(job, "Uploaded file type is unsupported for architecture review.");
@@ -544,13 +528,10 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
     job = await updatePhase(job, "diagram-precheck", "complete");
     job = await updatePhase(job, "ocr", "start");
 
-    const fallbackSvgEvidence = isSvg && !metadata.clientSvgText?.trim() ? extractSvgEvidenceFromBytes(diagramBytes) : null;
-    const ocrText = isPng
-      ? metadata.clientPngOcrText?.trim() ?? ""
-      : (metadata.clientSvgText?.trim() || fallbackSvgEvidence?.text || "");
+    const ocrText = isPng ? metadata.clientPngOcrText?.trim() ?? "" : metadata.clientSvgText?.trim() ?? "";
 
-    if (isPng && ocrText.length === 0) {
-      return rejectJob(job, "Missing browser PNG OCR evidence. Re-upload the diagram and retry.");
+    if (ocrText.length === 0) {
+      return rejectJob(job, "Missing browser diagram evidence. Re-upload the diagram and retry.");
     }
 
     job = await updatePhase(job, "ocr", "complete");
@@ -658,7 +639,7 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
               submissionContext,
             }),
             leadStage: "New Review",
-            workdriveUploadStatus: metadata.archiveForFollowup ? "pending" : "not_requested",
+            workdriveUploadStatus: job.workdriveUploadStatus ?? (metadata.archiveForFollowup ? "pending" : "not_requested"),
             emailDeliveryMode: "pending",
             zohoSyncNeedsUpdate: true,
           },
@@ -681,31 +662,37 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
       }
     }
 
-    const archiveResult = metadata.archiveForFollowup
-      ? await archiveArchitectureReviewToWorkDrive({
-          diagramFileName: job.diagramFileName,
-          diagramBytes,
-          diagramMimeType: isPng ? "image/png" : "image/svg+xml",
-          report,
-          userName,
-          paragraphInput: metadata.paragraphInput,
-        })
-      : {
-          status: "not_requested",
-          diagramFileId: null,
-          reportFileId: null,
-          error: null,
-        };
+    const reportArchiveResult =
+      metadata.archiveForFollowup && job.workdriveDiagramFileId
+        ? await archiveArchitectureReviewReportToWorkDrive({
+            report,
+            userName,
+            paragraphInput: metadata.paragraphInput,
+          })
+        : null;
 
-    const workdriveStatus = archiveResult.error ? `${archiveResult.status}:${archiveResult.error}` : archiveResult.status;
+    const workdriveStatus =
+      metadata.archiveForFollowup && job.workdriveDiagramFileId
+        ? reportArchiveResult?.error
+          ? formatWorkDriveArchiveStatus(reportArchiveResult)
+          : "uploaded"
+        : job.workdriveUploadStatus ?? (metadata.archiveForFollowup ? "failed:WORKDRIVE_DIAGRAM_NOT_ARCHIVED" : "not_requested");
+
+    job = await db.architectureReviewJob.update({
+      where: { id: job.id },
+      data: {
+        workdriveReportFileId: reportArchiveResult?.fileId ?? null,
+        workdriveUploadStatus: workdriveStatus,
+      },
+    });
 
     if (createdLead) {
       try {
         await db.leadLog.update({
           where: { id: createdLead.id },
           data: {
-            workdriveDiagramFileId: archiveResult.diagramFileId,
-            workdriveReportFileId: archiveResult.reportFileId,
+            workdriveDiagramFileId: job.workdriveDiagramFileId,
+            workdriveReportFileId: reportArchiveResult?.fileId ?? null,
             workdriveUploadStatus: workdriveStatus,
           },
         });
@@ -799,7 +786,6 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
           currentPhase: "completed",
           completedAt: new Date(),
           lastHeartbeatAt: new Date(),
-          diagramBytes: Buffer.alloc(0),
         },
       });
 
@@ -885,7 +871,6 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
         etaSeconds: 0,
         completedAt: new Date(),
         lastHeartbeatAt: new Date(),
-        diagramBytes: Buffer.alloc(0),
       },
     });
 
