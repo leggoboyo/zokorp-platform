@@ -201,11 +201,12 @@
 - Status:
   - PR #49 conflict resolution: `done`
   - Post-merge validation refresh: `done`
-  - Branch push for refreshed PR state: `in_progress`
+  - Branch push for refreshed PR state: `done`
 - Findings or evidence:
   - GitHub marked PR `#49` as `CONFLICTING` after `main` advanced to `338a5b4`.
   - Merging `origin/main` into `codex/security-hardening` produced a single conflict in `docs/security-hardening-execution-log.md`; no code-path conflicts occurred.
   - The conflict was resolved by retaining both the earlier mainline history and the new runtime-readiness/billing hardening entries.
+  - After the refreshed branch pushed at `b8d5fad`, GitHub marked PR `#49` `MERGEABLE` with auto-merge still enabled; it is now blocked only on the normal required checks.
 - Code changes made:
   - Merged `origin/main` into `codex/security-hardening`.
   - Resolved the execution-log conflict by preserving the full security evidence trail.
