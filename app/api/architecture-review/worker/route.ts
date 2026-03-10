@@ -1,25 +1,13 @@
-import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
-
 import { drainArchitectureReviewQueue } from "@/lib/architecture-review/jobs";
 import { isSchemaDriftError } from "@/lib/db-errors";
+import {
+  createInternalAuditLog,
+  jsonNoStore,
+  methodNotAllowedJson,
+  safeSecretEqual,
+} from "@/lib/internal-route";
 
 export const runtime = "nodejs";
-
-const NO_STORE_HEADERS = {
-  "Cache-Control": "no-store",
-};
-
-function safeSecretEqual(expected: string, provided: string) {
-  const expectedBuffer = Buffer.from(expected);
-  const providedBuffer = Buffer.from(provided);
-
-  if (expectedBuffer.length !== providedBuffer.length) {
-    return false;
-  }
-
-  return timingSafeEqual(expectedBuffer, providedBuffer);
-}
 
 function providedSecret(request: Request) {
   return (
@@ -40,36 +28,64 @@ function parseLimit(request: Request) {
 }
 
 async function runWorker(request: Request) {
+  const limit = parseLimit(request);
   const configuredSecret = process.env.ARCH_REVIEW_WORKER_SECRET ?? "";
   const receivedSecret = providedSecret(request);
 
   if (!configuredSecret) {
-    return NextResponse.json({ error: "Architecture review worker secret is not configured." }, { status: 503, headers: NO_STORE_HEADERS });
+    await createInternalAuditLog("internal.architecture_review_worker.not_configured");
+    return jsonNoStore(
+      { error: "Architecture review worker secret is not configured." },
+      { status: 503 },
+    );
   }
 
   if (!receivedSecret || !safeSecretEqual(configuredSecret, receivedSecret)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: NO_STORE_HEADERS });
+    return jsonNoStore({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const result = await drainArchitectureReviewQueue({
-      limit: parseLimit(request),
+      limit,
     });
-    return NextResponse.json({
+
+    await createInternalAuditLog("internal.architecture_review_worker.run", {
+      limit,
+      scanned: result.scanned,
+      processed: result.processed,
+      sent: result.sent,
+      fallback: result.fallback,
+      rejected: result.rejected,
+      failed: result.failed,
+      runningOrQueued: result.runningOrQueued,
+    });
+
+    return jsonNoStore({
       status: "ok",
       ...result,
-    }, { headers: NO_STORE_HEADERS });
+    });
   } catch (error) {
     if (isSchemaDriftError(error)) {
-      return NextResponse.json({ error: "Architecture review queue schema is unavailable." }, { status: 503, headers: NO_STORE_HEADERS });
+      await createInternalAuditLog("internal.architecture_review_worker.schema_unavailable", {
+        limit,
+      });
+      return jsonNoStore(
+        { error: "Architecture review queue schema is unavailable." },
+        { status: 503 },
+      );
     }
 
     console.error("architecture review worker run failed", error);
-    return NextResponse.json(
+    await createInternalAuditLog("internal.architecture_review_worker.failed", {
+      limit,
+      errorName: error instanceof Error ? error.name : "unknown_error",
+    });
+
+    return jsonNoStore(
       {
         error: "Architecture review worker run failed.",
       },
-      { status: 500, headers: NO_STORE_HEADERS },
+      { status: 500 },
     );
   }
 }
@@ -80,16 +96,5 @@ export async function POST(request: Request) {
 
 export async function GET(_request: Request) {
   void _request;
-  return NextResponse.json(
-    {
-      error: "Method not allowed",
-    },
-    {
-      status: 405,
-      headers: {
-        ...NO_STORE_HEADERS,
-        Allow: "POST",
-      },
-    },
-  );
+  return methodNotAllowedJson("POST");
 }

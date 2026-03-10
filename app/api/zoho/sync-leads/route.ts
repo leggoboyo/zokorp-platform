@@ -1,13 +1,27 @@
-import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
-
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
-import { FetchTimeoutError, fetchWithTimeout, readResponseBodySnippet } from "@/lib/http";
+import { FetchTimeoutError, fetchWithTimeout } from "@/lib/http";
+import {
+  createInternalAuditLog,
+  jsonNoStore,
+  methodNotAllowedJson,
+  safeSecretEqual,
+} from "@/lib/internal-route";
 import { ensureLeadLogSchemaReady } from "@/lib/lead-log-schema";
 import { zohoLeadStatusForStage } from "@/lib/architecture-review/lead";
 
 export const runtime = "nodejs";
+
+type ZohoUpsertBody = {
+  data?: Array<{
+    status?: string;
+    code?: string;
+    message?: string;
+    details?: {
+      id?: string;
+    };
+  }>;
+};
 
 function normalizeCompanyFromEmail(email: string) {
   const domain = email.split("@")[1] ?? "unknown-company";
@@ -42,15 +56,21 @@ function hasZohoRefreshCredentials() {
   );
 }
 
-function safeSecretEqual(expected: string, provided: string) {
-  const expectedBuffer = Buffer.from(expected);
-  const providedBuffer = Buffer.from(provided);
+function providedSecret(request: Request) {
+  return (
+    request.headers.get("x-zoho-sync-secret") ??
+    request.headers.get("x-sync-secret") ??
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
+    ""
+  );
+}
 
-  if (expectedBuffer.length !== providedBuffer.length) {
-    return false;
+function zohoResultCodes(body: ZohoUpsertBody | undefined) {
+  if (!Array.isArray(body?.data)) {
+    return [];
   }
 
-  return timingSafeEqual(expectedBuffer, providedBuffer);
+  return body.data.map((item) => item.code ?? item.status ?? "unknown").slice(0, 10);
 }
 
 async function refreshZohoAccessToken() {
@@ -105,13 +125,15 @@ async function refreshZohoAccessToken() {
 
 export async function POST(request: Request) {
   const syncSecret = process.env.ZOHO_SYNC_SECRET;
-  const providedSecret =
-    request.headers.get("x-zoho-sync-secret") ??
-    request.headers.get("x-sync-secret") ??
-    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  const receivedSecret = providedSecret(request);
 
-  if (!syncSecret || !providedSecret || !safeSecretEqual(syncSecret, providedSecret)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!syncSecret) {
+    await createInternalAuditLog("internal.zoho_sync_leads.not_configured");
+    return jsonNoStore({ error: "Zoho sync secret is not configured." }, { status: 503 });
+  }
+
+  if (!receivedSecret || !safeSecretEqual(syncSecret, receivedSecret)) {
+    return jsonNoStore({ error: "Unauthorized" }, { status: 401 });
   }
 
   let accessToken = process.env.ZOHO_CRM_ACCESS_TOKEN ?? "";
@@ -123,12 +145,12 @@ export async function POST(request: Request) {
   }
 
   if (!accessToken) {
-    return NextResponse.json(
+    await createInternalAuditLog("internal.zoho_sync_leads.not_ready");
+    return jsonNoStore(
       {
-        error:
-          "Zoho access token is missing. Set ZOHO_CRM_ACCESS_TOKEN or refresh credentials.",
+        error: "Zoho sync is not configured.",
       },
-      { status: 500 },
+      { status: 503 },
     );
   }
 
@@ -137,15 +159,12 @@ export async function POST(request: Request) {
   try {
     const leadSchemaReady = await ensureLeadLogSchemaReady();
     if (!leadSchemaReady) {
-      return NextResponse.json(
+      await createInternalAuditLog("internal.zoho_sync_leads.schema_unavailable");
+      return jsonNoStore(
         {
-          status: "ok",
-          synced: 0,
-          skipped: 0,
-          failed: 0,
-          message: "Lead log schema is unavailable.",
+          error: "Zoho sync is unavailable.",
         },
-        { status: 200 },
+        { status: 503 },
       );
     }
 
@@ -153,10 +172,7 @@ export async function POST(request: Request) {
       try {
         return await db.leadLog.findMany({
           where: {
-            OR: [
-              { syncedToZohoAt: null },
-              { zohoSyncNeedsUpdate: true },
-            ],
+            OR: [{ syncedToZohoAt: null }, { zohoSyncNeedsUpdate: true }],
           },
           orderBy: { createdAt: "asc" },
           take: 100,
@@ -225,7 +241,13 @@ export async function POST(request: Request) {
     })();
 
     if (pendingLeads.length === 0) {
-      return NextResponse.json({ status: "ok", synced: 0, skipped: 0, failed: 0, message: "No new leads." });
+      return jsonNoStore({
+        status: "ok",
+        synced: 0,
+        skipped: 0,
+        failed: 0,
+        message: "No new leads.",
+      });
     }
 
     const data = pendingLeads.map((lead) => ({
@@ -240,7 +262,10 @@ export async function POST(request: Request) {
         `CTAclicks: ${lead.ctaClicks ?? 0}; TopIssues: ${lead.topIssues}; AuthProvider: ${lead.authProvider ?? "unknown"}; ` +
         `UTM: ${lead.utmSource ?? "na"}/${lead.utmMedium ?? "na"}/${lead.utmCampaign ?? "na"}; LandingPage: ${lead.landingPage ?? "na"}; Referrer: ${lead.referrer ?? "na"}; ` +
         `WorkDrive: ${lead.workdriveUploadStatus ?? "n/a"}`,
-      Lead_Status: zohoLeadStatusForStage((lead.leadStage as "New Review" | "Email Sent" | "CTA Clicked" | "Call Booked" | null) ?? null),
+      Lead_Status: zohoLeadStatusForStage(
+        (lead.leadStage as "New Review" | "Email Sent" | "CTA Clicked" | "Call Booked" | null) ??
+          null,
+      ),
     }));
 
     const requestBody = JSON.stringify({
@@ -263,41 +288,19 @@ export async function POST(request: Request) {
       );
 
       const rawBody = await response.text();
-      let body: {
-        data?: Array<{
-          status?: string;
-          code?: string;
-          message?: string;
-          details?: {
-            id?: string;
-          };
-        }>;
-        rawBody?: string;
-      } = {};
+      let body: ZohoUpsertBody = {};
 
       try {
-        body = JSON.parse(rawBody) as typeof body;
+        body = JSON.parse(rawBody) as ZohoUpsertBody;
       } catch {
-        body = {
-          rawBody: readResponseBodySnippet(rawBody, 1200),
-        };
+        body = {};
       }
 
       return { response, body };
     }
 
     let response: Response;
-    let body: {
-      data?: Array<{
-        status?: string;
-        code?: string;
-        message?: string;
-        details?: {
-          id?: string;
-        };
-      }>;
-      rawBody?: string;
-    };
+    let body: ZohoUpsertBody;
 
     try {
       const initial = await sendUpsertRequest(accessToken);
@@ -305,7 +308,10 @@ export async function POST(request: Request) {
       body = initial.body;
     } catch (error) {
       if (error instanceof FetchTimeoutError) {
-        return NextResponse.json(
+        await createInternalAuditLog("internal.zoho_sync_leads.timeout", {
+          stage: "initial_request",
+        });
+        return jsonNoStore(
           {
             error: "Zoho sync timed out.",
           },
@@ -313,14 +319,19 @@ export async function POST(request: Request) {
         );
       }
 
-      return NextResponse.json(
+      console.error("zoho sync request failed before response", error);
+      await createInternalAuditLog("internal.zoho_sync_leads.request_failed", {
+        stage: "initial_request",
+        errorName: error instanceof Error ? error.name : "unknown_error",
+      });
+      return jsonNoStore(
         {
-          error: "Zoho sync request failed before response.",
-          details: error instanceof Error ? error.message : "unknown_error",
+          error: "Zoho sync request failed.",
         },
         { status: 502 },
       );
     }
+
     const needsRetry =
       (!response.ok && hasZohoRefreshCredentials()) ||
       body.data?.some((item) => item.code === "INVALID_TOKEN" || item.code === "INVALID_OAUTHTOKEN");
@@ -335,7 +346,10 @@ export async function POST(request: Request) {
           body = retried.body;
         } catch (error) {
           if (error instanceof FetchTimeoutError) {
-            return NextResponse.json(
+            await createInternalAuditLog("internal.zoho_sync_leads.timeout", {
+              stage: "retry_request",
+            });
+            return jsonNoStore(
               {
                 error: "Zoho sync retry timed out.",
               },
@@ -343,10 +357,14 @@ export async function POST(request: Request) {
             );
           }
 
-          return NextResponse.json(
+          console.error("zoho sync retry failed before response", error);
+          await createInternalAuditLog("internal.zoho_sync_leads.request_failed", {
+            stage: "retry_request",
+            errorName: error instanceof Error ? error.name : "unknown_error",
+          });
+          return jsonNoStore(
             {
-              error: "Zoho sync retry failed before response.",
-              details: error instanceof Error ? error.message : "unknown_error",
+              error: "Zoho sync retry failed.",
             },
             { status: 502 },
           );
@@ -355,11 +373,17 @@ export async function POST(request: Request) {
     }
 
     if (!response.ok || !Array.isArray(body.data)) {
-      return NextResponse.json(
+      console.error("zoho sync upstream call failed", {
+        status: response.status,
+        resultCodes: zohoResultCodes(body),
+      });
+      await createInternalAuditLog("internal.zoho_sync_leads.upstream_failed", {
+        status: response.status,
+        resultCodes: zohoResultCodes(body),
+      });
+      return jsonNoStore(
         {
           error: "Zoho sync call failed.",
-          status: response.status,
-          body,
         },
         { status: 502 },
       );
@@ -378,7 +402,8 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const success = result.status?.toLowerCase() === "success" || result.code?.toUpperCase() === "SUCCESS";
+      const success =
+        result.status?.toLowerCase() === "success" || result.code?.toUpperCase() === "SUCCESS";
       const duplicate = isDuplicateCode(result.code?.toUpperCase());
 
       if (success || duplicate) {
@@ -404,20 +429,33 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    await createInternalAuditLog("internal.zoho_sync_leads.run", {
+      attempted: pendingLeads.length,
+      synced,
+      failed,
+    });
+
+    return jsonNoStore({
       status: "ok",
       synced,
       skipped: 0,
       failed,
     });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json(
+    console.error("zoho sync failed", error);
+    await createInternalAuditLog("internal.zoho_sync_leads.failed", {
+      errorName: error instanceof Error ? error.name : "unknown_error",
+    });
+    return jsonNoStore(
       {
         error: "Zoho sync failed.",
-        details: error instanceof Error ? error.message : "unknown_error",
       },
       { status: 500 },
     );
   }
+}
+
+export async function GET(_request: Request) {
+  void _request;
+  return methodNotAllowedJson("POST");
 }

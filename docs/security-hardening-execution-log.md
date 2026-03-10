@@ -1,0 +1,80 @@
+# Security Hardening Execution Log
+
+## 2026-03-09 22:49:56 CDT
+
+- Date/time: `2026-03-09 22:49:56 CDT`
+- Current branch/worktree: `codex/security-hardening` at `/Users/zohaibkhawaja/Documents/Codex/zokorp-worktrees/security-hardening`
+- Current action item(s):
+  - Establish the security baseline and repo evidence trail.
+  - Create the required execution log and threat-model work products.
+  - Harden internal scheduled routes for secret verification, response hygiene, and operator visibility.
+- Status:
+  - Baseline validation: `done`
+  - Threat model document: `todo`
+  - Internal-route hardening slice: `in_progress`
+- Findings or evidence:
+  - Main checkout on `/Users/zohaibkhawaja/Documents/Codex/zokorp-platform` is clean, so work continued in the existing isolated security worktree.
+  - No open GitHub PR currently exists for `codex/security-hardening`.
+  - Existing branch history already includes a same-origin request hardening slice (`lib/request-origin.ts`) plus regression tests.
+  - The required files `docs/security-hardening-execution-log.md` and `docs/security-threat-model.md` did not exist before this run.
+  - `docs/03-environment-variables-template.md` explicitly documents `lib/env.ts` as partial coverage, confirming current env validation drift risk.
+  - `app/api/architecture-review/followups/route.ts` and `app/api/zoho/sync-leads/route.ts` still expose raw failure details and do not consistently force `Cache-Control: no-store`.
+- Code changes made:
+  - Added this execution log.
+- Validation results:
+  - `npm install`: passed
+  - `npm run lint`: passed
+  - `npm run typecheck`: passed
+  - `npm test`: passed (`52` files, `186` tests)
+  - `npm run build`: passed
+  - `npm audit`: passed (`0` vulnerabilities)
+  - `node scripts/production_smoke_check.mjs`: not run during baseline because no public-route change was under test yet.
+- PR link if applicable:
+  - None yet.
+- Blockers requiring human action:
+  - GitHub, Vercel, Stripe, Zoho, and email-provider dashboard verification still require authenticated provider access.
+- Explicit residual risk after each slice:
+  - Internal scheduled endpoints are not yet uniformly hardened.
+  - Env validation remains partial and may drift from actual runtime requirements.
+  - A repo-grounded threat model document does not exist yet.
+
+## 2026-03-09 23:00:26 CDT
+
+- Date/time: `2026-03-09 23:00:26 CDT`
+- Current branch/worktree: `codex/security-hardening` at `/Users/zohaibkhawaja/Documents/Codex/zokorp-worktrees/security-hardening`
+- Current action item(s):
+  - Finish the internal scheduled-route hardening slice.
+  - Write the initial repo-grounded threat model.
+  - Update operator-facing secret documentation for scheduled jobs.
+- Status:
+  - Internal-route hardening slice: `done`
+  - Threat model document: `done`
+  - Next candidate slice: env/runtime contract hardening
+- Findings or evidence:
+  - `app/api/architecture-review/followups/route.ts` and `app/api/zoho/sync-leads/route.ts` were returning raw error details to callers before this slice.
+  - GitHub workflow callers already expect dedicated follow-up and Zoho sync secrets, so tightening route behavior did not require workflow changes.
+  - `app/api/architecture-review/followups/route.ts` still retains a `ZOHO_SYNC_SECRET` compatibility fallback; this remains a real residual risk until production config is verified and the fallback can be removed safely.
+  - `docs/security-threat-model.md` now captures the current repo-grounded trust boundaries, attacker model, and highest-priority abuse paths.
+- Code changes made:
+  - Added `lib/internal-route.ts` for shared no-store JSON responses, method handling, timing-safe secret comparison, and internal audit-log writes.
+  - Hardened `app/api/architecture-review/worker/route.ts` with audit logging via the shared helper while preserving existing secret checks.
+  - Hardened `app/api/architecture-review/followups/route.ts` and `app/api/zoho/sync-leads/route.ts` to return generic caller-visible failures, force `Cache-Control: no-store`, expose explicit `GET` 405 handling, and write internal audit events.
+  - Added regression tests in `tests/architecture-review-followups-route.test.ts`, `tests/zoho-sync-route.test.ts`, and expanded `tests/architecture-review-worker-route.test.ts`.
+  - Updated `docs/03-environment-variables-template.md` to document the expected separation between `ARCH_REVIEW_FOLLOWUP_SECRET` and `ZOHO_SYNC_SECRET`.
+  - Added the first repo-grounded threat model in `docs/security-threat-model.md`.
+- Validation results:
+  - Targeted route regression run: `npx vitest run tests/architecture-review-worker-route.test.ts tests/architecture-review-followups-route.test.ts tests/zoho-sync-route.test.ts` passed (`16` tests)
+  - `npm run lint`: passed
+  - `npm run typecheck`: passed
+  - `npm test`: passed (`54` files, `197` tests)
+  - `npm run build`: passed
+  - `node scripts/production_smoke_check.mjs`: not run because no public page route changed in this slice
+- PR link if applicable:
+  - None yet.
+- Blockers requiring human action:
+  - Production secret verification is still required before safely removing the follow-up route's `ZOHO_SYNC_SECRET` compatibility fallback.
+  - Dashboard/runtime verification is still required for Vercel headers, Stripe live config, Zoho config, and provider credential rotation posture.
+- Explicit residual risk after each slice:
+  - The follow-up route still accepts `ZOHO_SYNC_SECRET` as a compatibility fallback because removing it without production verification risks breaking an existing scheduled job.
+  - `lib/env.ts` remains partial and does not yet enforce the real production env contract.
+  - CSP still allows `'unsafe-inline'` scripts/styles and needs a dedicated review before tightening.
