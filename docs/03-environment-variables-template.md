@@ -114,6 +114,7 @@ Price IDs can exist before public display. Subscription prices should still stay
 - `ARCH_REVIEW_FOLLOWUP_SECRET`
   - Secret: yes.
   - Purpose: authenticates the architecture follow-up sender route.
+  - Production guidance: set this explicitly and keep it distinct from `ZOHO_SYNC_SECRET`. The route still accepts `ZOHO_SYNC_SECRET` as a temporary compatibility fallback today, but that fallback should not be relied on for long-term production posture.
 - `ARCH_REVIEW_BOOK_CALL_URL`
   - Secret: no.
   - Purpose: operator-controlled CTA destination for booking.
@@ -128,6 +129,7 @@ These values are needed only when CRM sync and WorkDrive archival are enabled.
 - `ZOHO_SYNC_SECRET`
   - Secret: yes.
   - Purpose: authenticates the Zoho lead-sync route.
+  - Production guidance: keep this secret dedicated to the Zoho sync job rather than reusing it across unrelated internal routes.
 - `ZOHO_CRM_ACCESS_TOKEN`
 - `ZOHO_CRM_REFRESH_TOKEN`
 - `ZOHO_CLIENT_ID`

@@ -1,33 +1,46 @@
-import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
-
 import { buildArchitectureFollowUpEmail, dueFollowUpCheckpoint } from "@/lib/architecture-review/followup";
 import { sendArchitectureReviewEmail } from "@/lib/architecture-review/sender";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
+import {
+  createInternalAuditLog,
+  jsonNoStore,
+  methodNotAllowedJson,
+  safeSecretEqual,
+} from "@/lib/internal-route";
 
 export const runtime = "nodejs";
 
-function safeSecretEqual(expected: string, provided: string) {
-  const expectedBuffer = Buffer.from(expected);
-  const providedBuffer = Buffer.from(provided);
-
-  if (expectedBuffer.length !== providedBuffer.length) {
-    return false;
-  }
-
-  return timingSafeEqual(expectedBuffer, providedBuffer);
+function providedSecret(request: Request) {
+  return (
+    request.headers.get("x-arch-followup-secret") ??
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
+    ""
+  );
 }
 
 export async function POST(request: Request) {
   const configuredSecret = process.env.ARCH_REVIEW_FOLLOWUP_SECRET ?? process.env.ZOHO_SYNC_SECRET ?? "";
-  const providedSecret =
-    request.headers.get("x-arch-followup-secret") ??
-    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
-    "";
+  const receivedSecret = providedSecret(request);
+  const usingZohoFallbackSecret =
+    !process.env.ARCH_REVIEW_FOLLOWUP_SECRET && Boolean(process.env.ZOHO_SYNC_SECRET);
 
-  if (!configuredSecret || !providedSecret || !safeSecretEqual(configuredSecret, providedSecret)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!configuredSecret) {
+    await createInternalAuditLog("internal.architecture_review_followups.not_configured");
+    return jsonNoStore(
+      { error: "Architecture review follow-up secret is not configured." },
+      { status: 503 },
+    );
+  }
+
+  if (!receivedSecret || !safeSecretEqual(configuredSecret, receivedSecret)) {
+    return jsonNoStore({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (usingZohoFallbackSecret) {
+    await createInternalAuditLog("internal.architecture_review_followups.secret_fallback", {
+      fallbackSecret: "ZOHO_SYNC_SECRET",
+    });
   }
 
   try {
@@ -118,7 +131,14 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({
+    await createInternalAuditLog("internal.architecture_review_followups.run", {
+      sent,
+      skipped,
+      failed,
+      usedZohoSyncSecretFallback: usingZohoFallbackSecret,
+    });
+
+    return jsonNoStore({
       status: "ok",
       sent,
       skipped,
@@ -126,21 +146,33 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (isSchemaDriftError(error)) {
-      return NextResponse.json({
-        status: "ok",
-        sent: 0,
-        skipped: 0,
-        failed: 0,
-        message: "Lead follow-up schema is unavailable.",
+      await createInternalAuditLog("internal.architecture_review_followups.schema_unavailable", {
+        usedZohoSyncSecretFallback: usingZohoFallbackSecret,
       });
+      return jsonNoStore(
+        {
+          error: "Architecture follow-up run is unavailable.",
+        },
+        { status: 503 },
+      );
     }
 
-    return NextResponse.json(
+    console.error("architecture follow-up run failed", error);
+    await createInternalAuditLog("internal.architecture_review_followups.failed", {
+      errorName: error instanceof Error ? error.name : "unknown_error",
+      usedZohoSyncSecretFallback: usingZohoFallbackSecret,
+    });
+
+    return jsonNoStore(
       {
         error: "Architecture follow-up run failed.",
-        details: error instanceof Error ? error.message : "unknown_error",
       },
       { status: 500 },
     );
   }
+}
+
+export async function GET(_request: Request) {
+  void _request;
+  return methodNotAllowedJson("POST");
 }

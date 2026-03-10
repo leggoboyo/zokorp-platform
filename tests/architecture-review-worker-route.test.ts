@@ -1,12 +1,21 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { drainArchitectureReviewQueueMock, isSchemaDriftErrorMock } = vi.hoisted(() => ({
+const { auditCreateMock, drainArchitectureReviewQueueMock, isSchemaDriftErrorMock } = vi.hoisted(() => ({
+  auditCreateMock: vi.fn(),
   drainArchitectureReviewQueueMock: vi.fn(),
   isSchemaDriftErrorMock: vi.fn(),
 }));
 
 vi.mock("@/lib/architecture-review/jobs", () => ({
   drainArchitectureReviewQueue: drainArchitectureReviewQueueMock,
+}));
+
+vi.mock("@/lib/db", () => ({
+  db: {
+    auditLog: {
+      create: auditCreateMock,
+    },
+  },
 }));
 
 vi.mock("@/lib/db-errors", () => ({
@@ -21,6 +30,7 @@ describe("architecture review worker route", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    auditCreateMock.mockResolvedValue({});
     isSchemaDriftErrorMock.mockReturnValue(false);
     drainArchitectureReviewQueueMock.mockResolvedValue({
       scanned: 1,
@@ -55,6 +65,7 @@ describe("architecture review worker route", () => {
     );
 
     expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({
       error: "Architecture review worker secret is not configured.",
     });
@@ -70,6 +81,7 @@ describe("architecture review worker route", () => {
     );
 
     expect(response.status).toBe(401);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({ error: "Unauthorized" });
   });
 
@@ -86,6 +98,7 @@ describe("architecture review worker route", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(drainArchitectureReviewQueueMock).toHaveBeenCalledWith({ limit: 3 });
     await expect(response.json()).resolves.toMatchObject({
       status: "ok",
@@ -100,6 +113,7 @@ describe("architecture review worker route", () => {
     const response = await GET(new Request("http://localhost/api/architecture-review/worker?limit=2", { method: "GET" }));
 
     expect(response.status).toBe(405);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({ error: "Method not allowed" });
     expect(drainArchitectureReviewQueueMock).not.toHaveBeenCalled();
   });
@@ -118,6 +132,7 @@ describe("architecture review worker route", () => {
     );
 
     expect(response.status).toBe(500);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({
       error: "Architecture review worker run failed.",
     });
