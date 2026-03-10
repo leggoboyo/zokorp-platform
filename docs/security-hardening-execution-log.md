@@ -221,3 +221,67 @@
   - None for the merge refresh itself. Earlier provider-side verification blockers still apply.
 - Explicit residual risk after each slice:
   - PR #49 still depends on GitHub/Vercel checks and the previously documented provider-side verification gaps before any stronger security claim is justified.
+
+## 2026-03-09 23:40:27 CDT
+
+- Date/time: `2026-03-09 23:40:27 CDT`
+- Current branch/worktree: `codex/security-hardening` at `/Users/zohaibkhawaja/Documents/Codex/zokorp-worktrees/security-hardening`
+- Current action item(s):
+  - Improve Stripe webhook operator visibility for signed failures, silent skips, and subscription lifecycle sync events.
+  - Make webhook responses explicitly non-cacheable and method-restricted.
+  - Add regression coverage for webhook observability behavior.
+- Status:
+  - Stripe webhook observability slice: `done`
+  - Next candidate slice: full env-contract enforcement or CSP tightening review
+- Findings or evidence:
+  - `app/api/stripe/webhook/route.ts` previously handled valid subscription updates and skip conditions silently, which left operators without an internal audit trail when signed webhook events were ignored or failed after signature verification.
+  - The webhook route previously relied on framework-default `GET` handling and did not force `Cache-Control: no-store` on its text responses.
+  - The new regression coverage proves three important behaviors: signed subscription lifecycle events are audit-logged, signed checkout events missing required metadata are audit-logged rather than silently dropped, and signed handler failures emit an internal failure audit event before returning `500`.
+- Code changes made:
+  - Updated `app/api/stripe/webhook/route.ts` to add explicit `GET` rejection, `no-store` response headers, and internal audit logging for `billing.webhook_checkout_skipped`, `billing.webhook_checkout_duplicate`, `billing.subscription_sync_applied`, and `billing.webhook_failed`.
+  - Added `tests/stripe-webhook-route.test.ts` covering method rejection, subscription sync audit logging, signed checkout skip auditing, and signed failure auditing.
+  - Updated `docs/08-how-to-operate.md` so operators know which webhook audit actions to inspect before retrying or mutating entitlements manually.
+- Validation results:
+  - `npm run lint`: passed
+  - `npm run typecheck`: passed
+  - `npm test`: passed (`58` files, `211` tests)
+  - `npm run build`: passed
+  - `node scripts/production_smoke_check.mjs`: not run because this slice only changed API handlers, tests, and docs
+- PR link if applicable:
+  - `https://github.com/leggoboyo/zokorp-platform/pull/49`
+- Blockers requiring human action:
+  - Provider-side Stripe verification is still required to confirm the live dashboard endpoint/signing-secret binding and actual webhook delivery health in production.
+- Explicit residual risk after each slice:
+  - The webhook path is now more observable, but the live Stripe dashboard and delivery history still need credentialed verification before billing incident readiness can be treated as complete.
+  - Scheduled-job secret separation, broader env validation, and CSP tightening remain open security work outside this slice.
+
+## 2026-03-09 23:42:15 CDT
+
+- Date/time: `2026-03-09 23:42:15 CDT`
+- Current branch/worktree: `codex/security-webhook-visibility` at `/Users/zohaibkhawaja/Documents/Codex/zokorp-worktrees/security-hardening`
+- Current action item(s):
+  - Rebase the webhook observability slice onto the post-merge mainline truthfully after PR `#49` merged before the webhook commit landed.
+  - Revalidate the webhook slice on a clean branch rooted at current `origin/main`.
+  - Open a fresh follow-up PR for only the webhook delta.
+- Status:
+  - Clean-branch webhook cherry-pick: `done`
+  - Clean-branch validation refresh: `done`
+  - Follow-up PR creation: `in_progress`
+- Findings or evidence:
+  - GitHub merged PR `#49` at `770e710`, but that merge did not include the later webhook commit `8d7ac24`.
+  - A fresh branch from current `origin/main` was required to avoid falsely claiming the webhook hardening had already landed.
+  - Cherry-picking the webhook slice onto `codex/security-webhook-visibility` produced a clean branch head with the same validated tree.
+- Code changes made:
+  - Created branch `codex/security-webhook-visibility` from `origin/main`.
+  - Cherry-picked the validated webhook observability commit onto the new branch.
+- Validation results:
+  - Clean-branch `npm run lint`: passed
+  - Clean-branch `npm run typecheck`: passed
+  - Clean-branch `npm test`: passed (`58` files, `211` tests)
+  - Clean-branch `npm run build`: passed
+- PR link if applicable:
+  - Pending follow-up PR creation from `codex/security-webhook-visibility`
+- Blockers requiring human action:
+  - None for the branch split itself. The earlier provider-side Stripe verification blockers still apply.
+- Explicit residual risk after each slice:
+  - The webhook observability slice is validated locally but not yet merged to `main` until the new follow-up PR is created and lands.
