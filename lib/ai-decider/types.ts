@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { quoteLineItemSchema } from "@/lib/quote-line-items";
+import { toolConsentSchema } from "@/lib/tool-consent";
 
 export const AI_DECIDER_VERSION = "1.0" as const;
 
@@ -85,6 +86,8 @@ export type AiDeciderLeadInput = z.infer<typeof aiDeciderLeadSchema>;
 
 export const aiDeciderSubmissionRequestSchema = aiDeciderLeadSchema.extend({
   answers: z.record(z.string(), z.string().trim().min(1).max(40)).default({}),
+  saveForFollowUp: toolConsentSchema.shape.saveForFollowUp,
+  allowCrmFollowUp: toolConsentSchema.shape.allowCrmFollowUp,
 });
 export type AiDeciderSubmissionRequest = z.infer<typeof aiDeciderSubmissionRequestSchema>;
 

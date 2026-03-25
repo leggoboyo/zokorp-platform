@@ -3,6 +3,7 @@ import { Prisma, type ArchitectureReviewJob } from "@prisma/client";
 import { buildReviewReportFromEvidence } from "@/lib/architecture-review/client";
 import { buildArchitectureReviewCtaLinks } from "@/lib/architecture-review/cta-links";
 import { buildArchitectureReviewEmailContent, buildMailtoUrl } from "@/lib/architecture-review/email";
+import { loadArchitectureEstimateSnapshot } from "@/lib/architecture-review/rule-catalog";
 import { createEmlToken } from "@/lib/architecture-review/eml-token";
 import { detectNonArchitectureEvidence } from "@/lib/architecture-review/engine";
 import { createEvidenceBundle } from "@/lib/architecture-review/evidence";
@@ -18,6 +19,13 @@ import {
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
 import { ensureLeadLogSchemaReady } from "@/lib/lead-log-schema";
+import {
+  archiveToolSubmission,
+  recordLeadEvent,
+  upsertLead,
+} from "@/lib/privacy-leads";
+import { redactedArchitectureEmailBody } from "@/lib/retention-sweep";
+import { estimateBandForRange, scoreBandForScore } from "@/lib/tool-consent";
 import {
   archiveArchitectureReviewReportToWorkDrive,
   formatWorkDriveArchiveStatus,
@@ -427,6 +435,29 @@ function parseMetadata(job: ArchitectureReviewJob) {
   return parsed.success ? parsed.data : null;
 }
 
+function wantsFollowUpArchive(metadata: SubmitArchitectureReviewMetadata) {
+  return metadata.saveForFollowUp ?? metadata.archiveForFollowup ?? false;
+}
+
+function wantsCrmFollowUp(metadata: SubmitArchitectureReviewMetadata) {
+  return metadata.allowCrmFollowUp ?? false;
+}
+
+function scrubStoredMetadata(metadata: SubmitArchitectureReviewMetadata) {
+  return {
+    provider: metadata.provider,
+    diagramFormat: metadata.diagramFormat,
+    saveForFollowUp: wantsFollowUpArchive(metadata),
+    allowCrmFollowUp: wantsCrmFollowUp(metadata),
+    workloadCriticality: metadata.workloadCriticality,
+    regulatoryScope: metadata.regulatoryScope,
+    environment: metadata.environment,
+    lifecycleStage: metadata.lifecycleStage,
+    desiredEngagement: metadata.desiredEngagement,
+    analysisConfidence: metadata.analysisConfidence,
+  };
+}
+
 function parseSubmissionContext(job: ArchitectureReviewJob) {
   const parsed = architectureReviewMetadataSchema.shape.submissionContext.safeParse(job.submissionContextJson);
   return parsed.success ? parsed.data : null;
@@ -507,6 +538,8 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
     if (!metadata) {
       return failJob(job, "Invalid review metadata payload.");
     }
+    const saveForFollowUp = wantsFollowUpArchive(metadata);
+    const allowCrmFollowUp = wantsCrmFollowUp(metadata);
 
     job = await updatePhase(job, "upload-validate", "start");
 
@@ -622,8 +655,8 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
             analysisConfidence: report.analysisConfidence,
             quoteTier: report.quoteTier,
             topIssues: summarizeTopIssues(report.findings) || "none",
-            inputParagraph: metadata.paragraphInput,
-            reportJson: report,
+            inputParagraph: null,
+            reportJson: Prisma.JsonNull,
             utmSource: submissionContext?.utmSource,
             utmMedium: submissionContext?.utmMedium,
             utmCampaign: submissionContext?.utmCampaign,
@@ -639,9 +672,11 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
               submissionContext,
             }),
             leadStage: "New Review",
-            workdriveUploadStatus: job.workdriveUploadStatus ?? (metadata.archiveForFollowup ? "pending" : "not_requested"),
+            workdriveUploadStatus: job.workdriveUploadStatus ?? (saveForFollowUp ? "pending" : "not_requested"),
             emailDeliveryMode: "pending",
-            zohoSyncNeedsUpdate: true,
+            saveForFollowUp,
+            allowCrmFollowUp,
+            zohoSyncNeedsUpdate: allowCrmFollowUp,
           },
         });
       } catch (error) {
@@ -663,7 +698,7 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
     }
 
     const reportArchiveResult =
-      metadata.archiveForFollowup && job.workdriveDiagramFileId
+      saveForFollowUp && job.workdriveDiagramFileId
         ? await archiveArchitectureReviewReportToWorkDrive({
             report,
             userName,
@@ -672,11 +707,11 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
         : null;
 
     const workdriveStatus =
-      metadata.archiveForFollowup && job.workdriveDiagramFileId
+      saveForFollowUp && job.workdriveDiagramFileId
         ? reportArchiveResult?.error
           ? formatWorkDriveArchiveStatus(reportArchiveResult)
           : "uploaded"
-        : job.workdriveUploadStatus ?? (metadata.archiveForFollowup ? "failed:WORKDRIVE_DIAGRAM_NOT_ARCHIVED" : "not_requested");
+        : job.workdriveUploadStatus ?? (saveForFollowUp ? "failed:WORKDRIVE_DIAGRAM_NOT_ARCHIVED" : "not_requested");
 
     job = await db.architectureReviewJob.update({
       where: { id: job.id },
@@ -704,8 +739,16 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
     }
 
     const ctaLinks = createdLead ? await buildArchitectureReviewCtaLinks(createdLead.id) : undefined;
+    const { snapshot: estimateSnapshot, auditUsage: estimateAuditUsage } = await loadArchitectureEstimateSnapshot(report, {
+      bookingUrl: ctaLinks?.bookArchitectureCallUrl,
+    });
     const emailContent = buildArchitectureReviewEmailContent(report, {
-      ctaLinks,
+      ctaLinks: ctaLinks
+        ? {
+            bookArchitectureCallUrl: ctaLinks.bookArchitectureCallUrl,
+          }
+        : undefined,
+      estimateSnapshot,
     });
 
     const outbox = await db.architectureReviewEmailOutbox.create({
@@ -734,6 +777,36 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
     job = await updatePhase(job, "package-email", "complete");
     job = await updatePhase(job, "send-fallback", "start");
 
+    const lead = await upsertLead({
+      userId: job.userId,
+      email: job.userEmail,
+      name: userName,
+    });
+
+    if (saveForFollowUp) {
+      try {
+        await archiveToolSubmission({
+          leadId: lead.id,
+          userId: job.userId,
+          toolName: "architecture-review",
+          payload: {
+            provider: report.provider,
+            report,
+            paragraphInput: metadata.paragraphInput,
+            clientEvidence: {
+              pngText: metadata.clientPngOcrText ?? null,
+              svgText: metadata.clientSvgText ?? null,
+            },
+            metadata,
+            estimateSnapshot,
+            archivedAtISO: new Date().toISOString(),
+          },
+        });
+      } catch (error) {
+        console.error("architecture review archive failed", { jobId: job.id, error });
+      }
+    }
+
     const sendResult = await sendArchitectureReviewEmail({
       to: job.userEmail,
       subject: emailContent.subject,
@@ -752,6 +825,8 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
           provider: sendResult.provider,
           sentAt: new Date(),
           errorMessage: null,
+          textBody: redactedArchitectureEmailBody(),
+          htmlBody: null,
         },
       });
 
@@ -763,7 +838,7 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
               emailDeliveryMode: "sent",
               leadStage: "Email Sent",
               emailSentAt: new Date(),
-              zohoSyncNeedsUpdate: true,
+              zohoSyncNeedsUpdate: allowCrmFollowUp,
             },
           });
         } catch (error) {
@@ -784,8 +859,28 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
           progressPct: 100,
           etaSeconds: 0,
           currentPhase: "completed",
+          metadataJson: toInputJsonValue(scrubStoredMetadata(metadata)),
+          submissionContextJson: Prisma.JsonNull,
+          clientTimingJson: Prisma.JsonNull,
+          reportJson: Prisma.JsonNull,
           completedAt: new Date(),
           lastHeartbeatAt: new Date(),
+        },
+      });
+
+      await recordLeadEvent({
+        leadId: lead.id,
+        userId: job.userId,
+        aggregate: {
+          source: "architecture-review",
+          deliveryState: "sent",
+          crmSyncState: allowCrmFollowUp ? "pending" : "skipped",
+          saveForFollowUp,
+          allowCrmFollowUp,
+          scoreBand: scoreBandForScore(report.overallScore),
+          estimateBand: estimateBandForRange(estimateSnapshot.totalUsd, estimateSnapshot.totalUsd),
+          recommendedEngagement: report.quoteTier,
+          sourceRecordKey: `architecture-review:${job.id}`,
         },
       });
 
@@ -799,9 +894,13 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
           quoteTier: report.quoteTier,
           findings: report.findings.length,
           ocrCharacterCount: ocrText.length,
+          estimateReferenceCode: estimateSnapshot.referenceCode,
+          estimateTotalUsd: estimateSnapshot.totalUsd,
+          estimateLineItems: estimateAuditUsage,
           emailStatus: "sent",
           emailProvider: sendResult.provider,
           emailError: null,
+          crmSyncState: allowCrmFollowUp ? "pending" : "skipped",
           workdriveStatus,
           jobId: job.id,
         },
@@ -838,6 +937,8 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
         },
         provider: sendResult.provider,
         errorMessage: sendResult.error ?? "EMAIL_DELIVERY_FAILED",
+        textBody: redactedArchitectureEmailBody(),
+        htmlBody: null,
       },
     });
 
@@ -848,7 +949,7 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
           data: {
             emailDeliveryMode: "fallback",
             leadStage: "New Review",
-            zohoSyncNeedsUpdate: true,
+            zohoSyncNeedsUpdate: allowCrmFollowUp,
           },
         });
       } catch (error) {
@@ -869,8 +970,28 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
         currentPhase: "completed",
         progressPct: 100,
         etaSeconds: 0,
+        metadataJson: toInputJsonValue(scrubStoredMetadata(metadata)),
+        submissionContextJson: Prisma.JsonNull,
+        clientTimingJson: Prisma.JsonNull,
+        reportJson: Prisma.JsonNull,
         completedAt: new Date(),
         lastHeartbeatAt: new Date(),
+      },
+    });
+
+    await recordLeadEvent({
+      leadId: lead.id,
+      userId: job.userId,
+      aggregate: {
+        source: "architecture-review",
+        deliveryState: "fallback",
+        crmSyncState: allowCrmFollowUp ? "pending" : "skipped",
+        saveForFollowUp,
+        allowCrmFollowUp,
+        scoreBand: scoreBandForScore(report.overallScore),
+        estimateBand: estimateBandForRange(estimateSnapshot.totalUsd, estimateSnapshot.totalUsd),
+        recommendedEngagement: report.quoteTier,
+        sourceRecordKey: `architecture-review:${job.id}`,
       },
     });
 
@@ -884,9 +1005,13 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
         quoteTier: report.quoteTier,
         findings: report.findings.length,
         ocrCharacterCount: ocrText.length,
+        estimateReferenceCode: estimateSnapshot.referenceCode,
+        estimateTotalUsd: estimateSnapshot.totalUsd,
+        estimateLineItems: estimateAuditUsage,
         emailStatus: "fallback",
         emailProvider: sendResult.provider,
         emailError: sendResult.error,
+        crmSyncState: allowCrmFollowUp ? "pending" : "skipped",
         workdriveStatus,
         jobId: job.id,
       },

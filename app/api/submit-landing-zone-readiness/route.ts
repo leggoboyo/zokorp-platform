@@ -3,19 +3,29 @@ import { randomUUID } from "node:crypto";
 
 import { sendToolResultEmail } from "@/lib/architecture-review/sender";
 import { db } from "@/lib/db";
-import { isSchemaDriftError } from "@/lib/db-errors";
 import { isFreeToolAccessError, requireVerifiedFreeToolAccess } from "@/lib/free-tool-access";
 import { buildLandingZoneReadinessEmailContent } from "@/lib/landing-zone-readiness/email";
 import { buildLandingZoneReadinessReport } from "@/lib/landing-zone-readiness/engine";
 import { isAllowedLandingZoneBusinessEmail, normalizeLandingZoneWebsite } from "@/lib/landing-zone-readiness/input";
 import {
-  landingZoneReadinessAnswersSchema,
-  landingZoneReadinessQuoteSchema,
-  maturityBandSchema,
   type LandingZoneReadinessSubmissionResponse,
+  landingZoneReadinessAnswersSchema,
 } from "@/lib/landing-zone-readiness/types";
+import {
+  archiveToolSubmission,
+  findRecentSubmissionFingerprint,
+  hashSubmissionFingerprint,
+  recordLeadEvent,
+  rememberSubmissionFingerprint,
+  upsertLead,
+} from "@/lib/privacy-leads";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { requireSameOrigin } from "@/lib/request-origin";
+import {
+  estimateBandForRange,
+  normalizeToolConsent,
+  scoreBandForScore,
+} from "@/lib/tool-consent";
 import { upsertZohoLead } from "@/lib/zoho-crm";
 
 export const runtime = "nodejs";
@@ -26,13 +36,9 @@ const EMAIL_RATE_LIMIT = 4;
 const EMAIL_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const MAX_REQUEST_BODY_CHARS = 32_000;
 const JSON_CONTENT_TYPE = "application/json";
-const SUBMISSION_SOURCE = "landing-zone-readiness-checker";
-const DUPLICATE_SUBMISSION_WINDOW_MS = 15 * 60 * 1000;
 const INVALID_CONTENT_TYPE = "INVALID_CONTENT_TYPE";
 const INVALID_PAYLOAD = "INVALID_PAYLOAD";
 const PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE";
-
-type ZohoSyncStatus = "pending" | "synced" | "not_configured" | "failed";
 
 function jsonResponse(body: LandingZoneReadinessSubmissionResponse, requestId: string, status = 200) {
   return NextResponse.json(body, {
@@ -66,86 +72,20 @@ async function parseRequestBody(request: Request) {
   return JSON.parse(rawBody) as unknown;
 }
 
-function deriveZohoSyncStatus(result: Awaited<ReturnType<typeof upsertZohoLead>>): ZohoSyncStatus {
+function deriveCrmSyncState(result: { status: string }) {
   if (result.status === "success" || result.status === "duplicate") {
-    return "synced";
+    return "synced" as const;
   }
 
   if (result.status === "not_configured") {
-    return "not_configured";
+    return "not_configured" as const;
   }
 
-  return "failed";
-}
-
-function stableStringify(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  if (result.status === "skipped") {
+    return "skipped" as const;
   }
 
-  if (value && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, nestedValue]) => nestedValue !== undefined)
-      .sort(([left], [right]) => left.localeCompare(right));
-
-    return `{${entries
-      .map(([key, nestedValue]) => `${JSON.stringify(key)}:${stableStringify(nestedValue)}`)
-      .join(",")}}`;
-  }
-
-  return JSON.stringify(value);
-}
-
-function normalizeComparableAnswers(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return value;
-  }
-
-  const record = { ...(value as Record<string, unknown>) };
-  const website = record.website;
-  if (typeof website === "string" && website.trim()) {
-    record.website = normalizeLandingZoneWebsite(website);
-  }
-
-  const email = record.email;
-  if (typeof email === "string" && email.trim()) {
-    record.email = email.trim().toLowerCase();
-  }
-
-  return record;
-}
-
-function isMatchingRecentSubmission(input: {
-  currentAnswers: unknown;
-  previousAnswers: unknown;
-}) {
-  return (
-    stableStringify(normalizeComparableAnswers(input.currentAnswers)) ===
-    stableStringify(normalizeComparableAnswers(input.previousAnswers))
-  );
-}
-
-function buildZohoDescription(input: {
-  answers: {
-    primaryCloud: string;
-    secondaryCloud?: string;
-    biggestChallenge?: string;
-  };
-  report: ReturnType<typeof buildLandingZoneReadinessReport>;
-}) {
-  return [
-    `Score: ${input.report.overallScore}/100`,
-    `Maturity: ${input.report.maturityBand}`,
-    `PrimaryCloud: ${input.answers.primaryCloud}`,
-    `SecondaryCloud: ${input.answers.secondaryCloud ?? "none"}`,
-    `QuoteTier: ${input.report.quote.quoteTier}`,
-    `QuoteRange: ${input.report.quote.quoteLow}-${input.report.quote.quoteHigh}`,
-    `EstimatedDays: ${input.report.quote.estimatedDaysLow}-${input.report.quote.estimatedDaysHigh}`,
-    `Summary: ${input.report.summaryLine}`,
-    input.answers.biggestChallenge ? `Challenge: ${input.answers.biggestChallenge}` : null,
-  ]
-    .filter(Boolean)
-    .join("; ");
+  return "failed" as const;
 }
 
 export async function POST(request: Request) {
@@ -183,8 +123,10 @@ export async function POST(request: Request) {
       return jsonResponse({ error: "Please complete the required fields and try again." }, requestId, 400);
     }
 
+    const consent = normalizeToolConsent(parsed.data);
     const answers = {
       ...parsed.data,
+      ...consent,
       email: parsed.data.email.trim().toLowerCase(),
       website: normalizeLandingZoneWebsite(parsed.data.website),
       biggestChallenge: parsed.data.biggestChallenge?.trim() ?? "",
@@ -225,98 +167,91 @@ export async function POST(request: Request) {
     }
 
     const report = buildLandingZoneReadinessReport(answers);
-    const recentSubmission = await db.landingZoneReadinessSubmission.findFirst({
-      where: {
-        email: answers.email,
-        source: SUBMISSION_SOURCE,
-        createdAt: {
-          gte: new Date(Date.now() - DUPLICATE_SUBMISSION_WINDOW_MS),
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      select: {
-        answersJson: true,
-        scoreOverall: true,
-        maturityBand: true,
-        quoteJson: true,
-        emailDeliveryStatus: true,
-      },
+    const fingerprintHash = hashSubmissionFingerprint({
+      toolName: "landing-zone",
+      email: answers.email,
+      payload: answers,
+    });
+    const recentFingerprint = await findRecentSubmissionFingerprint({
+      toolName: "landing-zone",
+      fingerprintHash,
     });
 
-    if (
-      recentSubmission &&
-      isMatchingRecentSubmission({
-        currentAnswers: answers,
-        previousAnswers: recentSubmission.answersJson,
-      })
-    ) {
-      const parsedQuote = landingZoneReadinessQuoteSchema.safeParse(recentSubmission.quoteJson);
-      const parsedMaturityBand = maturityBandSchema.safeParse(recentSubmission.maturityBand);
-      if (parsedQuote.success && parsedMaturityBand.success) {
-        if (recentSubmission.emailDeliveryStatus === "sent") {
-          return jsonResponse(
-            {
-              status: "sent",
-              overallScore: recentSubmission.scoreOverall,
-              maturityBand: parsedMaturityBand.data,
-              quoteTier: parsedQuote.data.quoteTier,
-            },
-            requestId,
-            200,
-          );
-        }
+    if (recentFingerprint) {
+      const priorEvent =
+        recentFingerprint.leadId
+          ? await db.leadEvent.findFirst({
+              where: {
+                leadId: recentFingerprint.leadId,
+                source: "landing-zone",
+              },
+              orderBy: {
+                createdAt: "desc",
+              },
+              select: {
+                deliveryState: true,
+              },
+            })
+          : null;
 
+      if (priorEvent?.deliveryState === "sent") {
         return jsonResponse(
           {
-            status: "fallback",
-            overallScore: recentSubmission.scoreOverall,
-            maturityBand: parsedMaturityBand.data,
-            quoteTier: parsedQuote.data.quoteTier,
-            reason: "A recent matching submission already exists. Please check your email before retrying.",
+            status: "sent",
+            overallScore: report.overallScore,
+            maturityBand: report.maturityBand,
+            quoteTier: report.quote.quoteTier,
           },
           requestId,
           200,
         );
       }
+
+      return jsonResponse(
+        {
+          status: "fallback",
+          overallScore: report.overallScore,
+          maturityBand: report.maturityBand,
+          quoteTier: report.quote.quoteTier,
+          reason: "A recent matching submission already exists. Please check your email before retrying.",
+        },
+        requestId,
+        200,
+      );
     }
 
-    const created = await db.landingZoneReadinessSubmission.create({
-      data: {
-        userId: access.user.id,
-        email: answers.email,
-        fullName: answers.fullName,
-        companyName: answers.companyName,
-        roleTitle: answers.roleTitle,
-        website: answers.website,
-        primaryCloud: answers.primaryCloud,
-        secondaryCloud: answers.secondaryCloud ?? null,
-        answersJson: answers,
-        scoreOverall: report.overallScore,
-        scoreByCategoryJson: report.categoryScores,
-        maturityBand: report.maturityBand,
-        findingsJson: report.findings,
-        quoteJson: report.quote,
-        freeTextChallenge: answers.biggestChallenge || null,
-        crmSyncStatus: "pending",
-        emailDeliveryStatus: "pending",
-        source: SUBMISSION_SOURCE,
-      },
+    const lead = await upsertLead({
+      userId: access.user.id,
+      email: answers.email,
+      name: answers.fullName,
+      companyName: answers.companyName,
     });
 
-    const zohoResult = await upsertZohoLead({
-      email: answers.email,
-      fullName: answers.fullName,
-      companyName: answers.companyName,
-      website: answers.website,
-      roleTitle: answers.roleTitle,
-      leadSource: "ZoKorp Landing Zone Checker",
-      description: buildZohoDescription({
-        answers,
-        report,
-      }),
-    });
+    const zohoDescription = [
+      `Score: ${report.overallScore}/100`,
+      `Maturity: ${report.maturityBand}`,
+      `PrimaryCloud: ${answers.primaryCloud}`,
+      `SecondaryCloud: ${answers.secondaryCloud ?? "none"}`,
+      `Estimate: ${report.quote.quoteTier}`,
+      `EstimateRange: ${report.quote.quoteLow}-${report.quote.quoteHigh}`,
+      `EstimatedDays: ${report.quote.estimatedDaysLow}-${report.quote.estimatedDaysHigh}`,
+      `Summary: ${report.summaryLine}`,
+      answers.biggestChallenge ? `Challenge: ${answers.biggestChallenge}` : null,
+    ]
+      .filter(Boolean)
+      .join("; ");
+
+    const zohoResult = consent.allowCrmFollowUp
+      ? await upsertZohoLead({
+          email: answers.email,
+          fullName: answers.fullName,
+          companyName: answers.companyName,
+          website: answers.website,
+          roleTitle: answers.roleTitle,
+          leadSource: "ZoKorp Landing Zone Checker",
+          description: zohoDescription,
+        })
+      : { status: "skipped", error: null };
 
     const emailContent = buildLandingZoneReadinessEmailContent({ answers, report });
     const sendResult = await sendToolResultEmail({
@@ -326,14 +261,45 @@ export async function POST(request: Request) {
       html: emailContent.html,
     });
 
-    await db.landingZoneReadinessSubmission.update({
-      where: { id: created.id },
-      data: {
-        crmSyncStatus: deriveZohoSyncStatus(zohoResult),
-        zohoRecordId: "recordId" in zohoResult ? (zohoResult.recordId ?? null) : null,
-        zohoSyncError: zohoResult.error ?? null,
-        emailDeliveryStatus: sendResult.ok ? "sent" : "failed",
+    if (consent.saveForFollowUp) {
+      try {
+        await archiveToolSubmission({
+          leadId: lead.id,
+          userId: access.user.id,
+          toolName: "landing-zone",
+          payload: {
+            answers,
+            report,
+            consent,
+            archivedAtISO: new Date().toISOString(),
+          },
+        });
+      } catch (error) {
+        console.error("submit-landing-zone-readiness archive failed", { requestId, error });
+      }
+    }
+
+    await recordLeadEvent({
+      leadId: lead.id,
+      userId: access.user.id,
+      aggregate: {
+        source: "landing-zone",
+        deliveryState: sendResult.ok ? "sent" : "fallback",
+        crmSyncState: deriveCrmSyncState(zohoResult),
+        saveForFollowUp: consent.saveForFollowUp,
+        allowCrmFollowUp: consent.allowCrmFollowUp,
+        scoreBand: scoreBandForScore(report.overallScore),
+        estimateBand: estimateBandForRange(report.quote.quoteLow, report.quote.quoteHigh),
+        recommendedEngagement: report.quote.quoteTier,
+        sourceRecordKey: `landing-zone:${requestId}`,
       },
+    });
+
+    await rememberSubmissionFingerprint({
+      leadId: lead.id,
+      userId: access.user.id,
+      toolName: "landing-zone",
+      fingerprintHash,
     });
 
     await db.auditLog.create({
@@ -347,9 +313,11 @@ export async function POST(request: Request) {
           companyName: answers.companyName,
           score: report.overallScore,
           maturityBand: report.maturityBand,
-          quoteTier: report.quote.quoteTier,
-          emailStatus: sendResult.ok ? "sent" : "failed",
-          crmSyncStatus: deriveZohoSyncStatus(zohoResult),
+          recommendedEngagement: report.quote.quoteTier,
+          emailStatus: sendResult.ok ? "sent" : "fallback",
+          crmSyncStatus: deriveCrmSyncState(zohoResult),
+          saveForFollowUp: consent.saveForFollowUp,
+          allowCrmFollowUp: consent.allowCrmFollowUp,
           requestId,
         },
       },
@@ -398,14 +366,6 @@ export async function POST(request: Request) {
 
     if (error instanceof Error && error.message === INVALID_PAYLOAD) {
       return jsonResponse({ error: "Invalid submission payload." }, requestId, 400);
-    }
-
-    if (isSchemaDriftError(error)) {
-      return jsonResponse(
-        { error: "Landing Zone Readiness Checker is being enabled. Please retry shortly." },
-        requestId,
-        503,
-      );
     }
 
     console.error("submit-landing-zone-readiness failed", { requestId, error });

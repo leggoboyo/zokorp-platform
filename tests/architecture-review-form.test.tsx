@@ -40,7 +40,7 @@ describe("ArchitectureDiagramReviewerForm", () => {
     expect(screen.getByRole("link", { name: /view sample report/i }).getAttribute("href")).toBe(
       "/software/architecture-diagram-reviewer/sample-report",
     );
-    expect(screen.getByText(/allow archival for follow-up/i)).toBeTruthy();
+    expect(screen.getByText(/save this review for follow-up/i)).toBeTruthy();
 
     const fileInput = screen.getByLabelText(/diagram file/i);
     const descriptionInput = screen.getByLabelText(/architecture description/i);
@@ -262,6 +262,7 @@ describe("ArchitectureDiagramReviewerForm", () => {
     const metadata = JSON.parse(String(metadataRaw)) as Record<string, unknown>;
     expect(metadata.clientSvgText).toBe("edge -> api -> database");
     expect(metadata.clientSvgDimensions).toEqual({ width: 1440, height: 900 });
+    expect(metadata.saveForFollowUp).toBe(false);
     expect(metadata.archiveForFollowup).toBe(false);
   });
 
@@ -303,7 +304,7 @@ describe("ArchitectureDiagramReviewerForm", () => {
       target: { value: "Users enter through the edge, requests move to the API, and queue-backed workers process the workload." },
     });
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByLabelText(/save this review for follow-up/i));
 
     if (!form) {
       throw new Error("Expected form element.");
@@ -319,6 +320,7 @@ describe("ArchitectureDiagramReviewerForm", () => {
     const metadataRaw = formData.get("metadata");
     expect(typeof metadataRaw).toBe("string");
     const metadata = JSON.parse(String(metadataRaw)) as Record<string, unknown>;
+    expect(metadata.saveForFollowUp).toBe(true);
     expect(metadata.archiveForFollowup).toBe(true);
   });
 

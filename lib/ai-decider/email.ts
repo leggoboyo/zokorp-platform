@@ -1,5 +1,6 @@
 import { AI_DECIDER_FINDING_CATEGORY_LABELS, AI_DECIDER_RECOMMENDATION_LABELS, CONSULTATION_CTA_PATH } from "@/lib/ai-decider/config";
 import type { AiDeciderLeadInput, AiDeciderReport } from "@/lib/ai-decider/types";
+import { buildEstimateReferenceCode } from "@/lib/privacy-leads";
 import { formatUsdRange, renderQuoteLineItemsHtml, quoteLineItemText } from "@/lib/quote-line-items";
 import { getSiteUrl } from "@/lib/site";
 
@@ -35,10 +36,16 @@ function buildTextEmail(input: {
   lead: AiDeciderLeadInput;
   report: AiDeciderReport;
 }) {
+  const estimateReferenceCode = buildEstimateReferenceCode({
+    source: "ai-decider",
+    email: input.lead.email,
+    generatedAtISO: input.report.generatedAtISO,
+  });
   const lines = [
     `Hi ${firstName(input.lead.fullName)},`,
     "",
-    `Your AI Decider memo for ${input.lead.companyName} is ready.`,
+    `Your AI Decider estimate memo for ${input.lead.companyName} is ready.`,
+    `Estimate reference: ${estimateReferenceCode}`,
     "",
     `${input.report.verdictHeadline}`,
     `${input.report.verdictLine}`,
@@ -70,15 +77,16 @@ function buildTextEmail(input: {
     "Next steps:",
     ...input.report.nextSteps.map((step) => `- ${step}`),
     "",
-    `Suggested engagement: ${input.report.quote.engagementType}`,
-    `Estimated quote range: ${formatUsdRange(input.report.quote.priceLow, input.report.quote.priceHigh)}`,
-    `Quote confidence: ${input.report.quote.confidence}`,
-    "Quote breakdown:",
+    `Suggested work path: ${input.report.quote.engagementType}`,
+    `Estimated range: ${formatUsdRange(input.report.quote.priceLow, input.report.quote.priceHigh)}`,
+    `Estimate confidence: ${input.report.quote.confidence}`,
+    "Estimate breakdown:",
     ...input.report.quote.lineItems.map((item) => `- ${quoteLineItemText(item)}`),
+    "Estimate assumptions and exclusions:",
     ...input.report.quote.rationaleLines.map((line) => `- ${line}`),
     "",
-    `Book a consultation: ${consultationUrl()}`,
-    "Reply to this email if you want the scope tightened before booking.",
+    `Request this work: ${consultationUrl()}`,
+    "Reply to this email if you want the estimate tightened before you request the work.",
   ];
 
   return lines.join("\n");
@@ -88,16 +96,22 @@ function buildHtmlEmail(input: {
   lead: AiDeciderLeadInput;
   report: AiDeciderReport;
 }) {
+  const estimateReferenceCode = buildEstimateReferenceCode({
+    source: "ai-decider",
+    email: input.lead.email,
+    generatedAtISO: input.report.generatedAtISO,
+  });
   return `
     <div style="background:#f4f7fb;padding:28px 16px;font-family:Inter,Segoe UI,Arial,sans-serif;color:#0f172a;">
       <div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #d7e2ef;border-radius:14px;overflow:hidden;">
         <div style="background:linear-gradient(135deg,#0f172a,#1d4d4f);padding:24px;color:#ffffff;">
           <p style="margin:0;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#d6f5f0;">ZoKorp Software</p>
-          <h1 style="margin:10px 0 0;font-size:28px;line-height:1.2;font-weight:700;">AI Decider Advisory Memo</h1>
+          <h1 style="margin:10px 0 0;font-size:28px;line-height:1.2;font-weight:700;">AI Decider Estimate Memo</h1>
         </div>
 
         <div style="padding:24px;">
           <p style="margin:0 0 14px;font-size:15px;line-height:1.7;">Hi ${escapeHtml(firstName(input.lead.fullName))}, here is the memo for ${escapeHtml(input.lead.companyName)}.</p>
+          <p style="margin:0 0 14px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Estimate reference: ${escapeHtml(estimateReferenceCode)}</p>
 
           <div style="border:1px solid #d7e2ef;border-radius:12px;padding:16px;background:#f8fbff;">
             <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Verdict</div>
@@ -154,20 +168,21 @@ function buildHtmlEmail(input: {
           </div>
 
           <div style="margin-top:18px;border:1px solid #d7e2ef;border-radius:12px;padding:14px;">
-            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote range</div>
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Estimate range</div>
             <p style="margin:8px 0 0;font-size:20px;font-weight:700;color:#0f172a;">${escapeHtml(formatUsdRange(input.report.quote.priceLow, input.report.quote.priceHigh))}</p>
-            <p style="margin:8px 0 0;font-size:14px;line-height:1.7;color:#334155;">Suggested engagement: <strong>${escapeHtml(input.report.quote.engagementType)}</strong><br />Quote confidence: ${escapeHtml(input.report.quote.confidence)}</p>
-            <div style="margin-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote breakdown</div>
+            <p style="margin:8px 0 0;font-size:14px;line-height:1.7;color:#334155;">Suggested work path: <strong>${escapeHtml(input.report.quote.engagementType)}</strong><br />Estimate confidence: ${escapeHtml(input.report.quote.confidence)}</p>
+            <div style="margin-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Estimate breakdown</div>
             <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.7;">
               ${renderQuoteLineItemsHtml(input.report.quote.lineItems)}
             </ul>
+            <div style="margin-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Estimate assumptions and exclusions</div>
             <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.7;">
               ${input.report.quote.rationaleLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
             </ul>
           </div>
 
           <div style="margin-top:20px;">
-            <a href="${escapeHtml(consultationUrl())}" style="display:inline-block;padding:12px 18px;background:#0f172a;border-radius:8px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Book a consultation</a>
+            <a href="${escapeHtml(consultationUrl())}" style="display:inline-block;padding:12px 18px;background:#0f172a;border-radius:8px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Request this work</a>
           </div>
         </div>
       </div>
@@ -180,7 +195,7 @@ export function buildAiDeciderEmailContent(input: {
   report: AiDeciderReport;
 }) {
   return {
-    subject: `AI Decider Memo for ${input.lead.companyName}`,
+    subject: `AI Decider Estimate for ${input.lead.companyName}`,
     text: buildTextEmail(input),
     html: buildHtmlEmail(input),
   };

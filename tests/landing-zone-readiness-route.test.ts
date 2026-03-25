@@ -1,27 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  submissionFindFirst: vi.fn(),
-  submissionCreate: vi.fn(),
-  submissionUpdate: vi.fn(),
   auditCreate: vi.fn(),
   sendToolResultEmail: vi.fn(),
   upsertZohoLead: vi.fn(),
   consumeRateLimit: vi.fn(),
   getRequestFingerprint: vi.fn(),
-  isSchemaDriftError: vi.fn(),
   requireVerifiedFreeToolAccess: vi.fn(),
+  upsertLead: vi.fn(),
+  recordLeadEvent: vi.fn(),
+  archiveToolSubmission: vi.fn(),
+  findRecentSubmissionFingerprint: vi.fn(),
+  hashSubmissionFingerprint: vi.fn(),
+  rememberSubmissionFingerprint: vi.fn(),
+  leadEventFindFirst: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   db: {
-    landingZoneReadinessSubmission: {
-      findFirst: mocks.submissionFindFirst,
-      create: mocks.submissionCreate,
-      update: mocks.submissionUpdate,
-    },
     auditLog: {
       create: mocks.auditCreate,
+    },
+    leadEvent: {
+      findFirst: mocks.leadEventFindFirst,
     },
   },
 }));
@@ -39,9 +40,18 @@ vi.mock("@/lib/rate-limit", () => ({
   getRequestFingerprint: mocks.getRequestFingerprint,
 }));
 
-vi.mock("@/lib/db-errors", () => ({
-  isSchemaDriftError: mocks.isSchemaDriftError,
-}));
+vi.mock("@/lib/privacy-leads", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/privacy-leads")>("@/lib/privacy-leads");
+  return {
+    ...actual,
+    upsertLead: mocks.upsertLead,
+    recordLeadEvent: mocks.recordLeadEvent,
+    archiveToolSubmission: mocks.archiveToolSubmission,
+    findRecentSubmissionFingerprint: mocks.findRecentSubmissionFingerprint,
+    hashSubmissionFingerprint: mocks.hashSubmissionFingerprint,
+    rememberSubmissionFingerprint: mocks.rememberSubmissionFingerprint,
+  };
+});
 
 vi.mock("@/lib/free-tool-access", () => ({
   requireVerifiedFreeToolAccess: mocks.requireVerifiedFreeToolAccess,
@@ -131,9 +141,6 @@ describe("submit landing zone readiness route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.submissionFindFirst.mockResolvedValue(null);
-    mocks.submissionCreate.mockResolvedValue({ id: "lzrc_123" });
-    mocks.submissionUpdate.mockResolvedValue({ id: "lzrc_123" });
     mocks.auditCreate.mockResolvedValue({ id: "audit_123" });
     mocks.sendToolResultEmail.mockResolvedValue({ ok: true, provider: "smtp" });
     mocks.upsertZohoLead.mockResolvedValue({
@@ -146,11 +153,17 @@ describe("submit landing zone readiness route", () => {
       retryAfterSeconds: 3600,
     }));
     mocks.getRequestFingerprint.mockReturnValue("203.0.113.10");
-    mocks.isSchemaDriftError.mockReturnValue(false);
     mocks.requireVerifiedFreeToolAccess.mockResolvedValue({
       user: { id: "user_123", email: "owner@acmecloud.com", emailVerified: new Date() },
       email: "owner@acmecloud.com",
     });
+    mocks.upsertLead.mockResolvedValue({ id: "lead_123" });
+    mocks.recordLeadEvent.mockResolvedValue({ id: "event_123" });
+    mocks.archiveToolSubmission.mockResolvedValue({ id: "archive_123" });
+    mocks.findRecentSubmissionFingerprint.mockResolvedValue(null);
+    mocks.hashSubmissionFingerprint.mockReturnValue("fingerprint_123");
+    mocks.rememberSubmissionFingerprint.mockResolvedValue({ id: "fp_123" });
+    mocks.leadEventFindFirst.mockResolvedValue(null);
   });
 
   it("rejects non-json submissions before any persistence work", async () => {
@@ -162,7 +175,7 @@ describe("submit landing zone readiness route", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Submissions must be sent as JSON.",
     });
-    expect(mocks.submissionCreate).not.toHaveBeenCalled();
+    expect(mocks.upsertLead).not.toHaveBeenCalled();
     expect(mocks.sendToolResultEmail).not.toHaveBeenCalled();
   });
 
@@ -182,7 +195,7 @@ describe("submit landing zone readiness route", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Cross-site requests are not allowed.",
     });
-    expect(mocks.submissionCreate).not.toHaveBeenCalled();
+    expect(mocks.upsertLead).not.toHaveBeenCalled();
     expect(mocks.requireVerifiedFreeToolAccess).not.toHaveBeenCalled();
   });
 
@@ -195,7 +208,7 @@ describe("submit landing zone readiness route", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Personal email domains are not allowed. Use your business email.",
     });
-    expect(mocks.submissionCreate).not.toHaveBeenCalled();
+    expect(mocks.upsertLead).not.toHaveBeenCalled();
   });
 
   it("throttles repeated submissions for the same email", async () => {
@@ -217,46 +230,7 @@ describe("submit landing zone readiness route", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Too many submissions were sent for this email. Please wait and try again.",
     });
-    expect(mocks.submissionCreate).not.toHaveBeenCalled();
-  });
-
-  it("persists a successful submission and records synced statuses", async () => {
-    mocks.upsertZohoLead.mockResolvedValue({
-      status: "success",
-      recordId: "zoho_123",
-      error: null,
-    });
-
-    const response = await POST(makeRequest(JSON.stringify(makeAnswers())));
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body.status).toBe("sent");
-    expect(body.maturityBand).toBe("Strong Foundation");
-    expect(mocks.submissionCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          email: "owner@acmecloud.com",
-          source: "landing-zone-readiness-checker",
-        }),
-      }),
-    );
-    expect(mocks.upsertZohoLead).toHaveBeenCalledWith(
-      expect.objectContaining({
-        email: "owner@acmecloud.com",
-        description: expect.stringContaining("EstimatedDays:"),
-      }),
-    );
-    expect(mocks.submissionUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          crmSyncStatus: "synced",
-          zohoRecordId: "zoho_123",
-          emailDeliveryStatus: "sent",
-        }),
-      }),
-    );
-    expect(mocks.auditCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.upsertLead).not.toHaveBeenCalled();
   });
 
   it("rejects unverified or unsigned access before any persistence or email send", async () => {
@@ -275,35 +249,85 @@ describe("submit landing zone readiness route", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Sign in with your verified business email to run Landing Zone Readiness Checker.",
     });
-    expect(mocks.submissionCreate).not.toHaveBeenCalled();
+    expect(mocks.upsertLead).not.toHaveBeenCalled();
     expect(mocks.sendToolResultEmail).not.toHaveBeenCalled();
+  });
+
+  it("stores only lead metadata by default and skips CRM/archive without consent", async () => {
+    const response = await POST(makeRequest(JSON.stringify(makeAnswers())));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.status).toBe("sent");
+    expect(body.maturityBand).toBe("Strong Foundation");
+    expect(mocks.upsertLead).toHaveBeenCalledTimes(1);
+    expect(mocks.recordLeadEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leadId: "lead_123",
+        aggregate: expect.objectContaining({
+          source: "landing-zone",
+          saveForFollowUp: false,
+          allowCrmFollowUp: false,
+        }),
+      }),
+    );
+    expect(mocks.upsertZohoLead).not.toHaveBeenCalled();
+    expect(mocks.archiveToolSubmission).not.toHaveBeenCalled();
+    expect(mocks.rememberSubmissionFingerprint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leadId: "lead_123",
+        toolName: "landing-zone",
+        fingerprintHash: "fingerprint_123",
+      }),
+    );
+  });
+
+  it("archives and syncs CRM only when explicit follow-up consent is enabled", async () => {
+    mocks.upsertZohoLead.mockResolvedValueOnce({
+      status: "success",
+      recordId: "zoho_123",
+      error: null,
+    });
+
+    const response = await POST(
+      makeRequest(
+        JSON.stringify(
+          makeAnswers({
+            saveForFollowUp: true,
+            allowCrmFollowUp: true,
+          }),
+        ),
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.upsertZohoLead).toHaveBeenCalledTimes(1);
+    expect(mocks.archiveToolSubmission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leadId: "lead_123",
+        userId: "user_123",
+        toolName: "landing-zone",
+      }),
+    );
+    expect(mocks.recordLeadEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aggregate: expect.objectContaining({
+          saveForFollowUp: true,
+          allowCrmFollowUp: true,
+          crmSyncState: "synced",
+        }),
+      }),
+    );
   });
 
   it("returns the prior result instead of resending a duplicate recent submission", async () => {
     const duplicateAnswers = makeAnswers({ handlesSensitiveData: true, enforcesMfa: "no" });
-    mocks.submissionFindFirst.mockResolvedValue({
-      answersJson: duplicateAnswers,
-      scoreOverall: 92,
-      maturityBand: "Strong Foundation",
-      quoteJson: {
-        quoteTier: "Advisory Review",
-        quoteLow: 2000,
-        quoteHigh: 3500,
-        estimatedDaysLow: 1,
-        estimatedDaysHigh: 2,
-        confidence: "high",
-        lineItems: [
-          {
-            code: "landing-zone-base-advisory-review",
-            label: "Advisory Review base scope",
-            amountLow: 2000,
-            amountHigh: 3500,
-            reason: "Already sent.",
-          },
-        ],
-        rationaleLines: ["Already sent."],
-      },
-      emailDeliveryStatus: "sent",
+    mocks.findRecentSubmissionFingerprint.mockResolvedValue({
+      id: "fp_123",
+      leadId: "lead_123",
+    });
+    mocks.leadEventFindFirst.mockResolvedValue({
+      deliveryState: "sent",
     });
 
     const response = await POST(makeRequest(JSON.stringify(duplicateAnswers)));
@@ -312,37 +336,11 @@ describe("submit landing zone readiness route", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({
       status: "sent",
-      overallScore: 92,
+      overallScore: 96,
       maturityBand: "Strong Foundation",
-      quoteTier: "Advisory Review",
+      quoteTier: "Foundation Fix Sprint",
     });
-    expect(mocks.submissionCreate).not.toHaveBeenCalled();
+    expect(mocks.upsertLead).not.toHaveBeenCalled();
     expect(mocks.sendToolResultEmail).not.toHaveBeenCalled();
-    expect(mocks.upsertZohoLead).not.toHaveBeenCalled();
-  });
-
-  it("returns fallback when email delivery fails after storing the lead", async () => {
-    mocks.sendToolResultEmail.mockResolvedValue({
-      ok: false,
-      provider: "smtp",
-      error: "SMTP_NOT_CONFIGURED",
-    });
-
-    const response = await POST(makeRequest(JSON.stringify(makeAnswers({ enforcesMfa: "no" }))));
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body).toMatchObject({
-      status: "fallback",
-      reason: "Automated email delivery was unavailable. Please retry shortly.",
-    });
-    expect(mocks.submissionUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          emailDeliveryStatus: "failed",
-          crmSyncStatus: "not_configured",
-        }),
-      }),
-    );
   });
 });

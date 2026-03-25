@@ -85,6 +85,8 @@ type FormState = {
   nonProdShutdown: "" | "yes" | "partial" | "no";
   clearEnvironmentSeparation: "" | "yes" | "partial" | "no";
   biggestChallenge: string;
+  saveForFollowUp: boolean;
+  allowCrmFollowUp: boolean;
 };
 
 type LandingZoneReadinessCheckerFormProps = {
@@ -190,6 +192,8 @@ const INITIAL_STATE: FormState = {
   nonProdShutdown: "",
   clearEnvironmentSeparation: "",
   biggestChallenge: "",
+  saveForFollowUp: false,
+  allowCrmFollowUp: false,
 };
 
 const fieldClassName =
@@ -209,7 +213,7 @@ const productHighlights = [
   },
   {
     title: "Real output, not a teaser",
-    description: "The email includes category scores, blunt findings, concrete fixes, and a scoped consulting quote delivered to your verified account.",
+    description: "The email includes category scores, blunt findings, concrete fixes, and a line-item estimate delivered to your verified account.",
   },
   {
     title: "Built for SMB cloud teams",
@@ -219,8 +223,8 @@ const productHighlights = [
 
 const successNextSteps = [
   "Read the emailed score, category snapshot, and top fixes.",
-  "Use the quote range to decide whether a scoped hardening pass makes sense.",
-  "Book a consultation if you want remediation planning or implementation help.",
+  "Use the estimate to decide whether a scoped hardening pass makes sense.",
+  "Request the work if you want remediation planning or implementation help.",
 ] as const;
 
 const FRIENDLY_REQUIRED_MESSAGES: Partial<Record<keyof FormState, string>> = {
@@ -290,6 +294,8 @@ function buildPayload(form: FormState) {
     roleTitle: form.roleTitle.trim(),
     website: form.website.trim(),
     biggestChallenge: form.biggestChallenge.trim(),
+    saveForFollowUp: form.saveForFollowUp,
+    allowCrmFollowUp: form.allowCrmFollowUp,
     primaryCloud: form.primaryCloud || undefined,
     secondaryCloud: form.secondaryCloud || undefined,
   };
@@ -669,7 +675,7 @@ export function LandingZoneReadinessCheckerForm({
             {result.status === "sent" ? "Your results have been emailed" : "Submission received"}
           </h2>
           <p className="max-w-2xl text-sm leading-7 text-slate-600">
-            Check your email for the full report, top fixes, and scoped consulting quote. This page intentionally stays short and does not show the detailed findings.
+            Check your email for the full report, top fixes, and line-item estimate. This page intentionally stays short and does not show the detailed findings.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -698,7 +704,7 @@ export function LandingZoneReadinessCheckerForm({
             onClick={() => trackAnalyticsEvent("landing_zone_consultation_cta_clicked")}
             className={buttonVariants()}
           >
-            Book consultation
+            Request this work
           </Link>
           <Button
             type="button"
@@ -729,7 +735,7 @@ export function LandingZoneReadinessCheckerForm({
           <div className="max-w-3xl">
             <h2 className="font-display text-3xl font-semibold text-slate-900">Free cloud foundation check for real SMB environments</h2>
             <p className="mt-3 text-sm leading-7 text-slate-600">
-              Answer structured questions from your verified business-email account, get a deterministic readiness score, and receive the full report plus a quote by email.
+              Answer structured questions from your verified business-email account, get a deterministic readiness score, and receive the full report plus an estimate by email.
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
@@ -741,7 +747,7 @@ export function LandingZoneReadinessCheckerForm({
           <Badge variant="success">Free</Badge>
           <Badge variant="secondary">Business email only</Badge>
           <Badge variant="secondary">Results by email</Badge>
-          <Badge variant="secondary">Deterministic quote</Badge>
+          <Badge variant="secondary">Deterministic estimate</Badge>
           <Badge variant="secondary">No AI scoring</Badge>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -1237,6 +1243,33 @@ export function LandingZoneReadinessCheckerForm({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
+
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+          <p className={fieldLabelClassName}>Privacy And Follow-Up</p>
+          <div className="mt-3 space-y-3 text-sm text-slate-700">
+            <label className="flex items-start gap-3">
+              <input
+                checked={form.saveForFollowUp}
+                className="mt-1 h-4 w-4 rounded border-slate-300"
+                type="checkbox"
+                onChange={(event) => setStringField("saveForFollowUp", event.target.checked)}
+              />
+              <span>Save my submission for follow-up for up to 30 days.</span>
+            </label>
+            <label className="flex items-start gap-3">
+              <input
+                checked={form.allowCrmFollowUp}
+                className="mt-1 h-4 w-4 rounded border-slate-300"
+                type="checkbox"
+                onChange={(event) => setStringField("allowCrmFollowUp", event.target.checked)}
+              />
+              <span>Allow ZoKorp to place this result into CRM for manual follow-up.</span>
+            </label>
+            <p className="text-xs leading-6 text-slate-500">
+              If you leave both boxes off, the platform keeps only your account email and minimal summary metrics.
+            </p>
+          </div>
+        </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs text-slate-500">The full report is emailed. It is not shown on this page.</div>

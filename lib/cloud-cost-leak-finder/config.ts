@@ -96,7 +96,7 @@ export const QUOTE_BASE_PACKAGES: Record<QuoteTier, QuoteLineItemPricing> = {
     label: "Base savings memo",
     amountLow: 195,
     amountHigh: 325,
-    reason: "Fits a written advisory memo with prioritized savings actions and next steps.",
+    reason: "Fits a written estimate memo with prioritized savings actions and next steps.",
   },
   "FinOps Cleanup Sprint": {
     code: "base-finops-cleanup-sprint",

@@ -191,7 +191,7 @@ export function getBenchmarkFaqItems() {
     {
       question: "Where do I get my detailed findings?",
       answer:
-        "Detailed findings and quote outputs are delivered by email only and are not rendered in the web UI.",
+        "Detailed findings and estimate outputs are delivered by email only and are not rendered in the web UI.",
     },
   ] as const;
 }

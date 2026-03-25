@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { quoteLineItemSchema } from "@/lib/quote-line-items";
+import { toolConsentSchema } from "@/lib/tool-consent";
 
 export const LANDING_ZONE_READINESS_VERSION = "1.0" as const;
 
@@ -138,6 +139,8 @@ export const landingZoneReadinessAnswersBaseSchema = z.object({
     incidentResponseProcess: yesPartialNoSchema,
 
     biggestChallenge: z.string().trim().max(500).optional().default(""),
+    saveForFollowUp: toolConsentSchema.shape.saveForFollowUp,
+    allowCrmFollowUp: toolConsentSchema.shape.allowCrmFollowUp,
   });
 
 export const landingZoneReadinessAnswersSchema = landingZoneReadinessAnswersBaseSchema.superRefine((input, ctx) => {

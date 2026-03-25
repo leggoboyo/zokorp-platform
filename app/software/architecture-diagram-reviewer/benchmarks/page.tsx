@@ -48,7 +48,7 @@ export default function ArchitectureBenchmarkLibraryPage() {
       {
         "@type": "HowToStep",
         name: "Receive report by email",
-        text: "Get score, findings, and quote options by email only.",
+        text: "Get score, findings, and estimate options by email only.",
       },
     ],
   };
@@ -125,7 +125,7 @@ export default function ArchitectureBenchmarkLibraryPage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-6">
         <h2 className="font-display text-2xl font-semibold text-slate-900">Run your own review</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-          Benchmark pages are directional aggregates. For deterministic findings and quote options, run your own
+          Benchmark pages are directional aggregates. For deterministic findings and estimate options, run your own
           architecture review.
         </p>
         <Link href="/software/architecture-diagram-reviewer" className={`${buttonVariants()} mt-5`}>

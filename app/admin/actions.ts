@@ -5,6 +5,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/auth";
+import {
+  parseArchitectureRuleCatalogFormInput,
+  publishArchitectureRuleCatalog,
+  saveArchitectureRuleCatalogDraft,
+  syncArchitectureRuleCatalog,
+} from "@/lib/architecture-review/rule-catalog";
 import { db } from "@/lib/db";
 import { isCheckoutEnabledStripePriceId } from "@/lib/stripe-price-id";
 
@@ -35,6 +41,8 @@ function revalidateAdminViews() {
   revalidatePath("/software/[slug]", "page");
   revalidatePath("/services");
   revalidatePath("/account");
+  revalidatePath("/admin/architecture-catalog");
+  revalidatePath("/admin/architecture-catalog/[ruleId]", "page");
   revalidatePath("/admin/products");
   revalidatePath("/admin/prices");
   revalidatePath("/admin/service-requests");
@@ -203,4 +211,36 @@ export async function updateServiceRequestStatusAction(formData: FormData) {
   });
 
   revalidateAdminViews();
+}
+
+export async function syncArchitectureRuleCatalogAction() {
+  await requireAdmin();
+  await syncArchitectureRuleCatalog();
+  revalidateAdminViews();
+}
+
+export async function saveArchitectureRuleCatalogDraftAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const parsed = parseArchitectureRuleCatalogFormInput(formData);
+
+  await saveArchitectureRuleCatalogDraft({
+    ...parsed,
+    changedByEmail: admin.email ?? null,
+  });
+
+  revalidateAdminViews();
+  revalidatePath(`/admin/architecture-catalog/${parsed.ruleId}`);
+}
+
+export async function publishArchitectureRuleCatalogAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const parsed = parseArchitectureRuleCatalogFormInput(formData);
+
+  await publishArchitectureRuleCatalog({
+    ...parsed,
+    changedByEmail: admin.email ?? null,
+  });
+
+  revalidateAdminViews();
+  revalidatePath(`/admin/architecture-catalog/${parsed.ruleId}`);
 }

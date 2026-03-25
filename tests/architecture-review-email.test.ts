@@ -4,7 +4,7 @@ import { buildArchitectureReviewEmailContent } from "@/lib/architecture-review/e
 import { buildArchitectureReviewReport } from "@/lib/architecture-review/report";
 
 describe("architecture review email content", () => {
-  it("includes polished html sections and deterministic engagement options", () => {
+  it("renders the final implementation quote and booking link without package menus", () => {
     const report = buildArchitectureReviewReport({
       provider: "aws",
       flowNarrative: "Client requests enter ALB, app tier calls services, and writes to a managed database.",
@@ -30,22 +30,26 @@ describe("architecture review email content", () => {
       generatedAtISO: "2026-03-06T00:00:00.000Z",
     });
 
-    const content = buildArchitectureReviewEmailContent(report);
+    const content = buildArchitectureReviewEmailContent(report, {
+      ctaLinks: {
+        bookArchitectureCallUrl: "https://book.zokorp.com/architecture",
+      },
+    });
 
-    expect(content.subject).toContain("score");
-    expect(content.text).toContain("Engagement options:");
-    expect(content.text).toContain("Core quote breakdown:");
-    expect(content.text).toContain("Quote basis:");
-    expect(content.text).toContain("serviceLine=Security control mapping");
-    expect(content.html).toContain("Engagement Options");
-    expect(content.html).toContain("Core Quote Breakdown");
-    expect(content.html).toContain("Advisory Review");
-    expect(content.html).toContain("Implementation Partner");
-    expect(content.html).toContain("Service line: Security control mapping");
-    expect(content.html).toContain("Top Deductions");
+    expect(content.subject).toContain("estimate");
+    expect(content.text).toContain("Final implementation quote:");
+    expect(content.text).toContain("Final quoted total:");
+    expect(content.text).toContain("Book implementation follow-up: https://book.zokorp.com/architecture");
+    expect(content.text).not.toContain("Engagement options:");
+    expect(content.html).toContain("Final Implementation Quote");
+    expect(content.html).toContain("Book implementation follow-up");
+    expect(content.html).toContain("Estimate Reference");
+    expect(content.html).toContain("Assumptions and Exclusions");
+    expect(content.html).not.toContain("Engagement Options");
+    expect(content.html).not.toContain("Request scoped engagement");
   });
 
-  it("keeps low-confidence reviews diagnostic-first in the customer email", () => {
+  it("keeps low-confidence reviews estimate-first while still showing the final quote block", () => {
     const report = buildArchitectureReviewReport({
       provider: "aws",
       flowNarrative:
@@ -90,15 +94,12 @@ describe("architecture review email content", () => {
     const content = buildArchitectureReviewEmailContent(report);
 
     expect(report.analysisConfidence).toBe("low");
-    expect(report.consultationQuoteUSD).toBe(249);
-    expect(content.text).toContain("This review stays diagnostic-first");
-    expect(content.text).toContain("Request scoped follow-up");
-    expect(content.html).toContain("This review stays diagnostic-first");
-    expect(content.html).toContain("Request scoped follow-up");
-    expect(content.html).toContain("Held until the advisory review confirms the findings");
+    expect(content.text).toContain("Because the evidence confidence was low");
+    expect(content.text).toContain("Final implementation quote:");
+    expect(content.html).toContain("The quote below is limited to the issues visible in the submitted material.");
   });
 
-  it("marks broader scopes as custom after the advisory call", () => {
+  it("lists each quoted rule line in the customer email", () => {
     const report = buildArchitectureReviewReport({
       provider: "aws",
       flowNarrative:
@@ -127,12 +128,9 @@ describe("architecture review email content", () => {
 
     const content = buildArchitectureReviewEmailContent(report);
 
-    expect(report.quoteTier).toBe("implementation-partner");
-    expect(report.consultationQuoteUSD).toBe(249);
-    expect(content.text).toContain("This review points to broader delivery work");
-    expect(content.text).toContain("Request scoped engagement");
-    expect(content.html).toContain("This moves to custom scope");
-    expect(content.html).toContain("Request scoped engagement");
-    expect(content.html).toContain("Custom scoped redesign and execution support after the advisory call");
+    expect(content.text).toContain("SEC-BASELINE-MISSING");
+    expect(content.text).toContain("Compliance baseline mapping");
+    expect(content.html).toContain("SEC-BASELINE-MISSING");
+    expect(content.html).toContain("Compliance baseline mapping");
   });
 });

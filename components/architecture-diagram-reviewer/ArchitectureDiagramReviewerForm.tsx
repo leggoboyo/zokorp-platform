@@ -100,7 +100,7 @@ const PHASE_DESCRIPTIONS: Record<ArchitectureReviewPhase, string> = {
   ocr: "Using browser-extracted text and structure signals from the uploaded diagram.",
   rules: "Applying deterministic scoring for reliability, security, and operational readiness.",
   "llm-refine": "Finalizing the report package. New reviews no longer use a separate local-model phase.",
-  "package-email": "Preparing the email-ready report, quote context, and delivery metadata.",
+  "package-email": "Preparing the email-ready report, estimate context, and delivery metadata.",
   "send-fallback": "Attempting delivery and preparing fallback options if email automation fails.",
   completed: "The review package is complete.",
 };
@@ -114,15 +114,15 @@ const INPUT_CHECKLIST = [
   "One paragraph describing how the system works end to end",
 ];
 const QUOTE_METHOD_ITEMS = [
-  "$249 advisory baseline for the initial review call",
   "Each scored finding maps to a deterministic service line and fix-effort driver",
-  "Confidence and score bands bound the core quote before package ranges are shown",
-  "Low-confidence submissions stay diagnostic-first instead of inventing a large delivery scope",
+  "Confidence and score bands bound the estimate instead of pretending invoice-level precision",
+  "The email includes a line-item estimate, assumptions, and exclusions",
+  "Low-confidence submissions stay estimate-first instead of inventing a large delivery scope",
 ];
 const DELIVERY_PACKAGE_ITEMS = [
   "Overall score and analysis-confidence band",
   "Top deductions, optional recommendations, and service-line context",
-  "Recommended next package: advisory review, remediation sprint, or implementation partner",
+  "Recommended next step and a line-item estimate",
   "Fallback email actions if automated delivery is unavailable",
   "Ephemeral processing by default; archival is optional and explicit",
 ];
@@ -224,6 +224,7 @@ export function ArchitectureDiagramReviewerForm({
   const [lifecycleStage, setLifecycleStage] = useState<ArchitectureLifecycleStage>("production");
   const [desiredEngagement, setDesiredEngagement] = useState<ArchitectureEngagementPreference>("hands-on-remediation");
   const [archiveForFollowup, setArchiveForFollowup] = useState(false);
+  const [allowCrmFollowUp, setAllowCrmFollowUp] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -606,6 +607,8 @@ export function ArchitectureDiagramReviewerForm({
           environment,
           lifecycleStage,
           desiredEngagement,
+          saveForFollowUp: archiveForFollowup,
+          allowCrmFollowUp,
           archiveForFollowup,
           submissionContext: collectSubmissionContext(),
           clientTiming: {
@@ -761,7 +764,7 @@ export function ArchitectureDiagramReviewerForm({
 
           <Card tone="muted" className="rounded-2xl border border-slate-200 p-4">
             <CardHeader className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Quote Logic</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Estimate Logic</p>
               <h4 className="font-display text-xl font-semibold text-slate-900">How pricing is assembled</h4>
             </CardHeader>
             <CardContent className="space-y-2 text-sm leading-6 text-slate-600">
@@ -1110,10 +1113,25 @@ export function ArchitectureDiagramReviewerForm({
                 className="mt-1 h-4 w-4 rounded border-slate-300"
               />
               <span className="space-y-1 text-sm text-slate-600">
-                <span className="block font-medium text-slate-900">Allow archival for follow-up</span>
+                <span className="block font-medium text-slate-900">Save this review for follow-up</span>
                 <span className="block">
-                  Off by default. If checked, ZoKorp may keep the uploaded diagram and report for follow-up work.
-                  If left unchecked, the review stays on the ephemeral processing path and does not request external archival.
+                  Off by default. If checked, ZoKorp may keep the uploaded diagram and report for up to 30 days for follow-up work.
+                  If left unchecked, the review stays on the ephemeral processing path and does not request archival.
+                </span>
+              </span>
+            </label>
+
+            <label className="mt-3 flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+              <input
+                type="checkbox"
+                checked={allowCrmFollowUp}
+                onChange={(event) => setAllowCrmFollowUp(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-slate-300"
+              />
+              <span className="space-y-1 text-sm text-slate-600">
+                <span className="block font-medium text-slate-900">Allow CRM follow-up</span>
+                <span className="block">
+                  Off by default. If checked, ZoKorp may place this review into CRM for manual follow-up.
                 </span>
               </span>
             </label>
@@ -1128,7 +1146,7 @@ export function ArchitectureDiagramReviewerForm({
               {status === "running" ? "Reviewing..." : "Run Review"}
             </Button>
             <p className="text-xs text-slate-500">
-              Full findings and quote context are delivered by email only. This page stays limited to processing status and any fallback actions. By default the review uses the ephemeral path and does not request archival.
+              Full findings and estimate context are delivered by email only. This page stays limited to processing status and any fallback actions. By default the review uses the ephemeral path and does not request archival or CRM follow-up.
             </p>
           </div>
         </form>

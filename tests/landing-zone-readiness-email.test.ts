@@ -5,7 +5,7 @@ import { buildLandingZoneReadinessReport } from "@/lib/landing-zone-readiness/en
 import { landingZoneReadinessAnswersSchema } from "@/lib/landing-zone-readiness/types";
 
 describe("landing zone readiness email", () => {
-  it("renders a deterministic quote breakdown from shared line items", () => {
+  it("renders a deterministic estimate breakdown from shared line items", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-06T18:00:00.000Z"));
 
@@ -73,9 +73,9 @@ describe("landing zone readiness email", () => {
     const email = buildLandingZoneReadinessEmailContent({ answers, report });
 
     expect(report.quote.lineItems.length).toBeGreaterThanOrEqual(3);
-    expect(email.text).toContain("Quote breakdown:");
+    expect(email.text).toContain("Estimate breakdown:");
     expect(email.text).toContain(report.quote.lineItems[0]!.label);
-    expect(email.html).toContain("Quote breakdown");
+    expect(email.html).toContain("Estimate breakdown");
     expect(email.html).toContain(report.quote.lineItems[0]!.label);
   });
 });

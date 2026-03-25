@@ -71,7 +71,7 @@ async function main() {
     update: {
       name: "Landing Zone Readiness Checker",
       description:
-        "Free deterministic landing-zone assessment for SMB teams with emailed scoring, findings, and consultation quote.",
+        "Free deterministic landing-zone assessment for SMB teams with emailed scoring, findings, and estimate.",
       accessModel: AccessModel.FREE,
       active: true,
     },
@@ -79,7 +79,7 @@ async function main() {
       slug: "landing-zone-readiness-checker",
       name: "Landing Zone Readiness Checker",
       description:
-        "Free deterministic landing-zone assessment for SMB teams with emailed scoring, findings, and consultation quote.",
+        "Free deterministic landing-zone assessment for SMB teams with emailed scoring, findings, and estimate.",
       accessModel: AccessModel.FREE,
       active: true,
     },
@@ -90,7 +90,7 @@ async function main() {
     update: {
       name: "Cloud Cost Leak Finder",
       description:
-        "Free deterministic cloud cost diagnostic for SMB teams with an emailed advisory memo, likely savings range, and consulting quote.",
+        "Free deterministic cloud cost diagnostic for SMB teams with an emailed estimate memo, likely savings range, and estimate.",
       accessModel: AccessModel.FREE,
       active: true,
     },
@@ -98,7 +98,7 @@ async function main() {
       slug: "cloud-cost-leak-finder",
       name: "Cloud Cost Leak Finder",
       description:
-        "Free deterministic cloud cost diagnostic for SMB teams with an emailed advisory memo, likely savings range, and consulting quote.",
+        "Free deterministic cloud cost diagnostic for SMB teams with an emailed estimate memo, likely savings range, and estimate.",
       accessModel: AccessModel.FREE,
       active: true,
     },

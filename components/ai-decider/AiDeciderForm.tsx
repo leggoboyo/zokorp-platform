@@ -22,6 +22,8 @@ type FormState = {
   website: string;
   narrativeInput: string;
   answers: Record<string, string>;
+  saveForFollowUp: boolean;
+  allowCrmFollowUp: boolean;
 };
 
 type SpeechRecognitionLike = {
@@ -48,6 +50,8 @@ const INITIAL_STATE: FormState = {
   website: "",
   narrativeInput: "",
   answers: {},
+  saveForFollowUp: false,
+  allowCrmFollowUp: false,
 };
 
 const fieldClassName =
@@ -64,8 +68,8 @@ const productHighlights = [
     description: "The second step changes based on the workflow signals detected in your narrative.",
   },
   {
-    title: "Email-only advisory memo",
-    description: "The verdict, findings, blockers, and quote range are delivered to your verified business inbox.",
+    title: "Email-only estimate memo",
+    description: "The verdict, findings, blockers, and line-item estimate are delivered to your verified business inbox.",
   },
 ] as const;
 
@@ -328,6 +332,8 @@ export function AiDeciderForm({
           roleTitle: form.roleTitle.trim(),
           website: form.website.trim(),
           narrativeInput: form.narrativeInput.trim(),
+          saveForFollowUp: form.saveForFollowUp,
+          allowCrmFollowUp: form.allowCrmFollowUp,
         }),
       });
 
@@ -357,7 +363,7 @@ export function AiDeciderForm({
   if (phase === "success") {
     return (
       <section className="surface rounded-2xl p-6 md:p-7">
-        <h2 className="font-display text-3xl font-semibold text-slate-900">Your analysis has been emailed.</h2>
+        <h2 className="font-display text-3xl font-semibold text-slate-900">Your estimate memo has been emailed.</h2>
         <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">{verdictLine}</p>
       </section>
     );
@@ -598,6 +604,37 @@ export function AiDeciderForm({
             {error}
           </div>
         ) : null}
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+          <p className={fieldLabelClassName}>Privacy And Follow-Up</p>
+          <div className="mt-3 space-y-3 text-sm text-slate-700">
+            <label className="flex items-start gap-3">
+              <input
+                checked={form.saveForFollowUp}
+                className="mt-1 h-4 w-4 rounded border-slate-300"
+                type="checkbox"
+                onChange={(event) => updateField("saveForFollowUp", event.target.checked)}
+              />
+              <span>
+                Save my submission for follow-up for up to 30 days.
+              </span>
+            </label>
+            <label className="flex items-start gap-3">
+              <input
+                checked={form.allowCrmFollowUp}
+                className="mt-1 h-4 w-4 rounded border-slate-300"
+                type="checkbox"
+                onChange={(event) => updateField("allowCrmFollowUp", event.target.checked)}
+              />
+              <span>
+                Allow ZoKorp to place this result into CRM for manual follow-up.
+              </span>
+            </label>
+            <p className="text-xs leading-6 text-slate-500">
+              If you leave both boxes off, the platform keeps only your account email and minimal summary metrics.
+            </p>
+          </div>
+        </div>
 
         <div className="flex flex-wrap items-center gap-3">
           {phase === "intake" ? (

@@ -4,7 +4,7 @@ import { buildAiDeciderEmailContent } from "@/lib/ai-decider/email";
 import { buildAiDeciderReport } from "@/lib/ai-decider/engine";
 
 describe("ai decider email", () => {
-  it("renders an itemized quote breakdown from the shared line-item schema", () => {
+  it("renders an itemized estimate breakdown from the shared line-item schema", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-07T15:00:00.000Z"));
 
@@ -44,9 +44,9 @@ describe("ai decider email", () => {
     });
 
     expect(report.quote.lineItems.length).toBeGreaterThanOrEqual(3);
-    expect(email.text).toContain("Quote breakdown:");
+    expect(email.text).toContain("Estimate breakdown:");
     expect(email.text).toContain(report.quote.lineItems[0]!.label);
-    expect(email.html).toContain("Quote breakdown");
+    expect(email.html).toContain("Estimate breakdown");
     expect(email.html).toContain(report.quote.lineItems[0]!.label);
   });
 });

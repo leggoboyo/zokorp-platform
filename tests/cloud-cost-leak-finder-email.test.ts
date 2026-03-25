@@ -5,7 +5,7 @@ import { buildCloudCostLeakFinderReport } from "@/lib/cloud-cost-leak-finder/eng
 import { cloudCostLeakFinderAnswersSchema } from "@/lib/cloud-cost-leak-finder/types";
 
 describe("cloud cost leak finder email", () => {
-  it("builds the advisory email payload", () => {
+  it("builds the estimate email payload", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-07T17:00:00.000Z"));
 
@@ -38,10 +38,10 @@ describe("cloud cost leak finder email", () => {
     expect(email.text).toContain(report.verdictHeadline);
     expect(email.text).toContain(report.savingsEstimate.estimatedMonthlySavingsRange);
     expect(email.text).toContain(report.quote.engagementType);
-    expect(email.text).toContain("Quote breakdown:");
+    expect(email.text).toContain("Estimate breakdown:");
     expect(email.text).toContain(report.quote.lineItems[0].label);
     expect(email.html).toContain("Cloud Cost Leak Finder");
-    expect(email.html).toContain("Quote breakdown");
-    expect(email.html).toContain("Book a consultation");
+    expect(email.html).toContain("Estimate breakdown");
+    expect(email.html).toContain("Request this work");
   });
 });
