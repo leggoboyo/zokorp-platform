@@ -347,9 +347,9 @@ export default async function SoftwareDetailPage({
   const productDescription = isArchitectureReviewer
     ? "Free cloud architecture diagram reviewer for PNG/SVG uploads with deterministic findings delivered to a verified business-email account."
     : isAiDecider
-      ? "Free deterministic consulting diagnostic for SMB teams. Sign in with a verified business email, answer targeted follow-up questions, and receive the verdict, findings, and quote range by email."
+      ? "Free deterministic consulting diagnostic for SMB teams. Sign in with a verified business email, answer targeted follow-up questions, and receive the verdict, findings, and estimate by email."
     : isLandingZoneChecker
-      ? "Free deterministic landing-zone assessment for SMB teams. Sign in with a verified business email, answer structured questions, and receive your score, top gaps, and consultation quote by email."
+      ? "Free deterministic landing-zone assessment for SMB teams. Sign in with a verified business email, answer structured questions, and receive your score, top gaps, and estimate by email."
       : product.description;
   const validatorTargets = isValidator ? getValidatorTargetOptions() : [];
   let validatorProfileCredits: Record<ValidationProfile, number> = {

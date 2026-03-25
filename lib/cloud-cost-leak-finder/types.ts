@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { quoteLineItemSchema } from "@/lib/quote-line-items";
+import { toolConsentSchema } from "@/lib/tool-consent";
 
 export const CLOUD_COST_LEAK_FINDER_VERSION = "1.0" as const;
 
@@ -208,6 +209,8 @@ export const cloudCostLeakFinderAnswersBaseSchema = z.object({
     .partialRecord(followUpQuestionIdSchema, z.string().trim().min(1).max(40))
     .optional()
     .default({}),
+  saveForFollowUp: toolConsentSchema.shape.saveForFollowUp,
+  allowCrmFollowUp: toolConsentSchema.shape.allowCrmFollowUp,
 });
 
 export const cloudCostLeakFinderAnswersSchema = cloudCostLeakFinderAnswersBaseSchema.superRefine(

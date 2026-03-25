@@ -21,8 +21,8 @@ export type LeadOpsFilter = (typeof LEAD_OPS_FILTERS)[number];
 export const LEAD_SORTS = ["latest", "oldest", "submissions"] as const;
 export type LeadSort = (typeof LEAD_SORTS)[number];
 
-export type LeadDeliveryState = "unknown" | "pending" | "sent" | "failed";
-export type LeadCrmState = "unknown" | "pending" | "synced" | "failed" | "not_configured";
+export type LeadDeliveryState = "unknown" | "pending" | "sent" | "failed" | "fallback";
+export type LeadCrmState = "unknown" | "pending" | "synced" | "failed" | "not_configured" | "skipped";
 
 export type LeadDirectoryFilters = {
   q: string;
@@ -120,6 +120,7 @@ function mergeDeliveryState(current: LeadDeliveryState, incoming: LeadDeliverySt
     sent: 1,
     pending: 2,
     failed: 3,
+    fallback: 4,
   };
 
   return priorities[incoming] > priorities[current] ? incoming : current;
@@ -128,10 +129,11 @@ function mergeDeliveryState(current: LeadDeliveryState, incoming: LeadDeliverySt
 function mergeCrmState(current: LeadCrmState, incoming: LeadCrmState): LeadCrmState {
   const priorities: Record<LeadCrmState, number> = {
     unknown: 0,
-    not_configured: 1,
-    synced: 2,
-    pending: 3,
-    failed: 4,
+    skipped: 1,
+    not_configured: 2,
+    synced: 3,
+    pending: 4,
+    failed: 5,
   };
 
   return priorities[incoming] > priorities[current] ? incoming : current;
@@ -237,7 +239,7 @@ function nextActionForEntry(entry: Pick<MutableLeadDirectoryEntry, "signals" | "
     return "Ignore by default unless you are reviewing QA traffic.";
   }
 
-  if (entry.emailDeliveryState === "failed") {
+  if (entry.emailDeliveryState === "failed" || entry.emailDeliveryState === "fallback") {
     return "Inspect and retry result-email delivery.";
   }
 
@@ -445,6 +447,7 @@ function matchesFilters(entry: LeadDirectoryEntry, filters: LeadDirectoryFilters
 
   const needsAttention =
     entry.emailDeliveryState === "failed" ||
+    entry.emailDeliveryState === "fallback" ||
     entry.emailDeliveryState === "pending" ||
     entry.crmSyncState === "failed" ||
     entry.crmSyncState === "pending";
@@ -496,14 +499,52 @@ function sortEntries(entries: LeadDirectoryEntry[], sort: LeadSort) {
 export async function getLeadDirectory(rawFilters: Partial<Record<string, string | undefined>> = {}): Promise<LeadDirectoryResult> {
   const filters = normalizeLeadDirectoryFilters(rawFilters);
 
-  const [users, architectureLeads, landingZoneSubmissions, cloudCostSubmissions, aiDeciderSubmissions] = await Promise.all([
+  const [users, leads, architectureLeads] = await Promise.all([
     db.user.findMany({
       select: {
+        id: true,
         email: true,
         name: true,
         emailVerified: true,
         role: true,
         createdAt: true,
+      },
+    }),
+    db.lead.findMany({
+      select: {
+        email: true,
+        name: true,
+        companyName: true,
+        createdAt: true,
+        lastSeenAt: true,
+        userId: true,
+        user: {
+          select: {
+            emailVerified: true,
+            role: true,
+            name: true,
+          },
+        },
+        events: {
+          select: {
+            source: true,
+            deliveryState: true,
+            crmSyncState: true,
+            saveForFollowUp: true,
+            allowCrmFollowUp: true,
+            scoreBand: true,
+            estimateBand: true,
+            recommendedEngagement: true,
+            createdAt: true,
+            sourceRecordKey: true,
+          },
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
       },
     }),
     db.leadLog.findMany({
@@ -518,39 +559,6 @@ export async function getLeadDirectory(rawFilters: Partial<Record<string, string
         syncedToZohoAt: true,
         zohoSyncNeedsUpdate: true,
         zohoSyncError: true,
-      },
-    }),
-    db.landingZoneReadinessSubmission.findMany({
-      select: {
-        email: true,
-        fullName: true,
-        companyName: true,
-        createdAt: true,
-        quoteJson: true,
-        crmSyncStatus: true,
-        emailDeliveryStatus: true,
-      },
-    }),
-    db.cloudCostLeakFinderSubmission.findMany({
-      select: {
-        email: true,
-        fullName: true,
-        companyName: true,
-        createdAt: true,
-        quoteJson: true,
-        crmSyncStatus: true,
-        emailDeliveryStatus: true,
-      },
-    }),
-    db.aiDeciderSubmission.findMany({
-      select: {
-        email: true,
-        fullName: true,
-        companyName: true,
-        createdAt: true,
-        quoteJson: true,
-        crmSyncStatus: true,
-        emailDeliveryStatus: true,
       },
     }),
   ]);
@@ -573,9 +581,61 @@ export async function getLeadDirectory(rawFilters: Partial<Record<string, string
     });
   }
 
+  for (const lead of leads) {
+    const hasAccount = Boolean(lead.userId || lead.user);
+    const emailVerified = Boolean(lead.user?.emailVerified);
+    const isAdmin = lead.user?.role === Role.ADMIN;
+    const contactName = lead.name?.trim() || lead.user?.name?.trim() || null;
+    const createdAt = lead.createdAt;
+    const latestAt = lead.lastSeenAt ?? lead.createdAt;
+
+    if (lead.events.length === 0) {
+      if (hasAccount) {
+        upsertLeadEntry(entries, {
+          email: lead.email,
+          source: "account",
+          createdAt,
+          name: contactName,
+          companyName: lead.companyName,
+          hasAccount,
+          emailVerified,
+          isAdmin,
+        });
+      }
+
+      continue;
+    }
+
+    for (const event of lead.events) {
+      if (!LEAD_SOURCES.includes(event.source as LeadSource)) {
+        continue;
+      }
+
+      upsertLeadEntry(entries, {
+        email: lead.email,
+        source: event.source as LeadSource,
+        createdAt: event.createdAt ?? latestAt,
+        name: contactName,
+        companyName: lead.companyName,
+        hasAccount,
+        emailVerified,
+        isAdmin,
+        emailDeliveryState: (event.deliveryState as LeadDeliveryState | null) ?? "unknown",
+        crmSyncState: (event.crmSyncState as LeadCrmState | null) ?? "unknown",
+        recommendedEngagement: event.recommendedEngagement ?? null,
+      });
+    }
+  }
+
   for (const lead of architectureLeads) {
+    const email = lead.userEmail.trim().toLowerCase();
+
+    if (!email || entries.has(email)) {
+      continue;
+    }
+
     upsertLeadEntry(entries, {
-      email: lead.userEmail,
+      email,
       source: "architecture-review",
       createdAt: lead.createdAt,
       name: lead.userName,
@@ -590,45 +650,6 @@ export async function getLeadDirectory(rawFilters: Partial<Record<string, string
         zohoSyncError: lead.zohoSyncError,
         zohoSyncNeedsUpdate: lead.zohoSyncNeedsUpdate,
       }),
-    });
-  }
-
-  for (const submission of landingZoneSubmissions) {
-    upsertLeadEntry(entries, {
-      email: submission.email,
-      source: "landing-zone",
-      createdAt: submission.createdAt,
-      name: submission.fullName,
-      companyName: submission.companyName,
-      recommendedEngagement: extractRecommendedEngagement(submission.quoteJson),
-      crmSyncState: (submission.crmSyncStatus as LeadCrmState | null) ?? "unknown",
-      emailDeliveryState: (submission.emailDeliveryStatus as LeadDeliveryState | null) ?? "unknown",
-    });
-  }
-
-  for (const submission of cloudCostSubmissions) {
-    upsertLeadEntry(entries, {
-      email: submission.email,
-      source: "cloud-cost",
-      createdAt: submission.createdAt,
-      name: submission.fullName,
-      companyName: submission.companyName,
-      recommendedEngagement: extractRecommendedEngagement(submission.quoteJson),
-      crmSyncState: (submission.crmSyncStatus as LeadCrmState | null) ?? "unknown",
-      emailDeliveryState: (submission.emailDeliveryStatus as LeadDeliveryState | null) ?? "unknown",
-    });
-  }
-
-  for (const submission of aiDeciderSubmissions) {
-    upsertLeadEntry(entries, {
-      email: submission.email,
-      source: "ai-decider",
-      createdAt: submission.createdAt,
-      name: submission.fullName,
-      companyName: submission.companyName,
-      recommendedEngagement: extractRecommendedEngagement(submission.quoteJson),
-      crmSyncState: (submission.crmSyncStatus as LeadCrmState | null) ?? "unknown",
-      emailDeliveryState: (submission.emailDeliveryStatus as LeadDeliveryState | null) ?? "unknown",
     });
   }
 
@@ -650,6 +671,7 @@ export async function getLeadDirectory(rawFilters: Partial<Record<string, string
       opsAttention: allEntries.filter(
         (entry) =>
           entry.emailDeliveryState === "failed" ||
+          entry.emailDeliveryState === "fallback" ||
           entry.emailDeliveryState === "pending" ||
           entry.crmSyncState === "failed" ||
           entry.crmSyncState === "pending",

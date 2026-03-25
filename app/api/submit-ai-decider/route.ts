@@ -1,10 +1,7 @@
-import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 
 import { sendToolResultEmail } from "@/lib/architecture-review/sender";
-import { db } from "@/lib/db";
-import { isSchemaDriftError } from "@/lib/db-errors";
 import { buildAiDeciderEmailContent } from "@/lib/ai-decider/email";
 import { buildAiDeciderReport } from "@/lib/ai-decider/engine";
 import { isAllowedAiDeciderBusinessEmail, normalizeAiDeciderWebsite } from "@/lib/ai-decider/input";
@@ -14,19 +11,26 @@ import {
   aiDeciderSubmissionRequestSchema,
   type AiDeciderSubmissionResponse,
 } from "@/lib/ai-decider/types";
+import { db } from "@/lib/db";
 import { isFreeToolAccessError, requireVerifiedFreeToolAccess } from "@/lib/free-tool-access";
+import {
+  archiveToolSubmission,
+  recordLeadEvent,
+  upsertLead,
+} from "@/lib/privacy-leads";
 import { requireSameOrigin } from "@/lib/request-origin";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
+import {
+  estimateBandForRange,
+  normalizeToolConsent,
+  scoreBandForScore,
+} from "@/lib/tool-consent";
 import { upsertZohoLead } from "@/lib/zoho-crm";
 
 export const runtime = "nodejs";
 
 const RATE_LIMIT = 6;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-
-function toInputJson(value: unknown): Prisma.InputJsonValue {
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}
 
 function jsonResponse(body: AiDeciderSubmissionResponse, requestId: string, status = 200) {
   return NextResponse.json(body, {
@@ -36,6 +40,22 @@ function jsonResponse(body: AiDeciderSubmissionResponse, requestId: string, stat
       "X-Request-Id": requestId,
     },
   });
+}
+
+function deriveCrmSyncState(result: { status: string }) {
+  if (result.status === "success" || result.status === "duplicate") {
+    return "synced" as const;
+  }
+
+  if (result.status === "not_configured") {
+    return "not_configured" as const;
+  }
+
+  if (result.status === "skipped") {
+    return "skipped" as const;
+  }
+
+  return "failed" as const;
 }
 
 export async function POST(request: Request) {
@@ -73,8 +93,10 @@ export async function POST(request: Request) {
       return jsonResponse({ error: "Please complete the required fields and try again." }, requestId, 400);
     }
 
+    const consent = normalizeToolConsent(parsed.data);
     const submission = {
       ...parsed.data,
+      ...consent,
       email: parsed.data.email.trim().toLowerCase(),
       website: normalizeAiDeciderWebsite(parsed.data.website ?? ""),
       narrativeInput: parsed.data.narrativeInput.trim(),
@@ -107,29 +129,11 @@ export async function POST(request: Request) {
       answers: submission.answers,
     });
 
-    const created = await db.aiDeciderSubmission.create({
-      data: {
-        userId: access.user.id,
-        email: submission.email,
-        fullName: submission.fullName,
-        companyName: submission.companyName,
-        roleTitle: submission.roleTitle,
-        website: submission.website || null,
-        narrativeInput: submission.narrativeInput,
-        signalsJson: toInputJson(report.signals),
-        answersJson: toInputJson(submission.answers),
-        scoresJson: toInputJson(report.scores),
-        recommendation: report.recommendation,
-        findingsJson: toInputJson(report.findings),
-        blockersJson: toInputJson(report.blockers),
-        quoteJson: toInputJson(report.quote),
-        verdictHeadline: report.verdictHeadline,
-        verdictLine: report.verdictLine,
-        summaryParagraph: report.summaryParagraph,
-        crmSyncStatus: "pending",
-        emailDeliveryStatus: "pending",
-        source: "ai-decider",
-      },
+    const lead = await upsertLead({
+      userId: access.user.id,
+      email: submission.email,
+      name: submission.fullName,
+      companyName: submission.companyName,
     });
 
     const zohoDescription = [
@@ -139,19 +143,20 @@ export async function POST(request: Request) {
       `Automation fit: ${report.scores.automationFitScore}/100`,
       `Data readiness: ${report.scores.dataReadinessScore}/100`,
       `Implementation risk: ${report.scores.implementationRiskScore}/100`,
-      `Quote: ${report.quote.engagementType} ${report.quote.priceLow}-${report.quote.priceHigh}`,
-      `Narrative: ${submission.narrativeInput.slice(0, 400)}`,
+      `Estimate: ${report.quote.engagementType} ${report.quote.priceLow}-${report.quote.priceHigh}`,
     ].join("; ");
 
-    const zohoResult = await upsertZohoLead({
-      email: submission.email,
-      fullName: submission.fullName,
-      companyName: submission.companyName,
-      website: submission.website || undefined,
-      roleTitle: submission.roleTitle,
-      leadSource: "ZoKorp AI Decider",
-      description: zohoDescription,
-    });
+    const zohoResult = consent.allowCrmFollowUp
+      ? await upsertZohoLead({
+          email: submission.email,
+          fullName: submission.fullName,
+          companyName: submission.companyName,
+          website: submission.website || undefined,
+          roleTitle: submission.roleTitle,
+          leadSource: "ZoKorp AI Decider",
+          description: zohoDescription,
+        })
+      : { status: "skipped", error: null };
 
     const emailContent = buildAiDeciderEmailContent({
       lead: submission,
@@ -164,18 +169,45 @@ export async function POST(request: Request) {
       html: emailContent.html,
     });
 
-    await db.aiDeciderSubmission.update({
-      where: { id: created.id },
-      data: {
-        crmSyncStatus:
-          zohoResult.status === "success" || zohoResult.status === "duplicate"
-            ? "synced"
-            : zohoResult.status === "not_configured"
-              ? "not_configured"
-              : "failed",
-        zohoRecordId: "recordId" in zohoResult ? (zohoResult.recordId ?? null) : null,
-        zohoSyncError: zohoResult.error ?? null,
-        emailDeliveryStatus: sendResult.ok ? "sent" : "failed",
+    if (consent.saveForFollowUp) {
+      try {
+        await archiveToolSubmission({
+          leadId: lead.id,
+          userId: access.user.id,
+          toolName: "ai-decider",
+          payload: {
+            lead: {
+              email: submission.email,
+              fullName: submission.fullName,
+              companyName: submission.companyName,
+              roleTitle: submission.roleTitle,
+              website: submission.website || null,
+            },
+            narrativeInput: submission.narrativeInput,
+            answers: submission.answers,
+            report,
+            consent,
+            archivedAtISO: new Date().toISOString(),
+          },
+        });
+      } catch (error) {
+        console.error("submit-ai-decider archive failed", { requestId, error });
+      }
+    }
+
+    await recordLeadEvent({
+      leadId: lead.id,
+      userId: access.user.id,
+      aggregate: {
+        source: "ai-decider",
+        deliveryState: sendResult.ok ? "sent" : "fallback",
+        crmSyncState: deriveCrmSyncState(zohoResult),
+        saveForFollowUp: consent.saveForFollowUp,
+        allowCrmFollowUp: consent.allowCrmFollowUp,
+        scoreBand: scoreBandForScore(report.scores.aiFitScore),
+        estimateBand: estimateBandForRange(report.quote.priceLow, report.quote.priceHigh),
+        recommendedEngagement: report.quote.engagementType,
+        sourceRecordKey: `ai-decider:${requestId}`,
       },
     });
 
@@ -188,11 +220,10 @@ export async function POST(request: Request) {
           companyName: submission.companyName,
           recommendation: report.recommendation,
           verdictLine: report.verdictLine,
-          emailStatus: sendResult.ok ? "sent" : "failed",
-          crmSyncStatus:
-            zohoResult.status === "success" || zohoResult.status === "duplicate"
-              ? "synced"
-              : zohoResult.status,
+          emailStatus: sendResult.ok ? "sent" : "fallback",
+          crmSyncStatus: deriveCrmSyncState(zohoResult),
+          saveForFollowUp: consent.saveForFollowUp,
+          allowCrmFollowUp: consent.allowCrmFollowUp,
           requestId,
         },
       },
@@ -227,14 +258,6 @@ export async function POST(request: Request) {
 
     if (error instanceof SyntaxError) {
       return jsonResponse({ error: "Invalid submission payload." }, requestId, 400);
-    }
-
-    if (isSchemaDriftError(error)) {
-      return jsonResponse(
-        { error: "AI Decider is being enabled. Please retry shortly." },
-        requestId,
-        503,
-      );
     }
 
     console.error("submit-ai-decider failed", { requestId, error });

@@ -51,6 +51,8 @@ type FormState = {
   narrativeInput: string;
   billingSummaryInput: string;
   adaptiveAnswers: Partial<Record<FollowUpQuestionId, string>>;
+  saveForFollowUp: boolean;
+  allowCrmFollowUp: boolean;
 };
 
 const INITIAL_STATE: FormState = {
@@ -64,6 +66,8 @@ const INITIAL_STATE: FormState = {
   narrativeInput: "",
   billingSummaryInput: "",
   adaptiveAnswers: {},
+  saveForFollowUp: false,
+  allowCrmFollowUp: false,
 };
 
 const fieldClassName =
@@ -96,8 +100,8 @@ const productHighlights = [
     description: "Rough service lists, copied cost rows, or top-spend notes all help. Perfect CSV is not required.",
   },
   {
-    title: "Deterministic advisory memo",
-    description: "You get a structured email with likely waste, first actions, savings range, and a consulting quote sent to your verified account. No AI scoring.",
+    title: "Deterministic estimate memo",
+    description: "You get a structured email with likely waste, first actions, savings range, and a line-item estimate sent to your verified account. No AI scoring.",
   },
 ] as const;
 
@@ -181,6 +185,8 @@ function buildPayload(form: FormState) {
     secondaryCloud: form.secondaryCloud || undefined,
     narrativeInput: normalizeFreeText(form.narrativeInput),
     billingSummaryInput: form.billingSummaryInput.trim(),
+    saveForFollowUp: form.saveForFollowUp,
+    allowCrmFollowUp: form.allowCrmFollowUp,
     adaptiveAnswers: Object.fromEntries(
       Object.entries(form.adaptiveAnswers)
         .filter((entry): entry is [FollowUpQuestionId, string] => Boolean(entry[1]?.trim()))
@@ -458,7 +464,7 @@ export function CloudCostLeakFinderForm({
             onClick={() => trackAnalyticsEvent("cloud_cost_leak_finder_consultation_cta_clicked")}
             className={buttonVariants()}
           >
-            Book consultation
+            Request this work
           </Link>
           <Button
             type="button"
@@ -492,7 +498,7 @@ export function CloudCostLeakFinderForm({
             <h1 className="font-display text-3xl font-semibold text-slate-900">Find where your cloud bill is leaking money.</h1>
             <p className="mt-3 text-sm leading-7 text-slate-600">
               Describe the environment, paste whatever cost summary you have, answer a short set of relevant follow-up
-              questions, and get the full advisory memo by email to your verified business account.
+              questions, and get the full estimate memo by email to your verified business account.
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
@@ -715,6 +721,33 @@ export function CloudCostLeakFinderForm({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
+
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+          <p className={fieldLabelClassName}>Privacy And Follow-Up</p>
+          <div className="mt-3 space-y-3 text-sm text-slate-700">
+            <label className="flex items-start gap-3">
+              <input
+                checked={form.saveForFollowUp}
+                className="mt-1 h-4 w-4 rounded border-slate-300"
+                type="checkbox"
+                onChange={(event) => setStringField("saveForFollowUp", event.target.checked)}
+              />
+              <span>Save my submission for follow-up for up to 30 days.</span>
+            </label>
+            <label className="flex items-start gap-3">
+              <input
+                checked={form.allowCrmFollowUp}
+                className="mt-1 h-4 w-4 rounded border-slate-300"
+                type="checkbox"
+                onChange={(event) => setStringField("allowCrmFollowUp", event.target.checked)}
+              />
+              <span>Allow ZoKorp to place this result into CRM for manual follow-up.</span>
+            </label>
+            <p className="text-xs leading-6 text-slate-500">
+              If you leave both boxes off, the platform keeps only your account email and minimal summary metrics.
+            </p>
+          </div>
+        </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
           {currentStep > 0 ? (

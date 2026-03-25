@@ -15,7 +15,7 @@ import { buildPageMetadata } from "@/lib/site";
 export const metadata: Metadata = buildPageMetadata({
   title: "Cloud Cost Leak Finder",
   description:
-    "Free deterministic cloud cost diagnostic for SMB teams with emailed findings, likely savings range, and a consulting quote.",
+    "Free deterministic cloud cost diagnostic for SMB teams with emailed findings, likely savings range, and an estimate.",
   path: "/software/cloud-cost-leak-finder",
 });
 
@@ -38,8 +38,8 @@ export default async function CloudCostLeakFinderPage() {
   return (
     <ToolPageLayout
       eyebrow="Software Tool"
-      title="Cloud Cost Leak Finder"
-      description="Free deterministic cloud cost diagnostic for SMB teams with emailed findings, likely savings range, and a consulting quote."
+    title="Cloud Cost Leak Finder"
+      description="Free deterministic cloud cost diagnostic for SMB teams with emailed findings, likely savings range, and an estimate."
       meta={
         <>
           <Badge variant="success">Free</Badge>
@@ -93,7 +93,7 @@ export default async function CloudCostLeakFinderPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm leading-6 text-slate-600">
-                One guided diagnostic flow, deterministic scoring, savings range, and a scoped consulting quote delivered by email.
+                One guided diagnostic flow, deterministic scoring, savings range, and a scoped estimate delivered by email.
               </p>
             </CardContent>
             <CardFooter>
@@ -130,7 +130,7 @@ export default async function CloudCostLeakFinderPage() {
             </CardContent>
             <CardFooter>
               <Link href="/services#service-request" className={buttonVariants()}>
-                Book consultation
+                Request this work
               </Link>
               <Link href="/support" className={buttonVariants({ variant: "secondary" })}>
                 Contact support

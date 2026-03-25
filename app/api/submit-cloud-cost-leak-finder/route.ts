@@ -21,10 +21,19 @@ import {
   type CloudCostLeakFinderSubmissionResponse,
 } from "@/lib/cloud-cost-leak-finder/types";
 import { db } from "@/lib/db";
-import { isSchemaDriftError } from "@/lib/db-errors";
 import { isFreeToolAccessError, requireVerifiedFreeToolAccess } from "@/lib/free-tool-access";
+import {
+  archiveToolSubmission,
+  recordLeadEvent,
+  upsertLead,
+} from "@/lib/privacy-leads";
 import { requireSameOrigin } from "@/lib/request-origin";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
+import {
+  estimateBandForRange,
+  normalizeToolConsent,
+  scoreBandForScore,
+} from "@/lib/tool-consent";
 import { upsertZohoLead } from "@/lib/zoho-crm";
 
 export const runtime = "nodejs";
@@ -40,6 +49,22 @@ function jsonResponse(body: CloudCostLeakFinderSubmissionResponse, requestId: st
       "X-Request-Id": requestId,
     },
   });
+}
+
+function deriveCrmSyncState(result: { status: string }) {
+  if (result.status === "success" || result.status === "duplicate") {
+    return "synced" as const;
+  }
+
+  if (result.status === "not_configured") {
+    return "not_configured" as const;
+  }
+
+  if (result.status === "skipped") {
+    return "skipped" as const;
+  }
+
+  return "failed" as const;
 }
 
 export async function POST(request: Request) {
@@ -77,8 +102,10 @@ export async function POST(request: Request) {
       return jsonResponse({ error: "Please complete the required fields and try again." }, requestId, 400);
     }
 
+    const consent = normalizeToolConsent(parsed.data);
     const answers = {
       ...parsed.data,
+      ...consent,
       email: parsed.data.email.trim().toLowerCase(),
       website: normalizeCloudCostWebsite(parsed.data.website),
       narrativeInput: parsed.data.narrativeInput.trim(),
@@ -123,36 +150,11 @@ export async function POST(request: Request) {
     };
 
     const report = buildCloudCostLeakFinderReport(normalizedAnswers);
-
-    const created = await db.cloudCostLeakFinderSubmission.create({
-      data: {
-        userId: access.user.id,
-        email: normalizedAnswers.email,
-        fullName: normalizedAnswers.fullName,
-        companyName: normalizedAnswers.companyName,
-        roleTitle: normalizedAnswers.roleTitle,
-        website: normalizedAnswers.website,
-        primaryCloud: normalizedAnswers.primaryCloud,
-        secondaryCloud: normalizedAnswers.secondaryCloud ?? null,
-        narrativeInput: normalizedAnswers.narrativeInput,
-        billingSummaryInput: normalizedAnswers.billingSummaryInput || null,
-        extractedSignalsJson: report.extractedSignals,
-        adaptiveAnswersJson: normalizedAnswers.adaptiveAnswers,
-        wasteRiskScore: report.scores.wasteRiskScore,
-        finopsMaturityScore: report.scores.finopsMaturityScore,
-        savingsConfidenceScore: report.scores.savingsConfidenceScore,
-        implementationComplexityScore: report.scores.implementationComplexityScore,
-        roiPlausibilityScore: report.scores.roiPlausibilityScore,
-        confidenceScore: report.scores.confidenceScore,
-        likelyWasteCategoriesJson: report.likelyWasteCategories,
-        savingsEstimateJson: report.savingsEstimate,
-        findingsJson: report.topFindings,
-        actionsJson: report.topActions,
-        quoteJson: report.quote,
-        crmSyncStatus: "pending",
-        emailDeliveryStatus: "pending",
-        source: "cloud-cost-leak-finder",
-      },
+    const lead = await upsertLead({
+      userId: access.user.id,
+      email: normalizedAnswers.email,
+      name: normalizedAnswers.fullName,
+      companyName: normalizedAnswers.companyName,
     });
 
     const zohoDescription = [
@@ -162,22 +164,24 @@ export async function POST(request: Request) {
       `FinOpsMaturity: ${report.scores.finopsMaturityScore}/100`,
       `PrimaryCloud: ${normalizedAnswers.primaryCloud}`,
       `SecondaryCloud: ${normalizedAnswers.secondaryCloud ?? "none"}`,
-      `Engagement: ${report.quote.engagementType}`,
-      `QuoteRange: ${report.quote.quoteLow}-${report.quote.quoteHigh}`,
+      `Estimate: ${report.quote.engagementType}`,
+      `EstimateRange: ${report.quote.quoteLow}-${report.quote.quoteHigh}`,
       `Categories: ${report.likelyWasteCategories.join(",")}`,
     ]
       .filter(Boolean)
       .join("; ");
 
-    const zohoResult = await upsertZohoLead({
-      email: normalizedAnswers.email,
-      fullName: normalizedAnswers.fullName,
-      companyName: normalizedAnswers.companyName,
-      website: normalizedAnswers.website,
-      roleTitle: normalizedAnswers.roleTitle,
-      leadSource: "ZoKorp Cloud Cost Leak Finder",
-      description: zohoDescription,
-    });
+    const zohoResult = consent.allowCrmFollowUp
+      ? await upsertZohoLead({
+          email: normalizedAnswers.email,
+          fullName: normalizedAnswers.fullName,
+          companyName: normalizedAnswers.companyName,
+          website: normalizedAnswers.website,
+          roleTitle: normalizedAnswers.roleTitle,
+          leadSource: "ZoKorp Cloud Cost Leak Finder",
+          description: zohoDescription,
+        })
+      : { status: "skipped", error: null };
 
     const emailContent = buildCloudCostLeakFinderEmailContent({
       answers: normalizedAnswers,
@@ -190,18 +194,37 @@ export async function POST(request: Request) {
       html: emailContent.html,
     });
 
-    await db.cloudCostLeakFinderSubmission.update({
-      where: { id: created.id },
-      data: {
-        crmSyncStatus:
-          zohoResult.status === "success" || zohoResult.status === "duplicate"
-            ? "synced"
-            : zohoResult.status === "not_configured"
-              ? "not_configured"
-              : "failed",
-        zohoRecordId: "recordId" in zohoResult ? (zohoResult.recordId ?? null) : null,
-        zohoSyncError: zohoResult.error ?? null,
-        emailDeliveryStatus: sendResult.ok ? "sent" : "failed",
+    if (consent.saveForFollowUp) {
+      try {
+        await archiveToolSubmission({
+          leadId: lead.id,
+          userId: access.user.id,
+          toolName: "cloud-cost",
+          payload: {
+            answers: normalizedAnswers,
+            report,
+            consent,
+            archivedAtISO: new Date().toISOString(),
+          },
+        });
+      } catch (error) {
+        console.error("submit-cloud-cost-leak-finder archive failed", { requestId, error });
+      }
+    }
+
+    await recordLeadEvent({
+      leadId: lead.id,
+      userId: access.user.id,
+      aggregate: {
+        source: "cloud-cost",
+        deliveryState: sendResult.ok ? "sent" : "fallback",
+        crmSyncState: deriveCrmSyncState(zohoResult),
+        saveForFollowUp: consent.saveForFollowUp,
+        allowCrmFollowUp: consent.allowCrmFollowUp,
+        scoreBand: scoreBandForScore(report.scores.wasteRiskScore),
+        estimateBand: estimateBandForRange(report.quote.quoteLow, report.quote.quoteHigh),
+        recommendedEngagement: report.quote.engagementType,
+        sourceRecordKey: `cloud-cost:${requestId}`,
       },
     });
 
@@ -214,14 +237,13 @@ export async function POST(request: Request) {
           companyName: normalizedAnswers.companyName,
           primaryCloud: normalizedAnswers.primaryCloud,
           verdictClass: report.verdictClass,
-          quoteTier: report.quote.engagementType,
+          recommendedEngagement: report.quote.engagementType,
           wasteRiskScore: report.scores.wasteRiskScore,
           savingsRange: report.savingsEstimate.estimatedMonthlySavingsRange,
-          emailStatus: sendResult.ok ? "sent" : "failed",
-          crmSyncStatus:
-            zohoResult.status === "success" || zohoResult.status === "duplicate"
-              ? "synced"
-              : zohoResult.status,
+          emailStatus: sendResult.ok ? "sent" : "fallback",
+          crmSyncStatus: deriveCrmSyncState(zohoResult),
+          saveForFollowUp: consent.saveForFollowUp,
+          allowCrmFollowUp: consent.allowCrmFollowUp,
           requestId,
         },
       },
@@ -245,14 +267,6 @@ export async function POST(request: Request) {
 
     if (error instanceof SyntaxError) {
       return jsonResponse({ error: "Invalid submission payload." }, requestId, 400);
-    }
-
-    if (isSchemaDriftError(error)) {
-      return jsonResponse(
-        { error: "Cloud Cost Leak Finder is being enabled. Please retry shortly." },
-        requestId,
-        503,
-      );
     }
 
     console.error("submit-cloud-cost-leak-finder failed", { requestId, error });

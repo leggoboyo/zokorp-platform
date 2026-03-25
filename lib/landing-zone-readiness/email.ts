@@ -4,6 +4,7 @@ import type {
   LandingZoneReadinessReport,
   ReadinessCategory,
 } from "@/lib/landing-zone-readiness/types";
+import { buildEstimateReferenceCode } from "@/lib/privacy-leads";
 import { formatUsdRange, renderQuoteLineItemsHtml, quoteLineItemText } from "@/lib/quote-line-items";
 import { getSiteUrl } from "@/lib/site";
 
@@ -37,17 +38,23 @@ function buildTextEmail(input: {
   answers: LandingZoneReadinessAnswers;
   report: LandingZoneReadinessReport;
 }) {
+  const estimateReferenceCode = buildEstimateReferenceCode({
+    source: "landing-zone",
+    email: input.answers.email,
+    generatedAtISO: input.report.generatedAtISO,
+  });
   const fixes = buildTopFixes(input.report);
   const lines = [
     `Hi ${firstName(input.answers.fullName)},`,
     "",
     `Your Landing Zone Readiness Checker results for ${input.answers.companyName} are ready.`,
+    `Estimate reference: ${estimateReferenceCode}`,
     "",
     `Overall score: ${input.report.overallScore}/100`,
     `Maturity band: ${input.report.maturityBand}`,
-    `Suggested engagement: ${input.report.quote.quoteTier}`,
+    `Suggested work path: ${input.report.quote.quoteTier}`,
     `Estimated solo-consulting effort: ${input.report.quote.estimatedDaysLow}-${input.report.quote.estimatedDaysHigh} working days`,
-    `Estimated quote range: ${formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh)}`,
+    `Estimated range: ${formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh)}`,
     "",
     "Category snapshot:",
     ...buildCategoryLines(input.report).map((line) => `- ${line}`),
@@ -67,14 +74,15 @@ function buildTextEmail(input: {
   }
 
   lines.push("");
-  lines.push("Quote basis: deterministic remediation effort estimate from fixed rule matches, not AI-generated pricing.");
-  lines.push("Quote breakdown:");
+  lines.push("Estimate basis: deterministic remediation effort from fixed rule matches, not AI-generated pricing.");
+  lines.push("Estimate breakdown:");
   lines.push(...input.report.quote.lineItems.map((item) => `- ${quoteLineItemText(item)}`));
   lines.push("");
+  lines.push("Estimate assumptions and exclusions:");
   lines.push(...input.report.quote.rationaleLines.map((line) => `- ${line}`));
   lines.push("");
-  lines.push(`Book a consultation: ${consultationUrl()}`);
-  lines.push("Reply to this email if you want the remediation scope tightened before booking.");
+  lines.push(`Request this work: ${consultationUrl()}`);
+  lines.push("Reply to this email if you want the estimate tightened before you request the work.");
 
   return lines.join("\n");
 }
@@ -83,6 +91,11 @@ function buildHtmlEmail(input: {
   answers: LandingZoneReadinessAnswers;
   report: LandingZoneReadinessReport;
 }) {
+  const estimateReferenceCode = buildEstimateReferenceCode({
+    source: "landing-zone",
+    email: input.answers.email,
+    generatedAtISO: input.report.generatedAtISO,
+  });
   const fixes = buildTopFixes(input.report);
 
   return `
@@ -94,6 +107,7 @@ function buildHtmlEmail(input: {
         </div>
         <div style="padding:24px;">
           <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Hi ${escapeHtml(firstName(input.answers.fullName))}, here is the condensed result for ${escapeHtml(input.answers.companyName)}.</p>
+          <p style="margin:0 0 16px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Estimate reference: ${escapeHtml(estimateReferenceCode)}</p>
 
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;">
             <tr>
@@ -111,7 +125,7 @@ function buildHtmlEmail(input: {
               </td>
               <td style="padding:0 0 8px 8px;">
                 <div style="border:1px solid #d7e2ef;border-radius:12px;padding:14px;">
-                  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote range</div>
+                  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Estimate range</div>
                   <div style="margin-top:6px;font-size:18px;font-weight:800;color:#0f172a;">${escapeHtml(formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh))}</div>
                 </div>
               </td>
@@ -120,7 +134,7 @@ function buildHtmlEmail(input: {
 
           <div style="margin-bottom:18px;border:1px solid #d7e2ef;border-radius:12px;padding:14px;background:#fbfcfe;color:#334155;font-size:14px;line-height:1.6;">
             Estimated solo-consulting effort: <strong>${escapeHtml(`${input.report.quote.estimatedDaysLow}-${input.report.quote.estimatedDaysHigh} working days`)}</strong><br />
-            Quote basis: deterministic remediation effort from fixed rule matches, not AI-generated pricing.
+            Estimate basis: deterministic remediation effort from fixed rule matches, not AI-generated pricing.
           </div>
 
           <div style="border:1px solid #d7e2ef;border-radius:12px;padding:14px;background:#f8fbff;">
@@ -164,23 +178,23 @@ function buildHtmlEmail(input: {
           }
 
           <div style="margin-top:18px;border:1px solid #d7e2ef;border-radius:12px;padding:14px;background:#fbfcfe;">
-            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote breakdown</div>
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Estimate breakdown</div>
             <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.6;">
               ${renderQuoteLineItemsHtml(input.report.quote.lineItems)}
             </ul>
           </div>
 
           <div style="margin-top:18px;border:1px solid #d7e2ef;border-radius:12px;padding:14px;background:#fbfcfe;">
-            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Why this quote range fits</div>
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Estimate assumptions and exclusions</div>
             <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.6;">
               ${input.report.quote.rationaleLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
             </ul>
           </div>
 
           <div style="margin-top:20px;">
-            <a href="${escapeHtml(consultationUrl())}" style="display:inline-block;padding:12px 18px;background:#0f1f3f;border-radius:8px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Book a consultation</a>
+            <a href="${escapeHtml(consultationUrl())}" style="display:inline-block;padding:12px 18px;background:#0f1f3f;border-radius:8px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Request this work</a>
           </div>
-          <p style="margin:14px 0 0;font-size:12px;line-height:1.6;color:#64748b;">Reply to this email if you want the remediation scope tightened before booking.</p>
+          <p style="margin:14px 0 0;font-size:12px;line-height:1.6;color:#64748b;">Reply to this email if you want the estimate tightened before you request the work.</p>
         </div>
       </div>
     </div>

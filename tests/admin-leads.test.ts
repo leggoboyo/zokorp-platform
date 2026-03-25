@@ -3,25 +3,19 @@ import { Role } from "@prisma/client";
 
 const {
   userFindManyMock,
+  leadFindManyMock,
   leadLogFindManyMock,
-  landingZoneFindManyMock,
-  cloudCostFindManyMock,
-  aiDeciderFindManyMock,
 } = vi.hoisted(() => ({
   userFindManyMock: vi.fn(),
+  leadFindManyMock: vi.fn(),
   leadLogFindManyMock: vi.fn(),
-  landingZoneFindManyMock: vi.fn(),
-  cloudCostFindManyMock: vi.fn(),
-  aiDeciderFindManyMock: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   db: {
     user: { findMany: userFindManyMock },
+    lead: { findMany: leadFindManyMock },
     leadLog: { findMany: leadLogFindManyMock },
-    landingZoneReadinessSubmission: { findMany: landingZoneFindManyMock },
-    cloudCostLeakFinderSubmission: { findMany: cloudCostFindManyMock },
-    aiDeciderSubmission: { findMany: aiDeciderFindManyMock },
   },
 }));
 
@@ -33,6 +27,7 @@ describe("admin leads helper", () => {
 
     userFindManyMock.mockResolvedValue([
       {
+        id: "user_admin",
         email: "zkhawaja@zokorp.com",
         name: "Zohaib Khawaja",
         emailVerified: new Date("2026-03-09T00:00:00.000Z"),
@@ -41,46 +36,79 @@ describe("admin leads helper", () => {
       },
     ]);
 
-    leadLogFindManyMock.mockResolvedValue([
+    leadFindManyMock.mockResolvedValue([
       {
-        userEmail: "architecture@human-company.com",
-        userName: "Jordan Rivera",
+        email: "architecture@human-company.com",
+        name: "Jordan Rivera",
+        companyName: "Human Company",
         createdAt: new Date("2026-03-10T00:00:00.000Z"),
-        quoteTier: "remediation-sprint",
-        leadStage: "New Review",
-        emailDeliveryMode: "email",
-        emailSentAt: new Date("2026-03-10T01:00:00.000Z"),
-        syncedToZohoAt: null,
-        zohoSyncNeedsUpdate: true,
-        zohoSyncError: null,
+        lastSeenAt: new Date("2026-03-10T01:00:00.000Z"),
+        userId: null,
+        user: null,
+        events: [
+          {
+            source: "architecture-review",
+            deliveryState: "sent",
+            crmSyncState: "pending",
+            saveForFollowUp: true,
+            allowCrmFollowUp: true,
+            scoreBand: "75-89",
+            estimateBand: "$1k-$2k",
+            recommendedEngagement: "remediation-sprint",
+            createdAt: new Date("2026-03-10T01:00:00.000Z"),
+            sourceRecordKey: null,
+          },
+        ],
       },
-    ]);
-
-    landingZoneFindManyMock.mockResolvedValue([
       {
         email: "qa-bot@acme-enterprise-test.com",
-        fullName: "QA Bot",
+        userName: "Jordan Rivera",
         companyName: "Acme Enterprise Test",
         createdAt: new Date("2026-03-11T00:00:00.000Z"),
-        quoteJson: { quoteTier: "focused-remediation" },
-        crmSyncStatus: "pending",
-        emailDeliveryStatus: "failed",
+        lastSeenAt: new Date("2026-03-11T01:00:00.000Z"),
+        userId: null,
+        user: null,
+        events: [
+          {
+            source: "landing-zone",
+            deliveryState: "failed",
+            crmSyncState: "pending",
+            saveForFollowUp: false,
+            allowCrmFollowUp: false,
+            scoreBand: "25-49",
+            estimateBand: "$500-$1k",
+            recommendedEngagement: "focused-remediation",
+            createdAt: new Date("2026-03-11T01:00:00.000Z"),
+            sourceRecordKey: null,
+          },
+        ],
       },
-    ]);
-
-    cloudCostFindManyMock.mockResolvedValue([
       {
         email: "jane@human-company.com",
-        fullName: "Jane Doe",
+        name: "Jane Doe",
         companyName: "Human Company",
         createdAt: new Date("2026-03-12T00:00:00.000Z"),
-        quoteJson: { engagementType: "Savings Sprint" },
-        crmSyncStatus: "synced",
-        emailDeliveryStatus: "sent",
+        lastSeenAt: new Date("2026-03-12T01:00:00.000Z"),
+        userId: null,
+        user: null,
+        events: [
+          {
+            source: "cloud-cost",
+            deliveryState: "sent",
+            crmSyncState: "synced",
+            saveForFollowUp: true,
+            allowCrmFollowUp: false,
+            scoreBand: "50-74",
+            estimateBand: "$2k-$3k",
+            recommendedEngagement: "Savings Sprint",
+            createdAt: new Date("2026-03-12T01:00:00.000Z"),
+            sourceRecordKey: null,
+          },
+        ],
       },
     ]);
 
-    aiDeciderFindManyMock.mockResolvedValue([]);
+    leadLogFindManyMock.mockResolvedValue([]);
   });
 
   it("shows likely human contacts by default and suppresses flagged QA/test entries", async () => {
@@ -112,6 +140,31 @@ describe("admin leads helper", () => {
       "qa-bot@acme-enterprise-test.com",
       "architecture@human-company.com",
     ]);
+  });
+
+  it("uses legacy architecture logs only when a lead record is missing", async () => {
+    userFindManyMock.mockResolvedValue([]);
+    leadFindManyMock.mockResolvedValue([]);
+    leadLogFindManyMock.mockResolvedValue([
+      {
+        userEmail: "legacy-arch@human-company.com",
+        userName: "Legacy Arch",
+        createdAt: new Date("2026-03-13T00:00:00.000Z"),
+        quoteTier: "advisory-review",
+        leadStage: "New Review",
+        emailDeliveryMode: "email",
+        emailSentAt: new Date("2026-03-13T01:00:00.000Z"),
+        syncedToZohoAt: null,
+        zohoSyncNeedsUpdate: true,
+        zohoSyncError: null,
+      },
+    ]);
+
+    const result = await getLeadDirectory({ audience: "all" });
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0]?.email).toBe("legacy-arch@human-company.com");
+    expect(result.entries[0]?.latestSource).toBe("architecture-review");
   });
 
   it("renders a CSV export with classification and ops columns", () => {

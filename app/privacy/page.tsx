@@ -3,37 +3,39 @@ import { buildPageMetadata } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
   title: "Privacy",
-  description: "How ZoKorp Platform collects, uses, and stores customer and prospect data.",
+  description: "How ZoKorp Platform minimizes storage, delivers results by email, and handles opt-in follow-up data.",
   path: "/privacy",
 });
 
 const sections = [
   {
-    title: "What data ZoKorp collects",
+    title: "Default data posture",
     paragraphs: [
-      "ZoKorp collects account information you provide, including name, business email address, and password-derived credentials for sign-in.",
-      "The platform also collects billing context, service-request details, audit events, and product-usage data needed to provide access and support.",
-      "If you upload architecture diagrams or validation inputs, ZoKorp processes those files to generate results and may archive related artifacts for internal delivery follow-up.",
+      "ZoKorp is designed for zero retention by default on diagnostic submissions. Tool inputs and generated reports are processed to produce the result email, then are not stored as part of the normal workflow.",
+      "By default, ZoKorp stores only the account information needed to operate the platform, including your business email, verification state, password-auth credentials, billing records, support requests, and minimal audit or usage events.",
+      "For free diagnostics, the default stored lead metadata is limited to the tool name, timestamp, delivery state, consent flags, and broad score or estimate bands needed to run the service and understand demand.",
     ],
   },
   {
-    title: "How the data is used",
+    title: "Optional follow-up storage",
     paragraphs: [
-      "ZoKorp uses collected data to authenticate users, authorize access, process purchases, deliver tool output, handle support requests, and improve platform operations.",
-      "Billing information is processed through Stripe-hosted workflows. ZoKorp does not build a custom credit-card storage layer inside this application.",
-      "If traffic analytics are enabled for the site, ZoKorp may collect page-view and traffic-source information to understand site performance and customer acquisition.",
+      "Some tool forms offer an explicit opt-in to save the submission for follow-up. When you enable that option, ZoKorp stores an encrypted archive of the submission payload for up to 30 days so the work can be reviewed later.",
+      "If you do not opt in, ZoKorp does not keep the detailed narrative, answers, diagrams, OCR text, or per-user report JSON after delivery processing completes.",
+      "Short-lived duplicate protection may store a submission fingerprint hash for up to 15 minutes. The hash is used only to prevent accidental repeat sends and does not store the raw answers.",
     ],
   },
   {
-    title: "Storage and service providers",
+    title: "Email, CRM, and service providers",
     paragraphs: [
-      "Platform data is processed through hosted infrastructure and service providers used for application hosting, billing, email delivery, database access, and optional lead or document workflows.",
-      "Where a tool flow uses external services such as Stripe or Zoho, the relevant workflow data may be transmitted to that service to complete the requested operation.",
+      "ZoKorp uses hosted providers for application hosting, database access, authentication, billing, and email delivery. Stripe handles billing workflows, and ZoKorp does not build a custom credit-card storage layer inside this application.",
+      "Diagnostic results are delivered to the verified account email used to run the tool. Optional CRM follow-up is off by default and only runs when you explicitly allow it on a submission.",
+      "If you opt in to archival or CRM follow-up, the relevant workflow data may be transmitted to those providers to complete the requested operation.",
     ],
   },
   {
-    title: "Contact",
+    title: "Retention enforcement and contact",
     paragraphs: [
+      "ZoKorp runs scheduled cleanup to delete expired archives, remove duplicate-detection fingerprints, and scrub any legacy sensitive records that should no longer remain in storage.",
       "Questions about privacy or data handling can be sent to zkhawaja@zokorp.com.",
     ],
   },
@@ -46,7 +48,7 @@ export default function PrivacyPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Privacy</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold text-slate-900">Privacy overview</h1>
         <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base">
-          This page summarizes how ZoKorp Platform handles account, billing, and uploaded-workflow data.
+          This page summarizes how ZoKorp Platform handles account, billing, diagnostic, and optional follow-up data under a privacy-first storage policy.
         </p>
       </Card>
 

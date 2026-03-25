@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 const items = [
   { id: "leads", href: "/admin/leads", label: "Leads" },
+  { id: "architecture-catalog", href: "/admin/architecture-catalog", label: "Architecture Catalog" },
   { id: "readiness", href: "/admin/readiness", label: "Readiness" },
   { id: "products", href: "/admin/products", label: "Products" },
   { id: "prices", href: "/admin/prices", label: "Prices" },

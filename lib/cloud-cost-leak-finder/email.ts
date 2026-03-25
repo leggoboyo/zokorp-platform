@@ -5,6 +5,7 @@ import type {
   CloudCostLeakFinderReport,
   WasteCategory,
 } from "@/lib/cloud-cost-leak-finder/types";
+import { buildEstimateReferenceCode } from "@/lib/privacy-leads";
 import { renderQuoteLineItemsHtml, quoteLineItemText } from "@/lib/quote-line-items";
 import { getSiteUrl } from "@/lib/site";
 
@@ -48,8 +49,15 @@ function buildTextEmail(input: {
   answers: CloudCostLeakFinderAnswers;
   report: CloudCostLeakFinderReport;
 }) {
+  const estimateReferenceCode = buildEstimateReferenceCode({
+    source: "cloud-cost",
+    email: input.answers.email,
+    generatedAtISO: input.report.generatedAtISO,
+  });
   const lines = [
     `Hi ${firstName(input.answers.fullName)},`,
+    "",
+    `Estimate reference: ${estimateReferenceCode}`,
     "",
     input.report.verdictHeadline,
     "",
@@ -73,14 +81,15 @@ function buildTextEmail(input: {
     `What is probably causing the spend: ${input.report.primaryCauseLine}`,
     `What to do first: ${input.report.firstStepLine}`,
     "",
-    `Suggested engagement: ${input.report.quote.engagementType}`,
-    `Deterministic quote range: ${formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh)}`,
-    "Quote breakdown:",
+    `Suggested work path: ${input.report.quote.engagementType}`,
+    `Estimated range: ${formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh)}`,
+    "Estimate breakdown:",
     ...quoteLineItems(input.report).map((line) => `- ${line}`),
+    "Estimate assumptions and exclusions:",
     ...input.report.quote.rationaleLines.map((line) => `- ${line}`),
     "",
-    `Book a consultation: ${consultationUrl()}`,
-    "Reply to this email if you want the scope tightened against a real billing export.",
+    `Request this work: ${consultationUrl()}`,
+    "Reply to this email if you want the estimate tightened against a real billing export.",
   ];
 
   return lines.join("\n");
@@ -90,15 +99,21 @@ function buildHtmlEmail(input: {
   answers: CloudCostLeakFinderAnswers;
   report: CloudCostLeakFinderReport;
 }) {
+  const estimateReferenceCode = buildEstimateReferenceCode({
+    source: "cloud-cost",
+    email: input.answers.email,
+    generatedAtISO: input.report.generatedAtISO,
+  });
   return `
     <div style="background:#f3f6fb;padding:28px 16px;font-family:Inter,Segoe UI,Arial,sans-serif;color:#0f172a;">
       <div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #d7e2ef;border-radius:14px;overflow:hidden;">
         <div style="background:linear-gradient(135deg,#0b1f3a,#145c79);padding:24px 24px 22px;color:#ffffff;">
           <p style="margin:0;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#d8e8ff;">ZoKorp Software</p>
-          <h1 style="margin:10px 0 0;font-size:28px;line-height:1.2;font-weight:700;">Cloud Cost Leak Finder</h1>
+          <h1 style="margin:10px 0 0;font-size:28px;line-height:1.2;font-weight:700;">Cloud Cost Leak Finder Estimate Memo</h1>
         </div>
         <div style="padding:24px;">
           <p style="margin:0;font-size:15px;line-height:1.6;">Hi ${escapeHtml(firstName(input.answers.fullName))},</p>
+          <p style="margin:8px 0 0;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Estimate reference: ${escapeHtml(estimateReferenceCode)}</p>
           <h2 style="margin:12px 0 8px;font-size:26px;line-height:1.25;color:#0f172a;">${escapeHtml(input.report.verdictHeadline)}</h2>
           <p style="margin:0;color:#334155;font-size:15px;line-height:1.7;">${escapeHtml(input.report.shortSummary)}</p>
 
@@ -112,7 +127,7 @@ function buildHtmlEmail(input: {
               </td>
               <td style="padding:0 0 8px 8px;">
                 <div style="border:1px solid #d7e2ef;border-radius:12px;padding:14px;">
-                  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote range</div>
+                  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Estimate range</div>
                   <div style="margin-top:6px;font-size:22px;font-weight:800;color:#0f172a;">${escapeHtml(formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh))}</div>
                 </div>
               </td>
@@ -153,22 +168,23 @@ function buildHtmlEmail(input: {
           </div>
 
           <div style="margin-top:18px;border:1px solid #d7e2ef;border-radius:12px;padding:14px;background:#fbfcfe;">
-            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Suggested engagement</div>
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Suggested work path</div>
             <p style="margin:10px 0 0;color:#0f172a;font-size:18px;font-weight:800;">${escapeHtml(input.report.quote.engagementType)}</p>
-            <p style="margin:8px 0 0;color:#334155;font-size:14px;line-height:1.6;">Deterministic quote range: ${escapeHtml(formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh))}</p>
-            <div style="margin-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Quote breakdown</div>
+            <p style="margin:8px 0 0;color:#334155;font-size:14px;line-height:1.6;">Estimated range: ${escapeHtml(formatUsdRange(input.report.quote.quoteLow, input.report.quote.quoteHigh))}</p>
+            <div style="margin-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Estimate breakdown</div>
             <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.6;">
               ${renderQuoteLineItemsHtml(input.report.quote.lineItems)}
             </ul>
+            <div style="margin-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Estimate assumptions and exclusions</div>
             <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:14px;line-height:1.6;">
               ${input.report.quote.rationaleLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
             </ul>
           </div>
 
           <div style="margin-top:20px;">
-            <a href="${escapeHtml(consultationUrl())}" style="display:inline-block;padding:12px 18px;background:#0f1f3f;border-radius:8px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Book a consultation</a>
+            <a href="${escapeHtml(consultationUrl())}" style="display:inline-block;padding:12px 18px;background:#0f1f3f;border-radius:8px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Request this work</a>
           </div>
-          <p style="margin:14px 0 0;font-size:12px;line-height:1.6;color:#64748b;">Reply with a cleaner top-services billing export if you want the next pass narrowed further.</p>
+          <p style="margin:14px 0 0;font-size:12px;line-height:1.6;color:#64748b;">Reply with a cleaner top-services billing export if you want the estimate narrowed further.</p>
         </div>
       </div>
     </div>

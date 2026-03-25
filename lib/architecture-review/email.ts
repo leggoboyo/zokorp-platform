@@ -1,6 +1,9 @@
-import type { ArchitectureQuoteTier, ArchitectureReviewReport } from "@/lib/architecture-review/types";
-import { getArchitectureReviewPricingCatalogEntry } from "@/lib/architecture-review/pricing-catalog";
-import { renderQuoteLineItemsHtml, quoteLineItemText } from "@/lib/quote-line-items";
+import type {
+  ArchitectureEstimateSnapshot,
+  ArchitectureQuoteTier,
+  ArchitectureReviewReport,
+} from "@/lib/architecture-review/types";
+import { buildFallbackArchitectureEstimateSnapshot } from "@/lib/architecture-review/rule-catalog";
 import { getSiteUrl } from "@/lib/site";
 
 function providerLabel(provider: ArchitectureReviewReport["provider"]) {
@@ -31,25 +34,12 @@ function quoteTierLabel(quoteTier: ArchitectureQuoteTier) {
   return "Implementation Partner";
 }
 
-function findingLine(index: number, finding: ArchitectureReviewReport["findings"][number]) {
-  const serviceLine = getArchitectureReviewPricingCatalogEntry(finding.ruleId)?.serviceLine;
-  return `${index + 1}. pointsDeducted=${finding.pointsDeducted} | message=${finding.message} | fix=${finding.fix} | ruleId=${finding.ruleId}${serviceLine ? ` | serviceLine=${serviceLine}` : ""} | estFixCost=$${finding.fixCostUSD}`;
-}
-
 function toUsd(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function roundToNearest(value: number, step: number) {
-  return Math.round(value / step) * step;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
 }
 
 function escapeHtml(input: string) {
@@ -61,127 +51,15 @@ function escapeHtml(input: string) {
     .replace(/'/g, "&#39;");
 }
 
-type EngagementPackage = {
-  name: string;
-  timeline: string;
-  priceLabel: string;
-  summary: string;
-  recommended: boolean;
-};
-
-type EngagementGuidance = {
-  mode: "standard" | "diagnostic-only" | "custom-after-call";
-  noteTitle: string;
-  noteBody: string;
-  quoteBasisHtml: string;
-  quoteBasisLines: string[];
-  secondaryCtaLabel: string;
-};
-
 type EmailCtaLinks = {
   bookArchitectureCallUrl: string;
-  requestRemediationPlanUrl: string;
 };
 
-function buildEngagementGuidance(report: ArchitectureReviewReport): EngagementGuidance {
-  if (report.analysisConfidence === "low") {
-    return {
-      mode: "diagnostic-only",
-      noteTitle: "This review stays diagnostic-first",
-      noteBody:
-        "The current evidence bundle is too ambiguous to pre-approve a remediation sprint. Start with the fixed advisory review, then scope any delivery work only after the live call confirms the findings.",
-      quoteBasisHtml:
-        "Quote method: the advisory review stays fixed at $249. Low-confidence reviews do not auto-approve a remediation package from the free submission alone.",
-      quoteBasisLines: [
-        "- The advisory review stays fixed at $249.",
-        "- Low-confidence reviews do not auto-approve remediation scope from the free submission alone.",
-        "- serviceLine values identify the consulting work implied by each finding.",
-      ],
-      secondaryCtaLabel: "Request scoped follow-up",
-    };
-  }
-
-  if (report.quoteTier === "implementation-partner") {
-    return {
-      mode: "custom-after-call",
-      noteTitle: "This moves to custom scope",
-      noteBody:
-        "This review points to broader delivery work, higher scoping risk, or constraints that should not be auto-quoted from a free upload. The next step is the fixed advisory review, followed by a custom proposal if the work is a fit.",
-      quoteBasisHtml:
-        "Quote method: the advisory review stays fixed at $249. Broader or riskier delivery paths move to custom scoping after the advisory call instead of pretending the free review produced a final implementation quote.",
-      quoteBasisLines: [
-        "- The advisory review stays fixed at $249.",
-        "- Broader or riskier delivery paths move to custom scoping after the advisory call.",
-        "- serviceLine values identify the consulting work implied by each finding.",
-      ],
-      secondaryCtaLabel: "Request scoped engagement",
-    };
-  }
-
+function resolveDefaultCtaLinks() {
+  const siteUrl = getSiteUrl();
   return {
-    mode: "standard",
-    noteTitle: "How the next step is chosen",
-    noteBody:
-      "The core quote is built from deterministic finding-based scope drivers. Remediation Sprint remains a bounded micro-sprint, not an open-ended implementation commitment.",
-    quoteBasisHtml:
-      "Quote method: $249 advisory baseline plus deterministic finding-based scope drivers, then workload criticality and evidence confidence shape the bounded core quote. Top-finding fix estimates are scope drivers, not separate invoice lines.",
-    quoteBasisLines: [
-      "- $249 advisory baseline + deterministic per-finding scope drivers.",
-      "- Workload criticality and evidence confidence shape the bounded core quote.",
-      "- serviceLine values identify the consulting work implied by each finding.",
-    ],
-    secondaryCtaLabel: "Request remediation plan",
-  };
-}
-
-function buildEngagementPackages(
-  report: ArchitectureReviewReport,
-  guidance: EngagementGuidance,
-): EngagementPackage[] {
-  const remediationLow = roundToNearest(clamp(Math.round(report.consultationQuoteUSD * 0.9), 650, 2200), 25);
-  const remediationHigh = roundToNearest(clamp(Math.round(report.consultationQuoteUSD * 1.2), 850, 2800), 25);
-  const advisorySummary =
-    guidance.mode === "diagnostic-only"
-      ? "Required first step to validate the findings, sequence fixes, and decide whether any paid delivery scope is safe to quote."
-      : guidance.mode === "custom-after-call"
-        ? "Required scoping call to confirm constraints, stakeholders, and the first safe delivery milestone."
-        : "Working session to prioritize findings, sequence fixes, and assign clear ownership.";
-  const remediationSummary =
-    guidance.mode === "diagnostic-only"
-      ? "Held until the advisory review confirms the findings and defines a bounded micro-sprint."
-      : guidance.mode === "custom-after-call"
-        ? "Used only if the advisory call narrows the work into a hard-capped remediation sprint."
-        : "Hard-capped fix package for the highest-impact deductions with updated architecture artifacts.";
-  const implementationSummary =
-    guidance.mode === "diagnostic-only"
-      ? "Not quoted from the free report alone. Only discussed if the diagnostic call shows a broader redesign is justified."
-      : guidance.mode === "custom-after-call"
-        ? "Custom scoped redesign and execution support after the advisory call confirms scope, ownership, and rollout constraints."
-        : "End-to-end redesign and execution support with governance and rollout milestones.";
-
-  return [
-    {
-      name: "Advisory Review",
-      timeline: "45 min",
-      priceLabel: toUsd(249),
-      summary: advisorySummary,
-      recommended: report.quoteTier === "advisory-review",
-    },
-    {
-      name: "Remediation Sprint",
-      timeline: "1-3 weeks",
-      priceLabel: `${toUsd(remediationLow)} - ${toUsd(remediationHigh)}`,
-      summary: remediationSummary,
-      recommended: report.quoteTier === "remediation-sprint",
-    },
-    {
-      name: "Implementation Partner",
-      timeline: "3-8+ weeks",
-      priceLabel: "Custom",
-      summary: implementationSummary,
-      recommended: report.quoteTier === "implementation-partner",
-    },
-  ];
+    bookArchitectureCallUrl: `${siteUrl}/services#service-request`,
+  } satisfies EmailCtaLinks;
 }
 
 function confidenceStyles(confidence: ArchitectureReviewReport["analysisConfidence"]) {
@@ -208,20 +86,25 @@ function confidenceStyles(confidence: ArchitectureReviewReport["analysisConfiden
   };
 }
 
-function resolveDefaultCtaLinks() {
-  const siteUrl = getSiteUrl();
-  return {
-    bookArchitectureCallUrl: `${siteUrl}/services#service-request`,
-    requestRemediationPlanUrl: `${siteUrl}/services#service-request`,
-  } satisfies EmailCtaLinks;
+function nextStepNote(report: ArchitectureReviewReport) {
+  if (report.analysisConfidence === "low") {
+    return "The quote below is limited to the issues visible in the submitted material. Use the booking link to confirm whether any hidden dependencies would change scope.";
+  }
+
+  if (report.quoteTier === "implementation-partner") {
+    return "The quote below covers the fixes visible in this review. If the follow-up uncovers a broader redesign or rollout program, that extra scope is handled separately.";
+  }
+
+  return "The quote below covers the implementation work implied by the detected findings in this review. The free review itself stays free.";
 }
 
-function buildHtmlEmail(report: ArchitectureReviewReport, ctaLinks: EmailCtaLinks) {
+function buildHtmlEmail(
+  report: ArchitectureReviewReport,
+  estimateSnapshot: ArchitectureEstimateSnapshot,
+  ctaLinks: EmailCtaLinks,
+) {
   const mandatoryFindings = report.findings.filter((finding) => finding.pointsDeducted > 0);
-  const topDeductions = mandatoryFindings.slice(0, 5);
   const optionalRecommendations = report.findings.filter((finding) => finding.pointsDeducted === 0);
-  const guidance = buildEngagementGuidance(report);
-  const packages = buildEngagementPackages(report, guidance);
   const generatedAt = new Date(report.generatedAtISO).toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -231,33 +114,57 @@ function buildHtmlEmail(report: ArchitectureReviewReport, ctaLinks: EmailCtaLink
     second: "2-digit",
     timeZoneName: "short",
   });
-
   const confidence = confidenceStyles(report.analysisConfidence);
+  const snapshotByRuleId = new Map(estimateSnapshot.lineItems.map((lineItem) => [lineItem.ruleId, lineItem]));
 
   const topDeductionsHtml =
-    topDeductions.length > 0
-      ? topDeductions
+    mandatoryFindings.length > 0
+      ? mandatoryFindings
+          .slice(0, 6)
           .map(
             (finding, index) => {
-              const serviceLine = getArchitectureReviewPricingCatalogEntry(finding.ruleId)?.serviceLine;
+              const lineItem = snapshotByRuleId.get(finding.ruleId);
+
               return `
-              <tr>
-                <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;color:#0f172a;font-size:13px;width:44px;">${index + 1}</td>
-                <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;color:#0f172a;font-size:13px;">
-                  <div style="font-weight:700;">-${finding.pointsDeducted} points | ${escapeHtml(finding.ruleId)}</div>
-                  <div style="margin-top:4px;">${escapeHtml(finding.message)}</div>
-                  <div style="margin-top:4px;color:#334155;">Fix: ${escapeHtml(finding.fix)}</div>
-                  ${serviceLine ? `<div style="margin-top:4px;color:#334155;">Service line: ${escapeHtml(serviceLine)}</div>` : ""}
-                  <div style="margin-top:4px;color:#64748b;">Estimated fix effort: ${toUsd(finding.fixCostUSD)}</div>
-                </td>
-              </tr>
-            `;
+                <tr>
+                  <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;color:#0f172a;font-size:13px;width:44px;">${index + 1}</td>
+                  <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;color:#0f172a;font-size:13px;">
+                    <div style="font-weight:700;">-${finding.pointsDeducted} points | ${escapeHtml(finding.ruleId)}</div>
+                    <div style="margin-top:4px;">${escapeHtml(finding.message)}</div>
+                    <div style="margin-top:4px;color:#334155;">Fix: ${escapeHtml(finding.fix)}</div>
+                    ${
+                      lineItem
+                        ? `<div style="margin-top:4px;color:#334155;">Quoted line: ${escapeHtml(lineItem.serviceLineLabel)} · ${escapeHtml(toUsd(lineItem.amountUsd))}</div>`
+                        : ""
+                    }
+                  </td>
+                </tr>
+              `;
             },
           )
           .join("")
       : `<tr><td colspan="2" style="padding:10px 12px;color:#0f172a;font-size:13px;">No mandatory deductions were found.</td></tr>`;
 
-  const optionalHtmlRows =
+  const quoteRows =
+    estimateSnapshot.lineItems.length > 0
+      ? estimateSnapshot.lineItems
+          .map(
+            (lineItem) => `
+              <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;color:#0f172a;font-size:13px;">
+                  <div style="font-weight:700;">${escapeHtml(lineItem.ruleId)} · ${escapeHtml(lineItem.serviceLineLabel)}</div>
+                  <div style="margin-top:4px;color:#334155;">${escapeHtml(lineItem.publicFixSummary)}</div>
+                </td>
+                <td align="right" style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;color:#0f172a;font-size:14px;font-weight:800;white-space:nowrap;">
+                  ${escapeHtml(toUsd(lineItem.amountUsd))}
+                </td>
+              </tr>
+            `,
+          )
+          .join("")
+      : `<tr><td colspan="2" style="padding:10px 12px;color:#334155;font-size:13px;">No implementation quote was produced because no mandatory fix scope was detected.</td></tr>`;
+
+  const optionalRows =
     optionalRecommendations.length > 0
       ? optionalRecommendations
           .map(
@@ -274,39 +181,8 @@ function buildHtmlEmail(report: ArchitectureReviewReport, ctaLinks: EmailCtaLink
           .join("")
       : `<tr><td colspan="2" style="padding:9px 12px;color:#334155;font-size:13px;">No optional recommendations.</td></tr>`;
 
-  const packageHtmlRows = packages
-    .map(
-      (pkg) => `
-        <tr>
-          <td style="padding:0 0 10px 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${pkg.recommended ? "#1d4ed8" : "#cbd5e1"};background:${pkg.recommended ? "#eff6ff" : "#ffffff"};border-radius:10px;">
-              <tr>
-                <td style="padding:12px 14px;">
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td style="vertical-align:top;color:#0f172a;">
-                        <div style="font-size:16px;font-weight:700;line-height:1.35;">${escapeHtml(pkg.name)}</div>
-                        <div style="margin-top:4px;font-size:13px;color:#334155;">Timeline: ${escapeHtml(pkg.timeline)}</div>
-                      </td>
-                      <td align="right" style="vertical-align:top;color:#0f172a;font-size:18px;font-weight:800;padding-left:10px;white-space:nowrap;">
-                        ${escapeHtml(pkg.priceLabel)}
-                      </td>
-                    </tr>
-                  </table>
-                  <div style="margin-top:8px;color:#334155;font-size:13px;line-height:1.45;">${escapeHtml(pkg.summary)}</div>
-                  ${
-                    pkg.recommended
-                      ? '<div style="margin-top:10px;font-size:12px;font-weight:700;color:#1e40af;">Recommended for this score profile</div>'
-                      : ""
-                  }
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      `,
-    )
-    .join("");
+  const assumptionsHtml = estimateSnapshot.assumptions.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  const exclusionsHtml = estimateSnapshot.exclusions.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
 
   return `
 <!doctype html>
@@ -342,8 +218,10 @@ function buildHtmlEmail(report: ArchitectureReviewReport, ctaLinks: EmailCtaLink
                       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #dbe3ef;border-radius:10px;">
                         <tr>
                           <td style="padding:10px 12px;">
-                            <div style="font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;">Core Quote</div>
-                            <div style="margin-top:4px;font-size:24px;font-weight:800;color:#0f172a;">${toUsd(report.consultationQuoteUSD)}</div>
+                            <div style="font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;">Final Implementation Quote</div>
+                            <div style="margin-top:4px;font-size:24px;font-weight:800;color:#0f172a;">${escapeHtml(
+                              toUsd(estimateSnapshot.totalUsd),
+                            )}</div>
                           </td>
                         </tr>
                       </table>
@@ -352,8 +230,14 @@ function buildHtmlEmail(report: ArchitectureReviewReport, ctaLinks: EmailCtaLink
                       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #dbe3ef;border-radius:10px;">
                         <tr>
                           <td style="padding:10px 12px;">
-                            <div style="font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;">Recommended Tier</div>
-                            <div style="margin-top:4px;font-size:16px;font-weight:800;color:#0f172a;">${escapeHtml(quoteTierLabel(report.quoteTier))}</div>
+                            <div style="font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;">Estimate Reference</div>
+                            <div style="margin-top:4px;font-size:14px;font-weight:700;color:#0f172a;">${escapeHtml(
+                              estimateSnapshot.referenceCode,
+                            )}</div>
+                            <div style="margin-top:8px;font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;">Recommended Work Path</div>
+                            <div style="margin-top:4px;font-size:16px;font-weight:800;color:#0f172a;">${escapeHtml(
+                              quoteTierLabel(report.quoteTier),
+                            )}</div>
                           </td>
                         </tr>
                       </table>
@@ -363,7 +247,9 @@ function buildHtmlEmail(report: ArchitectureReviewReport, ctaLinks: EmailCtaLink
                         <tr>
                           <td style="padding:10px 12px;">
                             <div style="font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;">Analysis Confidence</div>
-                            <div style="margin-top:4px;font-size:16px;font-weight:800;color:${confidence.text};">${escapeHtml(confidenceLabel(report.analysisConfidence))}</div>
+                            <div style="margin-top:4px;font-size:16px;font-weight:800;color:${confidence.text};">${escapeHtml(
+                              confidenceLabel(report.analysisConfidence),
+                            )}</div>
                           </td>
                         </tr>
                       </table>
@@ -381,16 +267,14 @@ function buildHtmlEmail(report: ArchitectureReviewReport, ctaLinks: EmailCtaLink
                   </tr>
                 </table>
 
-                <div style="margin-top:18px;display:flex;flex-wrap:wrap;gap:10px;">
-                  <a href="${escapeHtml(ctaLinks.bookArchitectureCallUrl)}" style="display:inline-block;border-radius:8px;background:#0f172a;color:#ffffff;padding:10px 14px;font-size:13px;font-weight:700;text-decoration:none;">Book architecture call</a>
-                  <a href="${escapeHtml(ctaLinks.requestRemediationPlanUrl)}" style="display:inline-block;border-radius:8px;border:1px solid #cbd5e1;color:#0f172a;background:#ffffff;padding:10px 14px;font-size:13px;font-weight:700;text-decoration:none;">${escapeHtml(guidance.secondaryCtaLabel)}</a>
-                </div>
-
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;border:1px solid #dbe3ef;border-radius:10px;background:#f8fafc;">
                   <tr>
                     <td style="padding:14px;">
-                      <div style="font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;">${escapeHtml(guidance.noteTitle)}</div>
-                      <div style="margin-top:8px;line-height:1.5;font-size:14px;color:#0f172a;">${escapeHtml(guidance.noteBody)}</div>
+                      <div style="font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;">Next Step</div>
+                      <div style="margin-top:8px;line-height:1.5;font-size:14px;color:#0f172a;">${escapeHtml(nextStepNote(report))}</div>
+                      <div style="margin-top:12px;">
+                        <a href="${escapeHtml(ctaLinks.bookArchitectureCallUrl)}" style="display:inline-block;border-radius:8px;background:#0f172a;color:#ffffff;padding:10px 14px;font-size:13px;font-weight:700;text-decoration:none;">Book implementation follow-up</a>
+                      </div>
                     </td>
                   </tr>
                 </table>
@@ -404,31 +288,54 @@ function buildHtmlEmail(report: ArchitectureReviewReport, ctaLinks: EmailCtaLink
                   ${topDeductionsHtml}
                 </table>
 
-                <div style="margin-top:22px;font-size:18px;font-weight:700;color:#0f172a;">Engagement Options</div>
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">
-                  ${packageHtmlRows}
-                </table>
-                <div style="margin-top:6px;font-size:12px;color:#64748b;line-height:1.45;">
-                  ${escapeHtml(guidance.quoteBasisHtml)}
-                </div>
-
-                <div style="margin-top:22px;font-size:18px;font-weight:700;color:#0f172a;">Core Quote Breakdown</div>
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;border:1px solid #dbe3ef;border-radius:10px;background:#f8fafc;">
+                <div style="margin-top:22px;font-size:18px;font-weight:700;color:#0f172a;">Final Implementation Quote</div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;border-collapse:collapse;border:1px solid #dbe3ef;border-radius:10px;overflow:hidden;">
                   <tr>
-                    <td style="padding:14px;">
-                      <ul style="margin:0;padding-left:18px;color:#334155;font-size:14px;line-height:1.6;">
-                        ${renderQuoteLineItemsHtml(report.consultationQuote.lineItems)}
-                      </ul>
-                      <ul style="margin:12px 0 0;padding-left:18px;color:#64748b;font-size:13px;line-height:1.6;">
-                        ${report.consultationQuote.rationaleLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
-                      </ul>
+                    <td style="padding:9px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#334155;">Service Line</td>
+                    <td align="right" style="padding:9px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#334155;width:120px;">Amount</td>
+                  </tr>
+                  ${quoteRows}
+                  <tr>
+                    <td style="padding:12px;font-size:14px;font-weight:800;color:#0f172a;">Final quoted total</td>
+                    <td align="right" style="padding:12px;font-size:16px;font-weight:900;color:#0f172a;">${escapeHtml(
+                      toUsd(estimateSnapshot.totalUsd),
+                    )}</td>
+                  </tr>
+                </table>
+
+                <div style="margin-top:22px;font-size:18px;font-weight:700;color:#0f172a;">Assumptions and Exclusions</div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">
+                  <tr>
+                    <td width="50%" valign="top" style="padding-right:8px;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #dbe3ef;border-radius:10px;background:#f8fafc;">
+                        <tr>
+                          <td style="padding:14px;">
+                            <div style="font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;">Assumptions</div>
+                            <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:13px;line-height:1.6;">
+                              ${assumptionsHtml}
+                            </ul>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                    <td width="50%" valign="top" style="padding-left:8px;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #dbe3ef;border-radius:10px;background:#f8fafc;">
+                        <tr>
+                          <td style="padding:14px;">
+                            <div style="font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;">Exclusions</div>
+                            <ul style="margin:10px 0 0;padding-left:18px;color:#334155;font-size:13px;line-height:1.6;">
+                              ${exclusionsHtml}
+                            </ul>
+                          </td>
+                        </tr>
+                      </table>
                     </td>
                   </tr>
                 </table>
 
                 <div style="margin-top:22px;font-size:18px;font-weight:700;color:#0f172a;">Optional Recommendations</div>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;border-collapse:collapse;border:1px solid #dbe3ef;border-radius:10px;overflow:hidden;">
-                  ${optionalHtmlRows}
+                  ${optionalRows}
                 </table>
               </td>
             </tr>
@@ -445,19 +352,20 @@ export function buildArchitectureReviewEmailContent(
   report: ArchitectureReviewReport,
   options?: {
     ctaLinks?: Partial<EmailCtaLinks>;
+    estimateSnapshot?: ArchitectureEstimateSnapshot;
   },
 ) {
-  const mandatoryFindings = report.findings.filter((finding) => finding.pointsDeducted > 0);
-  const topDeductions = mandatoryFindings.slice(0, 5);
-  const optionalRecommendations = report.findings.filter((finding) => finding.pointsDeducted === 0);
-  const guidance = buildEngagementGuidance(report);
-  const engagementPackages = buildEngagementPackages(report, guidance);
   const defaults = resolveDefaultCtaLinks();
   const ctaLinks: EmailCtaLinks = {
     bookArchitectureCallUrl: options?.ctaLinks?.bookArchitectureCallUrl ?? defaults.bookArchitectureCallUrl,
-    requestRemediationPlanUrl:
-      options?.ctaLinks?.requestRemediationPlanUrl ?? defaults.requestRemediationPlanUrl,
   };
+  const estimateSnapshot =
+    options?.estimateSnapshot ??
+    buildFallbackArchitectureEstimateSnapshot(report, {
+      bookingUrl: ctaLinks.bookArchitectureCallUrl,
+    }).snapshot;
+  const mandatoryFindings = report.findings.filter((finding) => finding.pointsDeducted > 0);
+  const optionalRecommendations = report.findings.filter((finding) => finding.pointsDeducted === 0);
 
   const lines = [
     `Architecture Diagram Review (${providerLabel(report.provider)})`,
@@ -466,44 +374,46 @@ export function buildArchitectureReviewEmailContent(
     "",
     `Overall score: ${report.overallScore}/100`,
     `Analysis confidence: ${confidenceLabel(report.analysisConfidence)}`,
-    `Consultation quote: $${report.consultationQuoteUSD}`,
-    `Recommended tier: ${quoteTierLabel(report.quoteTier)}`,
+    `Recommended work path: ${quoteTierLabel(report.quoteTier)}`,
+    `Estimate reference: ${estimateSnapshot.referenceCode}`,
+    `Final implementation quote: ${toUsd(estimateSnapshot.totalUsd)}`,
     "",
     "Flow narrative:",
     report.flowNarrative,
     "",
-    "Top deductions (single-line deterministic format):",
-    ...(topDeductions.length > 0 ? topDeductions.map((finding, index) => findingLine(index, finding)) : ["No mandatory deductions."]),
+    "Next step:",
+    nextStepNote(report),
+    `Book implementation follow-up: ${ctaLinks.bookArchitectureCallUrl}`,
     "",
-    "Optional recommendations (0 points deducted):",
+    "Top deductions:",
+    ...(mandatoryFindings.length > 0
+      ? mandatoryFindings.slice(0, 6).map((finding) => `- ${finding.ruleId} | -${finding.pointsDeducted} points | ${finding.message}`)
+      : ["No mandatory deductions."]),
+    "",
+    "Final implementation quote:",
+    ...(estimateSnapshot.lineItems.length > 0
+      ? estimateSnapshot.lineItems.map(
+          (lineItem) =>
+            `- ${lineItem.ruleId} | ${lineItem.serviceLineLabel} | ${toUsd(lineItem.amountUsd)} | ${lineItem.publicFixSummary}`,
+        )
+      : ["No implementation quote was produced because no mandatory fix scope was detected."]),
+    `Final quoted total: ${toUsd(estimateSnapshot.totalUsd)}`,
+    "",
+    "Quote assumptions:",
+    ...estimateSnapshot.assumptions.map((line) => `- ${line}`),
+    "",
+    "Quote exclusions:",
+    ...estimateSnapshot.exclusions.map((line) => `- ${line}`),
+    "",
+    "Optional recommendations:",
     ...(optionalRecommendations.length > 0
-      ? optionalRecommendations.map((finding, index) => findingLine(index, finding))
+      ? optionalRecommendations.map((finding) => `- ${finding.ruleId} | ${finding.message}`)
       : ["No optional recommendations."]),
-    "",
-    "Engagement options:",
-    ...engagementPackages.map(
-      (pkg, index) =>
-        `${index + 1}. ${pkg.name} | ${pkg.timeline} | ${pkg.priceLabel} | ${pkg.summary}${pkg.recommended ? " | RECOMMENDED" : ""}`,
-    ),
-    "",
-    "Core quote breakdown:",
-    ...report.consultationQuote.lineItems.map((item) => `- ${quoteLineItemText(item)}`),
-    ...report.consultationQuote.rationaleLines.map((line) => `- ${line}`),
-    "",
-    "Next-step policy:",
-    `- ${guidance.noteTitle}: ${guidance.noteBody}`,
-    "",
-    "Primary CTAs:",
-    `- Book architecture call: ${ctaLinks.bookArchitectureCallUrl}`,
-    `- ${guidance.secondaryCtaLabel}: ${ctaLinks.requestRemediationPlanUrl}`,
-    "",
-    "Quote basis:",
-    ...guidance.quoteBasisLines,
   ];
 
-  const subject = `[ZoKorp] ${providerLabel(report.provider)} architecture review score ${report.overallScore}/100`;
+  const subject = `[ZoKorp] ${providerLabel(report.provider)} architecture estimate ${report.overallScore}/100`;
   const text = lines.join("\n");
-  const html = buildHtmlEmail(report, ctaLinks);
+  const html = buildHtmlEmail(report, estimateSnapshot, ctaLinks);
 
   return {
     subject,

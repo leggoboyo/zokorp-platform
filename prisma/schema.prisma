@@ -55,6 +55,18 @@ enum ServiceRequestStatus {
   CLOSED
 }
 
+enum ArchitectureRuleCatalogPricingMode {
+  DERIVED
+  OVERRIDE
+}
+
+enum ArchitectureRuleCatalogReviewStatus {
+  UNREVIEWED
+  DRAFT
+  PUBLISHED
+  STALE
+}
+
 model User {
   id             String         @id @default(cuid())
   name           String?
@@ -73,6 +85,10 @@ model User {
   creditBalances CreditBalance[]
   auditLogs      AuditLog[]
   leadLogs       LeadLog[]
+  leads          Lead[]
+  leadEvents     LeadEvent[]
+  archivedToolSubmissions ArchivedToolSubmission[]
+  submissionFingerprints SubmissionFingerprint[]
   architectureReviewJobs ArchitectureReviewJob[]
   landingZoneReadinessSubmissions LandingZoneReadinessSubmission[]
   cloudCostLeakFinderSubmissions CloudCostLeakFinderSubmission[]
@@ -243,6 +259,8 @@ model LeadLog {
   workdriveUploadStatus  String?
   emailSentAt          DateTime?
   followUpStatusJson   Json?
+  saveForFollowUp      Boolean  @default(false)
+  allowCrmFollowUp     Boolean  @default(false)
   zohoSyncNeedsUpdate  Boolean  @default(true)
   syncedToZohoAt       DateTime?
   zohoRecordId         String?
@@ -256,6 +274,83 @@ model LeadLog {
   @@index([createdAt])
   @@index([userEmail])
   @@index([syncedToZohoAt])
+}
+
+model Lead {
+  id                   String   @id @default(cuid())
+  userId               String?
+  email                String   @unique
+  name                 String?
+  companyName          String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  lastSeenAt           DateTime @default(now())
+
+  user                 User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  events               LeadEvent[]
+  archivedSubmissions  ArchivedToolSubmission[]
+  fingerprints         SubmissionFingerprint[]
+
+  @@index([userId])
+  @@index([lastSeenAt])
+}
+
+model LeadEvent {
+  id                   String   @id @default(cuid())
+  leadId               String
+  userId               String?
+  source               String
+  deliveryState        String   @default("unknown")
+  crmSyncState         String   @default("unknown")
+  saveForFollowUp      Boolean  @default(false)
+  allowCrmFollowUp     Boolean  @default(false)
+  scoreBand            String?
+  estimateBand         String?
+  recommendedEngagement String?
+  sourceRecordKey      String?  @unique
+  createdAt            DateTime @default(now())
+
+  lead                 Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user                 User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, createdAt])
+  @@index([userId])
+  @@index([source, createdAt])
+}
+
+model ArchivedToolSubmission {
+  id                   String   @id @default(cuid())
+  leadId               String
+  userId               String?
+  toolName             String
+  payloadCiphertext    String   @db.Text
+  payloadHash          String
+  expiresAt            DateTime
+  createdAt            DateTime @default(now())
+
+  lead                 Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user                 User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([expiresAt])
+  @@index([toolName, createdAt])
+}
+
+model SubmissionFingerprint {
+  id                   String   @id @default(cuid())
+  leadId               String?
+  userId               String?
+  toolName             String
+  fingerprintHash      String
+  createdAt            DateTime @default(now())
+  expiresAt            DateTime
+
+  lead                 Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user                 User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([userId])
+  @@index([toolName, fingerprintHash, expiresAt])
 }
 
 model ArchitectureReviewJob {
@@ -326,6 +421,64 @@ model ArchitectureReviewEmailOutbox {
   @@index([jobId])
   @@index([leadLogId])
   @@index([status])
+}
+
+model ArchitectureRuleCatalog {
+  id                   String                             @id @default(cuid())
+  ruleId               String                             @unique
+  category             String
+  isPresentInCode      Boolean                            @default(true)
+  codeSnapshotJson     Json
+  reviewStatus         ArchitectureRuleCatalogReviewStatus @default(UNREVIEWED)
+  publishedVersion     Int?
+  publishedRevisionId  String?                            @unique
+  serviceLineLabel     String?
+  publicFixSummary     String?
+  internalResearchNotes String?
+  pricingMode          ArchitectureRuleCatalogPricingMode @default(DERIVED)
+  overrideMinPriceUsd  Int?
+  overrideMaxPriceUsd  Int?
+  nextReviewAt         DateTime?
+  lastReviewedAt       DateTime?
+  lastReviewedByEmail  String?
+  publishedAt          DateTime?
+  lastCodeSyncedAt     DateTime                           @default(now())
+  createdAt            DateTime                           @default(now())
+  updatedAt            DateTime                           @updatedAt
+
+  publishedRevision    ArchitectureRuleCatalogRevision?   @relation("ArchitectureRuleCatalogPublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
+  revisions            ArchitectureRuleCatalogRevision[]  @relation("ArchitectureRuleCatalogRevisions")
+
+  @@index([reviewStatus, updatedAt])
+  @@index([isPresentInCode])
+  @@index([category])
+}
+
+model ArchitectureRuleCatalogRevision {
+  id                   String                             @id @default(cuid())
+  catalogId            String
+  version              Int
+  status               ArchitectureRuleCatalogReviewStatus
+  serviceLineLabel     String
+  publicFixSummary     String
+  internalResearchNotes String?
+  pricingMode          ArchitectureRuleCatalogPricingMode @default(DERIVED)
+  overrideMinPriceUsd  Int?
+  overrideMaxPriceUsd  Int?
+  nextReviewAt         DateTime?
+  changeSummary        String?
+  changedByEmail       String?
+  createdAt            DateTime                           @default(now())
+  publishedAt          DateTime?
+  effectiveAt          DateTime?
+  snapshotJson         Json
+
+  catalog              ArchitectureRuleCatalog           @relation("ArchitectureRuleCatalogRevisions", fields: [catalogId], references: [id], onDelete: Cascade)
+  publishedFor         ArchitectureRuleCatalog?          @relation("ArchitectureRuleCatalogPublishedRevision")
+
+  @@unique([catalogId, version])
+  @@index([catalogId, createdAt])
+  @@index([status, createdAt])
 }
 
 model LandingZoneReadinessSubmission {

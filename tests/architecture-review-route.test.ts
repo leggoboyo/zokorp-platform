@@ -212,6 +212,7 @@ describe("submit architecture review route", () => {
         paragraphInput: "Users enter through an edge layer, app services process requests, and data persists to a managed store.",
         diagramFormat: "png",
         clientPngOcrText: "edge app service data store",
+        saveForFollowUp: true,
         archiveForFollowup: true,
       }),
     );

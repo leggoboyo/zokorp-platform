@@ -37,12 +37,11 @@ export async function GET(request: Request) {
       await db.leadLog.update({
         where: { id: payload.leadId },
         data: {
-          leadStage: payload.ctaType === "book-call" ? "Call Booked" : "CTA Clicked",
+          leadStage: "CTA Clicked",
           ctaClicks: {
             increment: 1,
           },
           lastCtaClickedAt: new Date(),
-          zohoSyncNeedsUpdate: true,
         },
       });
     } catch (error) {

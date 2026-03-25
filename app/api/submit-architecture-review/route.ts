@@ -84,6 +84,10 @@ function isPngBytes(bytes: Uint8Array) {
   return signature.every((byte, index) => bytes[index] === byte);
 }
 
+function wantsFollowUpArchive(metadata: z.infer<typeof submitArchitectureReviewMetadataSchema>) {
+  return metadata.saveForFollowUp ?? metadata.archiveForFollowup ?? false;
+}
+
 async function parsePayloadFromRequest(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.includes("multipart/form-data")) {
@@ -243,7 +247,8 @@ export async function POST(request: Request) {
     }
 
     const { metadata, diagram } = await parsePayloadFromRequest(request);
-    const diagramArchiveResult = metadata.archiveForFollowup
+    const saveForFollowUp = wantsFollowUpArchive(metadata);
+    const diagramArchiveResult = saveForFollowUp
       ? await archiveArchitectureDiagramToWorkDrive({
           diagramFileName: diagram.filename,
           diagramBytes: diagram.bytes,
@@ -263,7 +268,7 @@ export async function POST(request: Request) {
       diagramMimeType: diagram.mimeType,
       workdriveDiagramFileId: diagramArchiveResult.fileId,
       workdriveUploadStatus:
-        metadata.archiveForFollowup && diagramArchiveResult.fileId
+        saveForFollowUp && diagramArchiveResult.fileId
           ? "diagram_uploaded"
           : formatWorkDriveArchiveStatus(diagramArchiveResult),
     });

@@ -172,6 +172,7 @@ export async function POST(request: Request) {
       try {
         return await db.leadLog.findMany({
           where: {
+            allowCrmFollowUp: true,
             OR: [{ syncedToZohoAt: null }, { zohoSyncNeedsUpdate: true }],
           },
           orderBy: { createdAt: "asc" },

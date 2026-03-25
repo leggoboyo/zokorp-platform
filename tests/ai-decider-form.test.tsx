@@ -95,7 +95,7 @@ describe("AiDeciderForm", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/your analysis has been emailed/i)).toBeTruthy();
+      expect(screen.getByText(/your estimate memo has been emailed/i)).toBeTruthy();
     });
 
     expect(

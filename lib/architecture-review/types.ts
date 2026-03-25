@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { quoteLineItemSchema } from "@/lib/quote-line-items";
+import { toolConsentSchema } from "@/lib/tool-consent";
 
 export const ARCHITECTURE_REVIEW_VERSION = "1.0" as const;
 
@@ -52,6 +53,12 @@ export const architectureEngagementPreferenceSchema = z.enum([
 ]);
 export type ArchitectureEngagementPreference = z.infer<typeof architectureEngagementPreferenceSchema>;
 
+export const architectureRuleCatalogPricingModeSchema = z.enum(["DERIVED", "OVERRIDE"]);
+export type ArchitectureRuleCatalogPricingMode = z.infer<typeof architectureRuleCatalogPricingModeSchema>;
+
+export const architectureRuleCatalogReviewStatusSchema = z.enum(["UNREVIEWED", "DRAFT", "PUBLISHED", "STALE"]);
+export type ArchitectureRuleCatalogReviewStatus = z.infer<typeof architectureRuleCatalogReviewStatusSchema>;
+
 export const architectureFindingSchema = z.object({
   ruleId: z.string().trim().min(1).max(80),
   category: architectureCategorySchema,
@@ -88,6 +95,28 @@ export const architectureReviewReportSchema = z.object({
 });
 export type ArchitectureReviewReport = z.infer<typeof architectureReviewReportSchema>;
 
+export const architectureEstimateLineItemSchema = z.object({
+  ruleId: z.string().trim().min(1).max(80),
+  category: architectureCategorySchema,
+  pointsDeducted: z.number().int().min(0).max(100),
+  serviceLineLabel: z.string().trim().min(1).max(160),
+  publicFixSummary: z.string().trim().min(1).max(240),
+  amountUsd: z.number().int().min(0),
+  source: z.enum(["published", "fallback"]),
+  publishedRevisionId: z.string().cuid().nullable().optional(),
+});
+export type ArchitectureEstimateLineItem = z.infer<typeof architectureEstimateLineItemSchema>;
+
+export const architectureEstimateSnapshotSchema = z.object({
+  referenceCode: z.string().trim().min(1).max(40),
+  bookingUrl: z.string().trim().url(),
+  totalUsd: z.number().int().min(0),
+  lineItems: z.array(architectureEstimateLineItemSchema).max(20),
+  assumptions: z.array(z.string().trim().min(1).max(220)).min(1).max(6),
+  exclusions: z.array(z.string().trim().min(1).max(220)).min(1).max(6),
+});
+export type ArchitectureEstimateSnapshot = z.infer<typeof architectureEstimateSnapshotSchema>;
+
 export const architectureSubmissionContextSchema = z.object({
   utmSource: z.string().trim().max(120).optional(),
   utmMedium: z.string().trim().max(120).optional(),
@@ -114,6 +143,8 @@ const architectureSvgDimensionsSchema = z.object({
 export const architectureReviewMetadataSchema = z.object({
   diagramFormat: architectureDiagramFormatSchema.optional(),
   archiveForFollowup: z.boolean().optional(),
+  saveForFollowUp: toolConsentSchema.shape.saveForFollowUp.optional(),
+  allowCrmFollowUp: toolConsentSchema.shape.allowCrmFollowUp.optional(),
   title: z.string().trim().max(160).optional(),
   owner: z.string().trim().max(160).optional(),
   lastUpdated: z.string().trim().max(60).optional(),

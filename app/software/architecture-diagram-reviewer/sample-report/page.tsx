@@ -135,8 +135,8 @@ export default function ArchitectureReviewerSampleReportPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">How ZoKorp handles the next step</p>
         <div className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
           <p>The free report points out the likely issues and recommends the next paid step.</p>
-          <p>The diagnostic call stays fixed and lightweight. Larger delivery work is only quoted when the evidence is clear enough and the scope is actually safe for a solo operator to commit to.</p>
-          <p>Regulated or complex environments move toward manual scoping rather than an auto-approved implementation quote.</p>
+          <p>The diagnostic call stays fixed and lightweight. Larger delivery work is only estimated when the evidence is clear enough and the scope is actually safe for a solo operator to commit to.</p>
+          <p>Regulated or complex environments move toward manual scoping rather than an auto-approved implementation estimate.</p>
         </div>
       </section>
 

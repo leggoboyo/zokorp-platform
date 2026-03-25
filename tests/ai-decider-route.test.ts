@@ -1,22 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  submissionCreate: vi.fn(),
-  submissionUpdate: vi.fn(),
   auditCreate: vi.fn(),
   sendToolResultEmail: vi.fn(),
   upsertZohoLead: vi.fn(),
   consumeRateLimit: vi.fn(),
   getRequestFingerprint: vi.fn(),
   requireVerifiedFreeToolAccess: vi.fn(),
+  upsertLead: vi.fn(),
+  recordLeadEvent: vi.fn(),
+  archiveToolSubmission: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   db: {
-    aiDeciderSubmission: {
-      create: mocks.submissionCreate,
-      update: mocks.submissionUpdate,
-    },
     auditLog: {
       create: mocks.auditCreate,
     },
@@ -36,6 +33,16 @@ vi.mock("@/lib/zoho-crm", () => ({
   upsertZohoLead: mocks.upsertZohoLead,
 }));
 
+vi.mock("@/lib/privacy-leads", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/privacy-leads")>("@/lib/privacy-leads");
+  return {
+    ...actual,
+    upsertLead: mocks.upsertLead,
+    recordLeadEvent: mocks.recordLeadEvent,
+    archiveToolSubmission: mocks.archiveToolSubmission,
+  };
+});
+
 vi.mock("@/lib/free-tool-access", () => ({
   requireVerifiedFreeToolAccess: mocks.requireVerifiedFreeToolAccess,
   isFreeToolAccessError: (error: unknown) => error instanceof Error && error.name === "FreeToolAccessError",
@@ -54,11 +61,32 @@ function makeRequest(body: Record<string, unknown>) {
   });
 }
 
+function validBody(overrides: Record<string, unknown> = {}) {
+  return {
+    email: "owner@acmeops.com",
+    fullName: "Jordan Rivera",
+    companyName: "Acme Ops",
+    roleTitle: "COO",
+    website: "acmeops.com",
+    narrativeInput:
+      "Our support team answers the same questions repeatedly across email and Slack. The best answers are spread across SharePoint, old docs, and a few senior reps. We want faster response times and more consistent answers for customers.",
+    answers: {
+      task_frequency: "daily",
+      process_variability: "mostly_standard",
+      data_state: "mixed_needs_cleanup",
+      impact_window: "major",
+      error_tolerance: "human_reviewed",
+      systems_count: "three_four",
+      knowledge_source: "many_conflicting",
+      decision_logic: "rules_plus_judgment",
+    },
+    ...overrides,
+  };
+}
+
 describe("submit ai decider route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.submissionCreate.mockResolvedValue({ id: "ai_123" });
-    mocks.submissionUpdate.mockResolvedValue({ id: "ai_123" });
     mocks.auditCreate.mockResolvedValue({ id: "audit_123" });
     mocks.sendToolResultEmail.mockResolvedValue({ ok: true, provider: "smtp" });
     mocks.upsertZohoLead.mockResolvedValue({ status: "not_configured", error: "ZOHO_CRM_ACCESS_TOKEN_MISSING" });
@@ -71,6 +99,9 @@ describe("submit ai decider route", () => {
       user: { id: "user_123", email: "owner@acmeops.com", emailVerified: new Date() },
       email: "owner@acmeops.com",
     });
+    mocks.upsertLead.mockResolvedValue({ id: "lead_123" });
+    mocks.recordLeadEvent.mockResolvedValue({ id: "event_123" });
+    mocks.archiveToolSubmission.mockResolvedValue({ id: "archive_123" });
   });
 
   it("rejects invalid payloads", async () => {
@@ -90,16 +121,7 @@ describe("submit ai decider route", () => {
           "content-type": "application/json",
           origin: "https://evil.example",
         },
-        body: JSON.stringify({
-          email: "owner@acmeops.com",
-          fullName: "Jordan Rivera",
-          companyName: "Acme Ops",
-          roleTitle: "COO",
-          website: "acmeops.com",
-          narrativeInput:
-            "Our support team answers the same questions repeatedly across email and Slack. The best answers are spread across SharePoint, old docs, and a few senior reps. We want faster response times and more consistent answers for customers.",
-          answers: {},
-        }),
+        body: JSON.stringify(validBody()),
       }),
     );
 
@@ -108,7 +130,7 @@ describe("submit ai decider route", () => {
       error: "Cross-site requests are not allowed.",
     });
     expect(mocks.requireVerifiedFreeToolAccess).not.toHaveBeenCalled();
-    expect(mocks.submissionCreate).not.toHaveBeenCalled();
+    expect(mocks.upsertLead).not.toHaveBeenCalled();
   });
 
   it("rejects unverified or unsigned access before storing or emailing results", async () => {
@@ -118,73 +140,78 @@ describe("submit ai decider route", () => {
     });
     mocks.requireVerifiedFreeToolAccess.mockRejectedValueOnce(error);
 
-    const response = await POST(
-      makeRequest({
-        email: "owner@acmeops.com",
-        fullName: "Jordan Rivera",
-        companyName: "Acme Ops",
-        roleTitle: "COO",
-        website: "acmeops.com",
-        narrativeInput:
-          "Our support team answers the same questions repeatedly across email and Slack. The best answers are spread across SharePoint, old docs, and a few senior reps. We want faster response times and more consistent answers for customers.",
-        answers: {
-          task_frequency: "daily",
-          process_variability: "mostly_standard",
-          data_state: "mixed_needs_cleanup",
-          impact_window: "major",
-          error_tolerance: "human_reviewed",
-          systems_count: "three_four",
-          knowledge_source: "many_conflicting",
-          decision_logic: "rules_plus_judgment",
-        },
-      }),
-    );
+    const response = await POST(makeRequest(validBody()));
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({
       error: "Sign in with your verified business email to run AI Decider.",
     });
-    expect(mocks.submissionCreate).not.toHaveBeenCalled();
+    expect(mocks.upsertLead).not.toHaveBeenCalled();
     expect(mocks.sendToolResultEmail).not.toHaveBeenCalled();
   });
 
-  it("stores the submission and returns the concise success payload for verified access", async () => {
-    const response = await POST(
-      makeRequest({
-        email: "owner@acmeops.com",
-        fullName: "Jordan Rivera",
-        companyName: "Acme Ops",
-        roleTitle: "COO",
-        website: "acmeops.com",
-        narrativeInput:
-          "Our support team answers the same questions repeatedly across email and Slack. The best answers are spread across SharePoint, old docs, and a few senior reps. We want faster response times and more consistent answers for customers.",
-        answers: {
-          task_frequency: "daily",
-          process_variability: "mostly_standard",
-          data_state: "mixed_needs_cleanup",
-          impact_window: "major",
-          error_tolerance: "human_reviewed",
-          systems_count: "three_four",
-          knowledge_source: "many_conflicting",
-          decision_logic: "rules_plus_judgment",
-        },
-      }),
-    );
+  it("stores only the lead event by default and skips CRM/archive work without consent", async () => {
+    const response = await POST(makeRequest(validBody()));
     const payload = await response.json();
 
     expect(response.status).toBe(200);
     expect(payload.status).toBe("sent");
     expect(payload.verdictLine).toBeTruthy();
-    expect(mocks.submissionCreate).toHaveBeenCalledWith(
+    expect(mocks.upsertLead).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          userId: "user_123",
-          email: "owner@acmeops.com",
+        userId: "user_123",
+        email: "owner@acmeops.com",
+      }),
+    );
+    expect(mocks.recordLeadEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leadId: "lead_123",
+        aggregate: expect.objectContaining({
           source: "ai-decider",
+          saveForFollowUp: false,
+          allowCrmFollowUp: false,
         }),
       }),
     );
+    expect(mocks.upsertZohoLead).not.toHaveBeenCalled();
+    expect(mocks.archiveToolSubmission).not.toHaveBeenCalled();
     expect(mocks.sendToolResultEmail).toHaveBeenCalledTimes(1);
     expect(mocks.auditCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("archives and syncs CRM only when explicit follow-up consent is enabled", async () => {
+    mocks.upsertZohoLead.mockResolvedValueOnce({
+      status: "success",
+      recordId: "zoho_123",
+      error: null,
+    });
+
+    const response = await POST(
+      makeRequest(
+        validBody({
+          saveForFollowUp: true,
+          allowCrmFollowUp: true,
+        }),
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.upsertZohoLead).toHaveBeenCalledTimes(1);
+    expect(mocks.archiveToolSubmission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leadId: "lead_123",
+        userId: "user_123",
+        toolName: "ai-decider",
+      }),
+    );
+    expect(mocks.recordLeadEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aggregate: expect.objectContaining({
+          saveForFollowUp: true,
+          allowCrmFollowUp: true,
+          crmSyncState: "synced",
+        }),
+      }),
+    );
   });
 });
