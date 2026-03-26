@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,8 +41,9 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
   const [isSignedIn, setIsSignedIn] = useState(signedIn);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(currentEmail);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [trackingCode, setTrackingCode] = useState<string | null>(null);
+  const [submittedRequest, setSubmittedRequest] = useState<SubmissionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -104,7 +105,7 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
     };
 
     setIsSubmitting(true);
-    setTrackingCode(null);
+    setSubmittedRequest(null);
     setError(null);
 
     try {
@@ -128,13 +129,25 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
         return;
       }
 
-      setTrackingCode(data.trackingCode ?? null);
+      setSubmittedRequest({
+        id: data.id ?? "",
+        trackingCode: data.trackingCode ?? "",
+        status: data.status ?? "SUBMITTED",
+      });
       form.reset();
     } catch {
       setError("Unexpected network error while submitting request.");
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function resetSubmissionState() {
+    setSubmittedRequest(null);
+    setError(null);
+    window.requestAnimationFrame(() => {
+      titleInputRef.current?.focus();
+    });
   }
 
   return (
@@ -171,87 +184,96 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
         </Alert>
       )}
 
-      <form onSubmit={onSubmit} className="mt-5 grid gap-4 md:grid-cols-2">
-        <label className="space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Request type</span>
-          <Select
-            name="type"
-            defaultValue="CONSULTATION"
-            required
-          >
-            {requestTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </label>
-
-        <label className="space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Preferred start date</span>
-          <Input
-            type="date"
-            name="preferredStart"
-          />
-        </label>
-
-        <label className="space-y-1 md:col-span-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Request title</span>
-          <Input
-            name="title"
-            required
-            minLength={8}
-            maxLength={120}
-            placeholder="Example: FTR readiness consultation for AI advisory offering"
-          />
-        </label>
-
-        <label className="space-y-1 md:col-span-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">What do you need?</span>
-          <Textarea
-            name="summary"
-            required
-            minLength={30}
-            maxLength={2400}
-            placeholder="Describe scope, goals, timelines, and any constraints."
-          />
-        </label>
-
-        <label className="space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Budget range</span>
-          <Select
-            name="budgetRange"
-            defaultValue="Undecided"
-          >
-            {budgetOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </Select>
-        </label>
-
-        <div className="flex items-end">
-          <Button type="submit" disabled={isSubmitting || !isSignedIn}>
-            {submitLabel}
-          </Button>
-        </div>
-      </form>
-
-      {trackingCode ? (
-        <Alert tone="success" className="mt-4">
-          Request submitted. Tracking code: <span className="font-mono font-semibold">{trackingCode}</span>. You can
-          track updates in your account.
-          <div className="mt-2">
-            <Link
-              href="/account"
-              className="text-xs font-semibold text-emerald-900 underline underline-offset-2"
-            >
+      {submittedRequest ? (
+        <Alert tone="success" className="mt-5" aria-live="polite">
+          <AlertTitle>Request recorded</AlertTitle>
+          <AlertDescription>
+            Tracking code: <span className="font-mono font-semibold">{submittedRequest.trackingCode}</span>. Your
+            request is now visible in the account timeline with the current status of{" "}
+            <span className="font-semibold">{submittedRequest.status.toLowerCase()}</span>.
+          </AlertDescription>
+          <p className="mt-2 text-sm leading-6">
+            Use your account timeline for updates. If you also book a follow-up call, that booking appears separately
+            after Calendly confirms it against the same email.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/account" className={buttonVariants({ size: "sm" })}>
               Open account timeline
             </Link>
+            <Button type="button" variant="secondary" size="sm" onClick={resetSubmissionState}>
+              Submit another request
+            </Button>
           </div>
         </Alert>
-      ) : null}
+      ) : (
+        <form onSubmit={onSubmit} className="mt-5 grid gap-4 md:grid-cols-2">
+          <label className="space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Request type</span>
+            <Select
+              name="type"
+              defaultValue="CONSULTATION"
+              required
+            >
+              {requestTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Preferred start date</span>
+            <Input
+              type="date"
+              name="preferredStart"
+            />
+          </label>
+
+          <label className="space-y-1 md:col-span-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Request title</span>
+            <Input
+              ref={titleInputRef}
+              name="title"
+              required
+              minLength={8}
+              maxLength={120}
+              placeholder="Example: FTR readiness consultation for AI advisory offering"
+            />
+          </label>
+
+          <label className="space-y-1 md:col-span-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">What do you need?</span>
+            <Textarea
+              name="summary"
+              required
+              minLength={30}
+              maxLength={2400}
+              placeholder="Describe scope, goals, timelines, and any constraints."
+            />
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Budget range</span>
+            <Select
+              name="budgetRange"
+              defaultValue="Undecided"
+            >
+              {budgetOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+          </label>
+
+          <div className="flex items-end">
+            <Button type="submit" disabled={isSubmitting || !isSignedIn}>
+              {submitLabel}
+            </Button>
+          </div>
+        </form>
+      )}
 
       {error ? <Alert tone="danger" className="mt-3">{error}</Alert> : null}
     </section>

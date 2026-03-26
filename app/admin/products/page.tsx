@@ -27,6 +27,22 @@ function accessBadgeVariant(accessModel: AccessModel): "success" | "warning" | "
   }
 }
 
+function pricingSummary(accessModel: AccessModel, priceCount: number) {
+  if (priceCount === 1) {
+    return "1 configured Stripe price";
+  }
+
+  if (priceCount > 1) {
+    return `${priceCount} configured Stripe prices`;
+  }
+
+  if (accessModel === AccessModel.FREE) {
+    return "No Stripe price required";
+  }
+
+  return "No Stripe prices attached yet";
+}
+
 export default async function AdminProductsPage() {
   await requireAdminPageAccess("/admin/products");
 
@@ -112,7 +128,7 @@ export default async function AdminProductsPage() {
                       </Badge>
                     </div>
                     <p className="text-sm text-slate-500">/{product.slug}</p>
-                    <p className="text-xs text-slate-500">{product._count.prices} configured prices</p>
+                    <p className="text-xs text-slate-500">{pricingSummary(product.accessModel, product._count.prices)}</p>
                   </div>
 
                   <form action={toggleProductActiveAction}>

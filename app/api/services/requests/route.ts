@@ -1,10 +1,10 @@
 import { ServiceRequestType } from "@prisma/client";
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
+import { jsonNoStore } from "@/lib/internal-route";
 import { requireSameOrigin } from "@/lib/request-origin";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { createServiceRequest } from "@/lib/service-requests";
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     });
 
     if (!limiter.allowed) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: "Too many submissions. Please wait a few minutes and retry." },
         {
           status: 429,
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     const parsed = requestSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid service request input." }, { status: 400 });
+      return jsonNoStore({ error: "Invalid service request input." }, { status: 400 });
     }
 
     const created = await createServiceRequest({
@@ -66,36 +66,40 @@ export async function POST(request: Request) {
       budgetRange: parsed.data.budgetRange ?? undefined,
     });
 
-    await db.auditLog.create({
-      data: {
-        userId: user.id,
-        action: "service.request_submitted",
-        metadataJson: {
-          trackingCode: created.trackingCode,
-          type: created.type,
-          title: created.title,
+    try {
+      await db.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "service.request_submitted",
+          metadataJson: {
+            trackingCode: created.trackingCode,
+            type: created.type,
+            title: created.title,
+          },
         },
-      },
-    });
+      });
+    } catch (auditError) {
+      console.error("Failed to record service request audit log", auditError);
+    }
 
-    return NextResponse.json({
+    return jsonNoStore({
       id: created.id,
       trackingCode: created.trackingCode,
       status: created.status,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonNoStore({ error: "Unauthorized" }, { status: 401 });
     }
 
     if (isSchemaDriftError(error)) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: "Service request tracking is being enabled. Please retry shortly." },
         { status: 503 },
       );
     }
 
     console.error(error);
-    return NextResponse.json({ error: "Unable to submit service request." }, { status: 500 });
+    return jsonNoStore({ error: "Unable to submit service request." }, { status: 500 });
   }
 }
