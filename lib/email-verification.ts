@@ -83,10 +83,6 @@ export async function consumeEmailVerificationToken(rawToken: string) {
   const now = new Date();
 
   const user = await db.$transaction(async (tx) => {
-    await tx.verificationToken.deleteMany({
-      where: { identifier: record.identifier },
-    });
-
     await tx.user.updateMany({
       where: {
         email,

@@ -30,16 +30,20 @@ export async function GET(request: Request) {
     const result = await consumeEmailVerificationToken(token);
 
     if (result.status === "verified") {
-      await db.auditLog.create({
-        data: {
-          userId: result.userId,
-          action: "auth.email_verified",
-          metadataJson: {
-            email: result.email,
-            role: result.role,
+      try {
+        await db.auditLog.create({
+          data: {
+            userId: result.userId,
+            action: "auth.email_verified",
+            metadataJson: {
+              email: result.email,
+              role: result.role,
+            },
           },
-        },
-      });
+        });
+      } catch (error) {
+        console.error("Failed to persist email verification audit log", error);
+      }
 
       return NextResponse.redirect(redirectUrl(origin, "/login", { verified: "1" }));
     }
