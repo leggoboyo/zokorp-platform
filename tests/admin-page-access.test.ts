@@ -1,12 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireAdminMock, redirectMock, forbiddenMock } = vi.hoisted(() => ({
+const { requireAdminMock, redirectMock } = vi.hoisted(() => ({
   requireAdminMock: vi.fn(),
   redirectMock: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`);
-  }),
-  forbiddenMock: vi.fn(() => {
-    throw new Error("FORBIDDEN_BOUNDARY");
   }),
 }));
 
@@ -16,7 +13,6 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: redirectMock,
-  forbidden: forbiddenMock,
 }));
 
 import { requireAdminPageAccess } from "@/lib/admin-page-access";
@@ -31,14 +27,14 @@ describe("requireAdminPageAccess", () => {
 
     await expect(requireAdminPageAccess("/admin/leads")).rejects.toThrow("REDIRECT:/login?callbackUrl=/admin/leads");
     expect(redirectMock).toHaveBeenCalledWith("/login?callbackUrl=/admin/leads");
-    expect(forbiddenMock).not.toHaveBeenCalled();
   });
 
-  it("raises a forbidden boundary for authenticated non-admins", async () => {
+  it("redirects authenticated non-admins to the access denied page", async () => {
     requireAdminMock.mockRejectedValue(new Error("FORBIDDEN"));
 
-    await expect(requireAdminPageAccess("/admin/leads")).rejects.toThrow("FORBIDDEN_BOUNDARY");
-    expect(forbiddenMock).toHaveBeenCalledTimes(1);
-    expect(redirectMock).not.toHaveBeenCalled();
+    await expect(requireAdminPageAccess("/admin/leads")).rejects.toThrow(
+      "REDIRECT:/access-denied?from=%2Fadmin%2Fleads",
+    );
+    expect(redirectMock).toHaveBeenCalledWith("/access-denied?from=%2Fadmin%2Fleads");
   });
 });

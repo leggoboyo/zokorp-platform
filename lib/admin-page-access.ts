@@ -1,4 +1,4 @@
-import { forbidden, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/auth";
 
@@ -11,7 +11,7 @@ export async function requireAdminPageAccess(callbackUrl: string) {
     }
 
     if (error instanceof Error && error.message === "FORBIDDEN") {
-      forbidden();
+      redirect(`/access-denied?from=${encodeURIComponent(callbackUrl)}`);
     }
 
     throw error;
