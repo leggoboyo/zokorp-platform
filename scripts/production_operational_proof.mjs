@@ -59,6 +59,35 @@ function runCommand(command, args) {
   }).trim();
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isSessionPoolError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("MaxClientsInSessionMode") || message.toLowerCase().includes("max clients reached");
+}
+
+async function withDatabaseRetry(label, fn, attempts = 5) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!isSessionPoolError(error) || attempt === attempts) {
+        throw error;
+      }
+
+      console.warn(`${label} hit session pool pressure on attempt ${attempt}/${attempts}. Retrying...`);
+      await sleep(750 * attempt);
+    }
+  }
+
+  throw lastError;
+}
+
 function pullProductionEnv() {
   const tempDir = mkdtempSync(join(tmpdir(), "zokorp-ops-proof-"));
   const pulledEnvPath = join(tempDir, "production.env");
@@ -549,7 +578,9 @@ async function main() {
 
     const proofStartedAt = new Date();
     const proofRunKey = proofStartedAt.toISOString();
-    const validatorAccess = await ensureAuditAccess(prisma, auditEnv.JOURNEY_EMAIL);
+    const validatorAccess = await withDatabaseRetry("ensureAuditAccess", () =>
+      ensureAuditAccess(prisma, auditEnv.JOURNEY_EMAIL),
+    );
     const workbookBuffer = await buildProofWorkbook();
     const validatorResult = await loginAndSubmitValidatorProof({
       baseUrl,
@@ -558,19 +589,23 @@ async function main() {
       workbookBuffer,
       proofRunKey,
     });
-    const validatorProof = await queryValidatorProof(prisma, {
-      userId: validatorAccess.userId,
-      productId: validatorAccess.productId,
-      proofStartedAt,
-      proofRunKey,
-      beforeBalance: validatorAccess.beforeBalance,
-    });
-    const bookedCallProof = await runSyntheticBookedCallProof({
-      prisma,
-      env,
-      email: auditEnv.JOURNEY_EMAIL,
-      userId: validatorAccess.userId,
-    });
+    const validatorProof = await withDatabaseRetry("queryValidatorProof", () =>
+      queryValidatorProof(prisma, {
+        userId: validatorAccess.userId,
+        productId: validatorAccess.productId,
+        proofStartedAt,
+        proofRunKey,
+        beforeBalance: validatorAccess.beforeBalance,
+      }),
+    );
+    const bookedCallProof = await withDatabaseRetry("runSyntheticBookedCallProof", () =>
+      runSyntheticBookedCallProof({
+        prisma,
+        env,
+        email: auditEnv.JOURNEY_EMAIL,
+        userId: validatorAccess.userId,
+      }),
+    );
 
     const summary = {
       checkedAt: new Date().toISOString(),
