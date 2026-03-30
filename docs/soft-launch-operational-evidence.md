@@ -39,10 +39,27 @@
 
 ## Important caveats
 - The booked-call proof is synthetic at the provider boundary. It proves linkage and operator visibility, not a human-created external Calendly booking.
-- The validator proof checks recorded email-delivery state. It is stronger than a config-only check, but it is not the same as verifying a real monitored inbox.
 - Before broad launch, the stronger external proofs are still:
   - one real founder-controlled Calendly booking observed end to end
-  - one real monitored business inbox receiving customer-facing tool output
+
+## Confirmed monitored inbox proof
+- Verified on March 30, 2026 using the real mailbox `consulting@zokorp.com`.
+- Confirmed customer-facing result email delivery:
+  - subject: `[ZoKorp] FTR validation result 56%`
+  - folder: `Inbox`
+  - displayed receive time: `6:03 PM` America/Chicago
+  - content confirmation: score/result language and consultation-only posture present
+- Confirmed auth email delivery:
+  - subject: `Reset your ZoKorp password`
+  - folder: `Inbox`
+  - displayed receive time: `6:03 PM` America/Chicago
+  - content confirmation: password-reset language and expiring-link warning present
+- App-side audit evidence also confirmed:
+  - validator run recorded `deliveryStatus: sent`
+  - password reset request recorded `deliveryOk: true`
+
+## Remaining external proof
+- The main external proof still missing before a stronger soft-launch claim is one real founder-controlled Calendly booking from `/services`, with the resulting ingestion artifact confirmed in ZoKorp records.
 
 ## Last verified state
-- This repo now carries the automation needed to produce repeatable soft-launch evidence without relying on memory or one-off manual screenshots.
+- This repo now carries repeatable CLI evidence for provider health, signed-in browser flow, validator credit consumption, internal booked-call ingest verification, and confirmed monitored inbox delivery.
