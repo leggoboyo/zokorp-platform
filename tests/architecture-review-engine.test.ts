@@ -7,10 +7,10 @@ import {
 } from "@/lib/architecture-review/engine";
 
 describe("architecture deterministic engine", () => {
-  it("extracts provider-relevant service tokens from OCR text", () => {
+  it("extracts AWS service tokens from OCR text", () => {
     const tokens = extractServiceTokens(
       "aws",
-      "API Gateway routes requests to Lambda and stores output in DynamoDB. CloudWatch monitors latency.",
+      "API Gateway routes requests to Lambda and stores output in DynamoDB while CloudWatch tracks latency.",
     );
 
     expect(tokens).toContain("api gateway");
@@ -19,33 +19,11 @@ describe("architecture deterministic engine", () => {
     expect(tokens).toContain("cloudwatch");
   });
 
-  it("adds deductions when metadata and core pillars are missing", () => {
-    const findings = buildDeterministicReviewFindings({
-      provider: "azure",
-      paragraph: "Traffic enters app service then writes to SQL.",
-      ocrText: "app service sql database", // intentionally sparse controls
-      serviceTokens: ["app service", "sql database", "azure monitor", "key vault"],
-      metadata: {
-        title: "",
-        owner: "",
-        lastUpdated: "",
-        version: "",
-        legend: "",
-      },
-    });
-
-    expect(findings.some((finding) => finding.ruleId === "MSFT-META-TITLE")).toBe(true);
-    expect(findings.some((finding) => finding.ruleId === "PILLAR-SECURITY")).toBe(true);
-    expect(findings.some((finding) => finding.ruleId === "PILLAR-RELIABILITY")).toBe(true);
-  });
-
-  it("flags non-architecture screenshots and lowers narrative confidence", () => {
+  it("routes non-architecture uploads into the consultation-only contradiction path", () => {
     const findings = buildDeterministicReviewFindings({
       provider: "aws",
-      paragraph:
-        "Clients call HTTPS through a load balancer. The service tier orchestrates downstream calls and stores state.",
-      ocrText:
-        "Expanded Tradeline List Total Unsecured Debt $42,200 Balance Utilization Account number JPMCB CARD",
+      paragraph: "Clients call HTTPS through a load balancer and the service stores state.",
+      ocrText: "Expanded Tradeline List Total Unsecured Debt $42,200 Balance Utilization Account number JPMCB CARD",
       serviceTokens: [],
       metadata: {
         title: "Payments API",
@@ -56,14 +34,19 @@ describe("architecture deterministic engine", () => {
       },
     });
 
-    expect(findings.some((finding) => finding.ruleId === "INPUT-NOT-ARCH-DIAGRAM")).toBe(true);
+    expect(findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleId: "diagram_narrative_core_component_mismatch",
+          pointsDeducted: 5,
+        }),
+      ]),
+    );
 
     const narrative = buildDeterministicNarrative({
       provider: "aws",
-      paragraph:
-        "Clients call HTTPS through a load balancer. The service tier orchestrates downstream calls and stores state.",
-      ocrText:
-        "Expanded Tradeline List Total Unsecured Debt $42,200 Balance Utilization Account number JPMCB CARD",
+      paragraph: "Clients call HTTPS through a load balancer and the service stores state.",
+      ocrText: "Expanded Tradeline List Total Unsecured Debt $42,200 Balance Utilization Account number JPMCB CARD",
       serviceTokens: [],
       metadata: {
         title: "Payments API",
@@ -74,14 +57,67 @@ describe("architecture deterministic engine", () => {
       },
     });
 
-    expect(narrative.toLowerCase()).toContain("non-architecture content");
+    expect(narrative.toLowerCase()).toContain("could not trust");
+    expect(narrative.toLowerCase()).toContain("architecture diagram");
   });
 
-  it("penalizes low-signal paragraphs and avoids echoing gibberish in narrative", () => {
+  it("flags explicit blocker-grade AWS anti-patterns", () => {
+    const findings = buildDeterministicReviewFindings({
+      provider: "aws",
+      paragraph:
+        "Production web traffic uses HTTP only through an ALB. The app runs on a single EC2 instance, RDS is in a public subnet, backups do not exist, and SSH 0.0.0.0/0 is allowed.",
+      ocrText: "ALB EC2 RDS public subnet SSH 0.0.0.0/0 no backups single instance",
+      serviceTokens: ["alb", "ec2", "rds"],
+      metadata: {
+        title: "Legacy web app",
+        owner: "Platform",
+        lastUpdated: "2026-03-06",
+        version: "v1.0",
+        legend: "",
+        environment: "prod",
+      },
+    });
+
+    expect(findings.map((finding) => finding.ruleId)).toEqual(
+      expect.arrayContaining([
+        "internet_facing_endpoint_without_tls",
+        "public_database_exposure",
+        "unrestricted_admin_ports_from_internet",
+        "single_instance_production_compute",
+        "no_backup_strategy_for_stateful_data",
+      ]),
+    );
+  });
+
+  it("does not deduct explicit good AWS baseline controls", () => {
+    const findings = buildDeterministicReviewFindings({
+      provider: "aws",
+      paragraph:
+        "Production traffic enters CloudFront and an ALB over HTTPS/TLS with ACM. Compute runs across multiple AZs behind an Auto Scaling Group. RDS is Multi-AZ and encrypted at rest with KMS. CloudTrail is multi-region, logs go to CloudWatch Logs, alarms notify via SNS, and secrets live in Secrets Manager.",
+      ocrText: "CloudFront ALB HTTPS TLS ACM Auto Scaling Group RDS Multi-AZ KMS CloudTrail CloudWatch Logs SNS Secrets Manager",
+      serviceTokens: ["cloudfront", "alb", "rds", "cloudtrail", "cloudwatch", "secrets manager"],
+      metadata: {
+        title: "Production API",
+        owner: "Platform",
+        lastUpdated: "2026-03-06",
+        version: "v1.0",
+        legend: "",
+        environment: "prod",
+      },
+    });
+
+    expect(findings.some((finding) => finding.ruleId === "internet_facing_endpoint_without_tls")).toBe(false);
+    expect(findings.some((finding) => finding.ruleId === "single_instance_production_compute")).toBe(false);
+    expect(findings.some((finding) => finding.ruleId === "single_az_database_for_production")).toBe(false);
+    expect(findings.some((finding) => finding.ruleId === "secrets_management_centralized")).toBe(false);
+    expect(findings.some((finding) => finding.ruleId === "cloudtrail_multi_region_enabled")).toBe(false);
+  });
+
+  it("uses a low-signal narrative fallback instead of echoing gibberish", () => {
     const bundle = {
       provider: "aws" as const,
       paragraph: "rfejiogfje",
-      ocrText: "CloudFront routes static requests to S3 and ALB forwards API calls to EC2.",
+      ocrText: "CloudFront routes static requests to S3 and ALB forwards API calls to EC2 in production.",
       serviceTokens: ["cloudfront", "s3", "alb", "ec2"],
       metadata: {
         title: "Edge + API Architecture",
@@ -92,56 +128,8 @@ describe("architecture deterministic engine", () => {
       },
     };
 
-    const findings = buildDeterministicReviewFindings(bundle);
-    expect(findings.some((finding) => finding.ruleId === "INPUT-PARAGRAPH-QUALITY")).toBe(true);
-
     const narrative = buildDeterministicNarrative(bundle);
-    expect(narrative).toContain("low-signal");
+    expect(narrative.toLowerCase()).toContain("low-signal");
     expect(narrative).not.toContain("rfejiogfje");
-  });
-
-  it("accepts OCR directionality signals when paragraph is sparse", () => {
-    const findings = buildDeterministicReviewFindings({
-      provider: "aws",
-      paragraph: "System overview only.",
-      ocrText: "Users -> CloudFront -> ALB -> API service -> RDS",
-      serviceTokens: ["cloudfront", "alb", "api", "rds"],
-      metadata: {
-        title: "Architecture",
-        owner: "Platform",
-        lastUpdated: "2026-03-06",
-        version: "v1.0",
-        legend: "",
-      },
-    });
-
-    expect(findings.some((finding) => finding.ruleId === "MSFT-FLOW-DIRECTION")).toBe(false);
-  });
-
-  it("flags provider mismatch, stale metadata, and missing stateful reliability controls", () => {
-    const findings = buildDeterministicReviewFindings({
-      provider: "aws",
-      paragraph: "Architecture overview for production integration.",
-      ocrText: "Azure Front Door routes to App Service inside VNet with SQL Database.",
-      serviceTokens: ["database", "storage"],
-      metadata: {
-        title: "Payments architecture",
-        owner: "Platform",
-        lastUpdated: "2024-01-01",
-        version: "v1.0",
-        legend: "",
-        regulatoryScope: "soc2",
-        workloadCriticality: "mission-critical",
-        environment: "prod",
-        lifecycleStage: "production",
-        desiredEngagement: "hands-on-remediation",
-      },
-    });
-
-    expect(findings.some((finding) => finding.ruleId === "AWS-PROVIDER-MISMATCH")).toBe(true);
-    expect(findings.some((finding) => finding.ruleId === "CLAR-STALE-DIAGRAM")).toBe(true);
-    expect(findings.some((finding) => finding.ruleId === "REL-RTO-RPO-MISSING")).toBe(true);
-    expect(findings.some((finding) => finding.ruleId === "REL-BACKUP-RESTORE")).toBe(true);
-    expect(findings.some((finding) => finding.ruleId === "SEC-BASELINE-MISSING")).toBe(true);
   });
 });

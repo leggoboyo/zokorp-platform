@@ -1,23 +1,55 @@
-import type { ArchitectureEvidenceBundle, ArchitectureFindingDraft, ArchitectureProvider } from "@/lib/architecture-review/types";
+import { getAwsArchitectureLaunchV1Rule } from "@/lib/architecture-review/aws-launch-v1-catalog";
+import type { ArchitectureEvidenceBundle, ArchitectureFindingDraft } from "@/lib/architecture-review/types";
 
-function escapeRegExp(input: string) {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+type RuleOutcome = "pass" | "partial" | "fail" | "na";
 
-function includesTerm(text: string, term: string) {
-  if (!term.trim()) {
-    return false;
-  }
+type RuleDecision = {
+  outcome: RuleOutcome;
+  evidence: string;
+};
 
-  if (/\s/.test(term) || term.includes("-") || term.includes("/")) {
-    return text.includes(term);
-  }
+const NON_ARCHITECTURE_OCR_TERMS = [
+  "tradeline",
+  "debt",
+  "creditor",
+  "billing",
+  "balance",
+  "account number",
+  "invoice",
+  "subtotal",
+  "interest charge",
+  "fico",
+  "credit score",
+];
 
-  const pattern = new RegExp(`\\b${escapeRegExp(term)}\\b`, "i");
-  return pattern.test(text);
-}
+const ARCHITECTURE_HINT_TERMS = [
+  "architecture",
+  "diagram",
+  "service",
+  "api",
+  "gateway",
+  "load balancer",
+  "database",
+  "subnet",
+  "vpc",
+  "cluster",
+  "queue",
+];
 
-const PROVIDER_TOKENS: Record<ArchitectureProvider, string[]> = {
+const NON_AWS_PROVIDER_TERMS = [
+  "azure",
+  "entra",
+  "aks",
+  "front door",
+  "application gateway",
+  "gcp",
+  "cloud run",
+  "gke",
+  "cloud sql",
+  "cloud armor",
+];
+
+const PROVIDER_TOKENS = {
   aws: [
     "api gateway",
     "lambda",
@@ -26,7 +58,7 @@ const PROVIDER_TOKENS: Record<ArchitectureProvider, string[]> = {
     "ecs",
     "fargate",
     "alb",
-    "nlb",
+    "application load balancer",
     "route 53",
     "cloudfront",
     "rds",
@@ -38,7 +70,7 @@ const PROVIDER_TOKENS: Record<ArchitectureProvider, string[]> = {
     "eventbridge",
     "step functions",
     "cloudwatch",
-    "x-ray",
+    "cloudtrail",
     "iam",
     "kms",
     "waf",
@@ -51,7 +83,6 @@ const PROVIDER_TOKENS: Record<ArchitectureProvider, string[]> = {
     "app service",
     "functions",
     "aks",
-    "vm scale set",
     "virtual machine",
     "entra",
     "azure ad",
@@ -60,15 +91,11 @@ const PROVIDER_TOKENS: Record<ArchitectureProvider, string[]> = {
     "storage account",
     "service bus",
     "event hub",
-    "event grid",
     "logic app",
     "cosmos db",
     "sql database",
     "azure monitor",
     "log analytics",
-    "application insights",
-    "traffic manager",
-    "private endpoint",
     "vnet",
     "nsg",
   ],
@@ -81,12 +108,9 @@ const PROVIDER_TOKENS: Record<ArchitectureProvider, string[]> = {
     "cloud armor",
     "cloud cdn",
     "cloud storage",
-    "bigquery",
     "spanner",
     "cloud sql",
     "pub/sub",
-    "cloud tasks",
-    "dataflow",
     "cloud functions",
     "workflows",
     "cloud monitoring",
@@ -96,866 +120,755 @@ const PROVIDER_TOKENS: Record<ArchitectureProvider, string[]> = {
     "secret manager",
     "vpc",
     "iap",
-    "filestore",
   ],
-};
+} as const;
 
-const GENERIC_TOKENS = [
-  "load balancer",
-  "cache",
-  "database",
-  "queue",
-  "stream",
-  "cdn",
-  "firewall",
-  "waf",
-  "backup",
-  "replica",
-  "monitoring",
-  "logging",
-  "runbook",
-  "dr",
-  "disaster recovery",
-  "autoscale",
-  "encryption",
-  "iam",
-  "auth",
-  "api",
-  "gateway",
-  "worker",
-  "scheduler",
-];
-
-const NON_ARCHITECTURE_OCR_TERMS = [
-  "tradeline",
-  "tradelines",
-  "debt",
-  "unsecured debt",
-  "creditor",
-  "utilization",
-  "account number",
-  "statement",
-  "billing",
-  "balance",
-  "loan",
-  "card",
-  "apr",
-  "minimum payment",
-  "payment due",
-  "invoice",
-  "subtotal",
-  "interest charge",
-  "fico",
-  "credit score",
-];
-
-const ARCHITECTURE_OCR_TERMS = [
-  "architecture",
-  "diagram",
-  "service",
-  "api",
-  "gateway",
-  "ingress",
-  "egress",
-  "queue",
-  "topic",
-  "database",
-  "cache",
-  "vpc",
-  "subnet",
-  "firewall",
-  "cdn",
-  "load balancer",
-  "kubernetes",
-  "cluster",
-  "pod",
-  "microservice",
-];
-
-const OFFICIAL_REFERENCE_TERMS = [
-  "microsoft azure",
-  "amazon web services",
-  "aws reference architecture",
-  "azure architecture center",
-  "cloud architecture center",
-  "learn.microsoft.com",
-  "aws architecture icons",
-  "google cloud architecture framework",
-  "reference architecture",
-  "example architecture",
-];
-
-const PILLAR_KEYWORDS: Record<ArchitectureProvider, Record<string, string[]>> = {
-  aws: {
-    security: ["iam", "least privilege", "kms", "encryption", "waf", "auth", "secret"],
-    reliability: ["multi-az", "multi az", "dr", "disaster recovery", "failover", "backup", "rto", "rpo"],
-    operations: ["cloudwatch", "monitor", "logging", "alert", "runbook", "incident", "trace"],
-    performance: ["cache", "cdn", "autoscale", "latency", "throughput", "load balancer"],
-    cost: ["rightsiz", "cost", "budget", "autoscale", "reserved", "spot", "finops"],
-    sustainability: ["sustainability", "carbon", "energy", "efficiency"],
+const SERVICE_FAMILIES = [
+  {
+    family: "edge",
+    variants: [
+      { id: "cloudfront", terms: ["cloudfront"] },
+      { id: "api-gateway", terms: ["api gateway"] },
+      { id: "alb", terms: ["application load balancer", "alb"] },
+    ],
   },
-  azure: {
-    security: ["entra", "azure ad", "rbac", "managed identity", "key vault", "encryption", "auth"],
-    reliability: ["availability zone", "paired region", "dr", "backup", "replica", "failover", "rto", "rpo"],
-    operations: ["azure monitor", "log analytics", "application insights", "monitor", "alert", "runbook"],
-    performance: ["cache", "cdn", "autoscale", "latency", "throughput", "front door"],
-    cost: ["cost", "budget", "rightsiz", "autoscale", "reserved", "finops"],
-    sustainability: ["sustainability", "carbon", "energy", "efficiency"],
+  {
+    family: "compute",
+    variants: [
+      { id: "lambda", terms: ["lambda"] },
+      { id: "ec2", terms: ["ec2"] },
+      { id: "ecs-fargate", terms: ["ecs", "fargate"] },
+      { id: "eks", terms: ["eks", "kubernetes"] },
+    ],
   },
-  gcp: {
-    security: ["iam", "service account", "cloud kms", "secret manager", "encryption", "auth", "iap"],
-    reliability: ["multi-region", "zone", "dr", "backup", "failover", "replica", "rto", "rpo"],
-    operations: ["cloud monitoring", "cloud logging", "monitor", "alert", "runbook", "incident", "trace"],
-    performance: ["cache", "cdn", "autoscale", "latency", "throughput", "load balancing"],
-    cost: ["cost", "budget", "rightsiz", "autoscale", "committed use", "finops"],
-    sustainability: ["sustainability", "carbon", "energy", "efficiency"],
+  {
+    family: "data",
+    variants: [
+      { id: "rds-aurora", terms: ["rds", "aurora"] },
+      { id: "dynamodb", terms: ["dynamodb"] },
+      { id: "s3", terms: ["s3", "bucket"] },
+      { id: "redis", terms: ["redis", "elasticache"] },
+    ],
   },
-};
+] as const;
 
-const PROVIDER_SIGNAL_TOKENS: Record<ArchitectureProvider, string[]> = {
-  aws: ["ec2", "lambda", "cloudfront", "route 53", "iam", "vpc", "rds", "dynamodb", "s3", "cloudwatch"],
-  azure: [
-    "entra",
-    "azure ad",
-    "vnet",
-    "app service",
-    "key vault",
-    "log analytics",
-    "application gateway",
-    "front door",
-    "sql database",
-  ],
-  gcp: [
-    "cloud run",
-    "gke",
-    "cloud sql",
-    "cloud storage",
-    "cloud armor",
-    "iap",
-    "pub/sub",
-    "bigquery",
-    "spanner",
-  ],
-};
+function escapeRegExp(input: string) {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
-const STATEFUL_SERVICE_HINTS = [
-  "database",
-  "rds",
-  "aurora",
-  "dynamodb",
-  "sql",
-  "cosmos db",
-  "spanner",
-  "cloud sql",
-  "storage",
-  "s3",
-  "cloud storage",
-  "bigquery",
-  "filestore",
-];
+function includesTerm(text: string, term: string) {
+  const normalizedTerm = term.trim().toLowerCase();
+  if (!normalizedTerm) {
+    return false;
+  }
+
+  if (/\s/.test(normalizedTerm) || normalizedTerm.includes("-") || normalizedTerm.includes("/")) {
+    return text.includes(normalizedTerm);
+  }
+
+  return new RegExp(`\\b${escapeRegExp(normalizedTerm)}\\b`, "i").test(text);
+}
+
+function includesAny(text: string, terms: string[]) {
+  return terms.some((term) => includesTerm(text, term));
+}
+
+function countMentions(text: string, terms: string[]) {
+  return terms.filter((term) => includesTerm(text, term)).length;
+}
 
 function compressWhitespace(input: string) {
   return input.replace(/\s+/g, " ").trim();
 }
 
-function providerMismatchRuleId(provider: ArchitectureProvider) {
-  if (provider === "aws") {
-    return "AWS-PROVIDER-MISMATCH";
-  }
-
-  if (provider === "azure") {
-    return "AZURE-PROVIDER-MISMATCH";
-  }
-
-  return "GCP-PROVIDER-MISMATCH";
-}
-
 function isLowSignalParagraph(text: string) {
-  const words = text
-    .toLowerCase()
-    .split(/\s+/)
-    .map((word) => word.replace(/[^a-z0-9-]/g, ""))
-    .filter(Boolean);
-
-  if (words.length < 8) {
+  const normalized = compressWhitespace(text).toLowerCase();
+  if (normalized.length < 20) {
     return true;
   }
 
-  const alphaWords = words.filter((word) => /[a-z]/.test(word));
-  if (alphaWords.length < 6) {
-    return true;
-  }
+  const usefulTerms = countMentions(normalized, [
+    "api",
+    "service",
+    "database",
+    "queue",
+    "event",
+    "request",
+    "response",
+    "stores",
+    "writes",
+    "reads",
+    "subnet",
+    "vpc",
+    "cloudfront",
+    "alb",
+    "lambda",
+    "rds",
+  ]);
 
-  const vowelHeavyRatio =
-    alphaWords.filter((word) => /[aeiou]/.test(word)).length / Math.max(1, alphaWords.length);
-  return vowelHeavyRatio < 0.45;
+  return usefulTerms < 2;
 }
 
-function detectInputTypeSignals(bundle: ArchitectureEvidenceBundle) {
-  const normalizedOcr = bundle.ocrText.toLowerCase();
-  const normalizedParagraph = bundle.paragraph.toLowerCase();
-  const nonArchitectureHits = NON_ARCHITECTURE_OCR_TERMS.filter((term) => includesTerm(normalizedOcr, term)).length;
-  const architectureHits =
-    ARCHITECTURE_OCR_TERMS.filter((term) => includesTerm(normalizedOcr, term)).length +
-    Math.min(6, bundle.serviceTokens.length);
-  const architectureInParagraph = ARCHITECTURE_OCR_TERMS.filter((term) => includesTerm(normalizedParagraph, term)).length;
-  const hasCurrencyValues = /\$ ?\d/.test(bundle.ocrText);
+function truncate(input: string, maxLength: number) {
+  const normalized = compressWhitespace(input);
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
 
-  const likelyNonArchitecture =
-    nonArchitectureHits >= 3 &&
-    architectureHits <= 4 &&
-    (hasCurrencyValues || architectureInParagraph >= 2 || bundle.serviceTokens.length === 0);
+  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
 
-  const highConfidenceNonArchitecture =
-    nonArchitectureHits >= 5 &&
-    architectureHits <= 3 &&
-    (hasCurrencyValues || normalizedOcr.includes("account number"));
+function extractAwsRegions(text: string) {
+  return new Set(text.match(/\b[a-z]{2}-[a-z]+-\d\b/g) ?? []);
+}
 
-  const uncertainNonArchitecture =
-    !highConfidenceNonArchitecture &&
-    nonArchitectureHits >= 2 &&
-    architectureHits <= 5 &&
-    (hasCurrencyValues || architectureInParagraph >= 1);
+function detectInputMismatch(paragraph: string, ocr: string) {
+  const nonArchitectureHits = countMentions(ocr, NON_ARCHITECTURE_OCR_TERMS);
+  const architectureHits = countMentions(ocr, ARCHITECTURE_HINT_TERMS);
+  const nonAwsHits = countMentions(`${paragraph} ${ocr}`, NON_AWS_PROVIDER_TERMS);
 
-  return {
-    likelyNonArchitecture,
-    highConfidenceNonArchitecture,
-    uncertainNonArchitecture,
-    nonArchitectureHits,
-    architectureHits,
-    hasCurrencyValues,
-  };
+  if (nonAwsHits >= 2 && architectureHits <= 2) {
+    return "The uploaded content references non-AWS platform terms, which makes this AWS-only launch reviewer unreliable for the current submission.";
+  }
+
+  if (nonArchitectureHits >= 3 && architectureHits <= 2) {
+    return "The uploaded file looks more like a billing/statement artifact than an AWS architecture diagram.";
+  }
+
+  return null;
 }
 
 export function detectNonArchitectureEvidence(bundle: ArchitectureEvidenceBundle) {
-  const signals = detectInputTypeSignals(bundle);
+  const paragraph = compressWhitespace(bundle.paragraph).toLowerCase();
+  const ocr = compressWhitespace(bundle.ocrText).toLowerCase();
+  const nonArchitectureHits = countMentions(ocr, NON_ARCHITECTURE_OCR_TERMS);
+  const architectureHits = countMentions(ocr, ARCHITECTURE_HINT_TERMS);
+  const nonAwsHits = countMentions(`${paragraph} ${ocr}`, NON_AWS_PROVIDER_TERMS);
+  const mismatchReason = detectInputMismatch(paragraph, ocr);
 
-  if (signals.highConfidenceNonArchitecture) {
+  if (mismatchReason && nonArchitectureHits >= 3 && architectureHits <= 2) {
     return {
       likely: true,
       confidence: "high" as const,
-      reason: `OCR matched ${signals.nonArchitectureHits} non-architecture terms and only ${signals.architectureHits} architecture indicators.`,
+      reason: mismatchReason,
     };
   }
 
-  if (signals.uncertainNonArchitecture || signals.likelyNonArchitecture) {
+  if (mismatchReason || nonAwsHits >= 2) {
     return {
       likely: true,
       confidence: "medium" as const,
-      reason: `OCR matched mixed signals (${signals.nonArchitectureHits} non-architecture vs ${signals.architectureHits} architecture indicators).`,
+      reason:
+        mismatchReason ??
+        "The uploaded file references non-AWS platform terms, so this AWS-only launch reviewer may misread the submission.",
     };
   }
 
   return {
     likely: false,
     confidence: "low" as const,
-    reason: `OCR matched ${signals.architectureHits} architecture indicators.`,
+    reason: "No strong non-architecture evidence was detected.",
   };
 }
 
-export function extractServiceTokens(provider: ArchitectureProvider, text: string) {
-  const source = compressWhitespace(text.toLowerCase());
-  const tokens = [...PROVIDER_TOKENS[provider], ...GENERIC_TOKENS];
+function detectFamilyChoices(text: string) {
+  return SERVICE_FAMILIES.map((entry) => {
+    const matches = entry.variants
+      .filter((variant) => variant.terms.some((term) => includesTerm(text, term)))
+      .map((variant) => variant.id);
+
+    return {
+      family: entry.family,
+      matches,
+    };
+  });
+}
+
+function detectCoreComponentMismatch(paragraph: string, ocr: string) {
+  const paragraphChoices = detectFamilyChoices(paragraph);
+  const ocrChoices = detectFamilyChoices(ocr);
+
+  for (const family of SERVICE_FAMILIES) {
+    const fromParagraph = paragraphChoices.find((entry) => entry.family === family.family)?.matches ?? [];
+    const fromOcr = ocrChoices.find((entry) => entry.family === family.family)?.matches ?? [];
+
+    if (fromParagraph.length === 0 || fromOcr.length === 0) {
+      continue;
+    }
+
+    const overlap = fromParagraph.some((value) => fromOcr.includes(value));
+    if (!overlap) {
+      return `The written narrative and diagram disagree on the ${family.family} layer (${fromParagraph.join(", ")} vs ${fromOcr.join(", ")}).`;
+    }
+  }
+
+  return null;
+}
+
+export function extractServiceTokens(provider: ArchitectureEvidenceBundle["provider"], source: string) {
+  const normalized = compressWhitespace(source).toLowerCase();
   const matched = new Set<string>();
 
-  for (const token of tokens) {
-    if (includesTerm(source, token.toLowerCase())) {
+  for (const token of PROVIDER_TOKENS[provider]) {
+    if (includesTerm(normalized, token)) {
       matched.add(token);
     }
   }
 
-  return [...matched].sort((a, b) => a.localeCompare(b));
+  return [...matched].sort((left, right) => left.localeCompare(right));
 }
 
-function countMentionedTokensInParagraph(tokens: string[], paragraph: string) {
-  const normalized = paragraph.toLowerCase();
-  return tokens.filter((token) => includesTerm(normalized, token.toLowerCase())).length;
-}
-
-function detectProviderSignalCounts(text: string) {
-  const normalized = text.toLowerCase();
-  return {
-    aws: PROVIDER_SIGNAL_TOKENS.aws.filter((token) => includesTerm(normalized, token)).length,
-    azure: PROVIDER_SIGNAL_TOKENS.azure.filter((token) => includesTerm(normalized, token)).length,
-    gcp: PROVIDER_SIGNAL_TOKENS.gcp.filter((token) => includesTerm(normalized, token)).length,
-  };
-}
-
-function hasDirectionality(text: string) {
-  const directionTerms = [
-    "->",
-    "flow",
-    "routes to",
-    "sends",
-    "receives",
-    "publishes",
-    "subscribes",
-    "calls",
-    "request",
-    "response",
-    "ingests",
-    "writes to",
-    "reads from",
-    "async",
-    "sync",
-  ];
-
-  const normalized = text.toLowerCase();
-  return directionTerms.some((term) => normalized.includes(term));
-}
-
-function isDetailedParagraph(text: string) {
-  const normalized = text.trim();
-  if (normalized.length >= 280) {
-    return true;
-  }
-
-  const directionalMatches = normalized.match(/\b(sends|reads|writes|routes|publishes|subscribes|stores|calls)\b/gi) ?? [];
-  return directionalMatches.length >= 3;
-}
-
-function collectArrowSemantics(text: string) {
-  const semantics: Array<{ id: string; terms: string[] }> = [
-    { id: "async", terms: ["async", "asynchronous"] },
-    { id: "sync", terms: ["sync", "synchronous"] },
-    { id: "batch", terms: ["batch", "nightly"] },
-    { id: "stream", terms: ["stream", "streaming"] },
-    { id: "event", terms: ["event", "pub/sub", "publish", "subscribe"] },
-  ];
-
-  const normalized = text.toLowerCase();
-  return semantics
-    .filter((entry) => entry.terms.some((term) => normalized.includes(term)))
-    .map((entry) => entry.id);
-}
-
-function hasStatefulSignals(bundle: ArchitectureEvidenceBundle) {
-  const normalizedTokens = bundle.serviceTokens.map((token) => token.toLowerCase());
-  if (normalizedTokens.some((token) => STATEFUL_SERVICE_HINTS.some((hint) => token.includes(hint)))) {
-    return true;
-  }
-
-  const normalizedText = `${bundle.paragraph}\n${bundle.ocrText}`.toLowerCase();
-  return STATEFUL_SERVICE_HINTS.some((hint) => includesTerm(normalizedText, hint));
-}
-
-function monthsSinceIsoDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
+function buildFinding(ruleId: string, outcome: Exclude<RuleOutcome, "pass" | "na">, evidence: string): ArchitectureFindingDraft | null {
+  const rule = getAwsArchitectureLaunchV1Rule(ruleId);
+  if (!rule) {
     return null;
   }
 
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  if (diffMs < 0) {
-    return 0;
-  }
+  const pointsDeducted =
+    outcome === "fail" ? rule.scoreWeight : Math.max(1, rule.scoreWeight - rule.maxPartialCredit);
 
-  return diffMs / (1000 * 60 * 60 * 24 * 30.4375);
+  return {
+    ruleId: rule.id,
+    category: rule.category,
+    pointsDeducted,
+    message: truncate(`${outcome === "fail" ? "Resolve" : "Clarify"}: ${rule.estimateLineItemLabel}`, 120),
+    fix: truncate(rule.remediationSummary, 160),
+    evidence: truncate(evidence, 240),
+  };
 }
 
-function detectOfficialReferencePattern(bundle: ArchitectureEvidenceBundle) {
-  const normalized = `${bundle.ocrText}\n${bundle.paragraph}`.toLowerCase();
-  const markerHits = OFFICIAL_REFERENCE_TERMS.filter((term) => includesTerm(normalized, term)).length;
-  return markerHits >= 1 && bundle.serviceTokens.length >= 6;
-}
-
-function addMetadataFindings(bundle: ArchitectureEvidenceBundle, findings: ArchitectureFindingDraft[]) {
-  const fields: Array<{
-    key: keyof ArchitectureEvidenceBundle["metadata"];
-    ruleId: string;
-    message: string;
-    fix: string;
-  }> = [
-    {
-      key: "title",
-      ruleId: "MSFT-META-TITLE",
-      message: "Add a title that states the workload and scope.",
-      fix: "Set title metadata like 'Payments API Production Architecture'.",
-    },
-    {
-      key: "owner",
-      ruleId: "MSFT-META-OWNER",
-      message: "Add the owner responsible for this architecture.",
-      fix: "Set owner metadata with team or role and contact alias.",
-    },
-    {
-      key: "lastUpdated",
-      ruleId: "MSFT-META-LAST-UPDATED",
-      message: "Add the date this diagram was last reviewed.",
-      fix: "Set last-updated metadata with an ISO date.",
-    },
-    {
-      key: "version",
-      ruleId: "MSFT-META-VERSION",
-      message: "Add a diagram version identifier.",
-      fix: "Set version metadata like v1.2 and increment on edits.",
-    },
-  ];
-
-  for (const field of fields) {
-    const value = bundle.metadata[field.key];
-    if (!value || !value.trim()) {
-      findings.push({
-        ruleId: field.ruleId,
-        category: "clarity",
-        pointsDeducted: 3,
-        message: field.message,
-        fix: field.fix,
-        evidence: `${field.key} metadata is missing.`,
-      });
-    }
-  }
-}
-
-function addPillarFindings(bundle: ArchitectureEvidenceBundle, findings: ArchitectureFindingDraft[]) {
-  const normalized = bundle.paragraph.toLowerCase();
-  const keywordMap = PILLAR_KEYWORDS[bundle.provider];
-
-  const pillarConfig: Array<{
-    key: keyof typeof keywordMap;
-    category: ArchitectureFindingDraft["category"];
-    maxDeduction: number;
-    ruleId: string;
-    missingMessage: string;
-    missingFix: string;
-  }> = [
-    {
-      key: "security",
-      category: "security",
-      maxDeduction: 12,
-      ruleId: "PILLAR-SECURITY",
-      missingMessage: "Document security controls for identity, secrets, and encryption.",
-      missingFix: "Name IAM/auth controls, encryption boundaries, and secret-management steps.",
-    },
-    {
-      key: "reliability",
-      category: "reliability",
-      maxDeduction: 10,
-      ruleId: "PILLAR-RELIABILITY",
-      missingMessage: "Specify reliability controls for failure and recovery.",
-      missingFix: "Describe redundancy, backup/restore, and DR targets (RTO/RPO).",
-    },
-    {
-      key: "operations",
-      category: "operations",
-      maxDeduction: 8,
-      ruleId: "PILLAR-OPERATIONS",
-      missingMessage: "Define monitoring and operational ownership.",
-      missingFix: "Add metrics, alerts, logs, and runbook ownership for this flow.",
-    },
-    {
-      key: "performance",
-      category: "performance",
-      maxDeduction: 6,
-      ruleId: "PILLAR-PERFORMANCE",
-      missingMessage: "Define performance mechanisms for latency and throughput.",
-      missingFix: "Call out caching, autoscaling, CDN, or load-balancing strategy.",
-    },
-    {
-      key: "cost",
-      category: "cost",
-      maxDeduction: 6,
-      ruleId: "PILLAR-COST",
-      missingMessage: "Define cost controls for this architecture.",
-      missingFix: "Describe rightsizing, autoscaling bounds, and budget guardrails.",
-    },
-  ];
-
-  for (const pillar of pillarConfig) {
-    const matches = keywordMap[pillar.key].filter((term) => normalized.includes(term));
-    if (matches.length === 0) {
-      findings.push({
-        ruleId: pillar.ruleId,
-        category: pillar.category,
-        pointsDeducted: pillar.maxDeduction,
-        message: pillar.missingMessage,
-        fix: pillar.missingFix,
-        evidence: `${pillar.key} keywords were not found in the narrative paragraph.`,
-      });
-    } else if (matches.length === 1 && pillar.maxDeduction >= 8) {
-      findings.push({
-        ruleId: `${pillar.ruleId}-DEPTH`,
-        category: pillar.category,
-        pointsDeducted: Math.max(2, Math.floor(pillar.maxDeduction / 2)),
-        message: `Increase ${pillar.key} detail with concrete mechanisms.`,
-        fix: `Add at least two explicit ${pillar.key} controls and where they apply in the flow.`,
-        evidence: `Only one ${pillar.key} indicator found: ${matches[0]}.`,
-      });
-    }
-  }
-
-  const sustainabilityMatches = keywordMap.sustainability.filter((term) => normalized.includes(term));
-  if (sustainabilityMatches.length === 0) {
-    findings.push({
-      ruleId: "PILLAR-SUSTAINABILITY-OPTIONAL",
-      category: "sustainability",
-      pointsDeducted: 0,
-      message: "Optionally document sustainability targets.",
-      fix: "Add region and efficiency choices only if sustainability is part of project goals.",
-      evidence: "No sustainability terms found; recommendation is optional.",
-    });
-  }
-}
-
-function capFindingPoints(findings: ArchitectureFindingDraft[], ruleId: string, maxPoints: number) {
-  const target = findings.find((finding) => finding.ruleId === ruleId);
-  if (!target) {
+function pushRuleDecision(findings: ArchitectureFindingDraft[], ruleId: string, decision: RuleDecision) {
+  if (decision.outcome === "pass" || decision.outcome === "na") {
     return;
   }
 
-  target.pointsDeducted = Math.min(target.pointsDeducted, maxPoints);
-}
-
-function capFindingGroupTotal(findings: ArchitectureFindingDraft[], ruleIds: string[], maxTotal: number) {
-  const targets = findings.filter((finding) => ruleIds.includes(finding.ruleId) && finding.pointsDeducted > 0);
-  const total = targets.reduce((sum, finding) => sum + finding.pointsDeducted, 0);
-  if (total <= maxTotal) {
-    return;
-  }
-
-  let overflow = total - maxTotal;
-  for (const finding of targets.sort((a, b) => b.pointsDeducted - a.pointsDeducted)) {
-    if (overflow <= 0) {
-      break;
-    }
-
-    const reducible = Math.max(0, finding.pointsDeducted - 1);
-    if (reducible <= 0) {
-      continue;
-    }
-
-    const reduction = Math.min(reducible, overflow);
-    finding.pointsDeducted -= reduction;
-    overflow -= reduction;
+  const finding = buildFinding(ruleId, decision.outcome, decision.evidence);
+  if (finding) {
+    findings.push(finding);
   }
 }
 
-function applyScoringCalibrations(bundle: ArchitectureEvidenceBundle, findings: ArchitectureFindingDraft[]) {
-  const ocrSignalStrong = bundle.serviceTokens.length >= 8 || bundle.ocrText.length >= 280;
-  const paragraphDetailed = isDetailedParagraph(bundle.paragraph);
-  const officialReferencePattern = detectOfficialReferencePattern(bundle);
-
-  // Avoid over-penalizing short user text when diagram OCR is strong.
-  if (ocrSignalStrong) {
-    capFindingPoints(findings, "INPUT-PARAGRAPH-QUALITY", 3);
-  }
-
-  // Avoid over-penalizing sparse OCR when user provides a detailed architecture narrative.
-  if (paragraphDetailed) {
-    capFindingPoints(findings, "MSFT-COMPONENT-LABEL-COVERAGE", 4);
-    capFindingPoints(findings, "MSFT-FLOW-DIRECTION", 3);
-  }
-
-  // Prevent double-penalizing same clarity gap.
-  capFindingGroupTotal(
-    findings,
-    ["MSFT-FLOW-DIRECTION", "CLAR-REL-LABELS-MISSING", "CLAR-BOUNDARY-EXPLICIT"],
-    10,
-  );
-  capFindingGroupTotal(
-    findings,
-    ["REL-RTO-RPO-MISSING", "REL-BACKUP-RESTORE", "PILLAR-RELIABILITY", "PILLAR-RELIABILITY-DEPTH"],
-    14,
-  );
-
-  // Reference diagrams often omit ownership metadata by design; soften these penalties.
-  if (officialReferencePattern) {
-    for (const ruleId of ["MSFT-META-TITLE", "MSFT-META-OWNER", "MSFT-META-LAST-UPDATED", "MSFT-META-VERSION"]) {
-      capFindingPoints(findings, ruleId, 1);
-    }
-    capFindingPoints(findings, "MSFT-COMPONENT-LABEL-COVERAGE", 4);
-    capFindingPoints(findings, "CLAR-BOUNDARY-EXPLICIT", 2);
-
-    findings.push({
-      ruleId: "CLAR-OFFICIAL-REFERENCE-PATTERN",
-      category: "clarity",
-      pointsDeducted: 0,
-      message: "Reference diagram pattern detected; score calibration was softened.",
-      fix: "Add local environment labels and ownership metadata before using this in production reviews.",
-      evidence: "Official reference markers detected in OCR/narrative content.",
-    });
-  }
-}
-
-export function buildDeterministicReviewFindings(bundle: ArchitectureEvidenceBundle): ArchitectureFindingDraft[] {
+function buildDeterministicReviewFindings(bundle: ArchitectureEvidenceBundle): ArchitectureFindingDraft[] {
   const findings: ArchitectureFindingDraft[] = [];
-  const combinedNarrativeText = `${bundle.paragraph}\n${bundle.ocrText}`;
-  const normalizedParagraph = compressWhitespace(bundle.paragraph);
-  const normalizedCombinedText = combinedNarrativeText.toLowerCase();
-  const inputSignals = detectInputTypeSignals(bundle);
-  const providerSignalCounts = detectProviderSignalCounts(combinedNarrativeText);
-  const tokenCount = bundle.serviceTokens.length;
+  const paragraph = compressWhitespace(bundle.paragraph).toLowerCase();
+  const ocr = compressWhitespace(bundle.ocrText).toLowerCase();
+  const combined = compressWhitespace(`${bundle.paragraph} ${bundle.ocrText}`).toLowerCase();
+  const regions = extractAwsRegions(combined);
 
-  if (inputSignals.highConfidenceNonArchitecture) {
-    findings.push({
-      ruleId: "INPUT-NOT-ARCH-DIAGRAM",
-      category: "clarity",
-      pointsDeducted: 35,
-      message: "Upload a system architecture diagram instead of a report or statement screenshot.",
-      fix: "Provide a PNG or SVG that shows services, trust boundaries, and data/request flows with labeled components.",
-      evidence: `OCR matched ${inputSignals.nonArchitectureHits} non-architecture terms and only ${inputSignals.architectureHits} architecture indicators.`,
+  const production = bundle.metadata.environment === "prod" || includesAny(combined, ["production", "prod"]);
+  const nonProdContext = includesAny(combined, ["dev", "development", "test", "staging", "non-prod", "non production"]);
+  const hasInternetEntry = includesAny(combined, [
+    "cloudfront",
+    "api gateway",
+    "application load balancer",
+    "alb",
+    "internet-facing",
+    "internet facing",
+    "public endpoint",
+    "website",
+    "browser",
+    "route 53",
+  ]);
+  const claimsPrivateOnly = includesAny(combined, ["private-only", "private only", "no internet", "internal only"]);
+  const claimsMultiRegion = includesAny(combined, ["multi-region", "multi region", "cross-region", "cross region"]);
+  const claimsHaOrDr = includesAny(combined, ["high availability", "ha", "disaster recovery", "dr", "resilient"]);
+  const sensitiveData =
+    (bundle.metadata.regulatoryScope && bundle.metadata.regulatoryScope !== "none") ||
+    includesAny(combined, ["sensitive data", "customer data", "pii", "phi", "pci", "regulated", "confidential"]);
+  const hasStatefulData = includesAny(combined, ["database", "rds", "aurora", "dynamodb", "s3", "storage", "stateful"]);
+  const hasRelationalDb = includesAny(combined, ["rds", "aurora", "postgres", "mysql", "sql server", "mariadb", "oracle"]);
+  const hasS3 = includesAny(combined, ["s3", "bucket"]);
+  const hasVpcBasedWorkload = includesAny(combined, ["vpc", "subnet", "ec2", "ecs", "eks", "fargate", "alb"]);
+  const hasCompute = includesAny(combined, ["ec2", "ecs", "eks", "fargate", "lambda", "compute"]);
+  const objectiveStated = includesAny(combined, ["web", "website", "api", "batch", "internal", "portal", "service"]);
+  const measurableConstraintCount =
+    countMentions(combined, ["latency", "uptime", "availability", "rto", "rpo", "sla", "slo", "qps", "rps", "throughput", "compliance"]) +
+    (/\b\d+(\.\d+)?\s?(ms|s|sec|seconds|minutes|hours|rps|qps|users?|%|gb|tb)\b/.test(combined) ? 1 : 0);
+
+  const inputMismatch = detectInputMismatch(paragraph, ocr);
+  if (inputMismatch) {
+    pushRuleDecision(findings, "diagram_narrative_core_component_mismatch", {
+      outcome: "fail",
+      evidence: inputMismatch,
     });
-  } else if (inputSignals.uncertainNonArchitecture) {
-    findings.push({
-      ruleId: "INPUT-NON-ARCH-SUSPECT",
-      category: "clarity",
-      pointsDeducted: 10,
-      message: "Diagram content may be non-architectural; score confidence is reduced.",
-      fix: "Upload a cleaner architecture diagram with component labels and flow arrows.",
-      evidence: `OCR mixed ${inputSignals.nonArchitectureHits} non-architecture terms with ${inputSignals.architectureHits} architecture indicators.`,
-    });
+    return findings;
   }
 
-  if (isLowSignalParagraph(normalizedParagraph)) {
-    findings.push({
-      ruleId: "INPUT-PARAGRAPH-QUALITY",
-      category: "clarity",
-      pointsDeducted: 8,
-      message: "Provide a clear architecture paragraph with concrete flow steps.",
-      fix: "Rewrite the description with request path, components, data stores, and trust boundaries.",
-      evidence: "Paragraph text quality was low-signal and lacked concrete architecture terms.",
-    });
-  }
+  pushRuleDecision(findings, "workload_objective_and_constraints_stated", {
+    outcome: objectiveStated && measurableConstraintCount >= 2 ? "pass" : objectiveStated ? "partial" : "fail",
+    evidence:
+      objectiveStated && measurableConstraintCount >= 2
+        ? "The narrative states the workload shape and multiple measurable constraints."
+        : objectiveStated
+          ? "The workload objective is present, but the narrative does not state at least two measurable operating constraints."
+          : "The narrative does not clearly state the workload objective or measurable operating constraints.",
+  });
 
-  const selectedProviderSignals = providerSignalCounts[bundle.provider];
-  const dominantOtherProviderSignals = (
-    Object.entries(providerSignalCounts) as Array<[ArchitectureProvider, number]>
-  )
-    .filter(([provider]) => provider !== bundle.provider)
-    .reduce((maxValue, [, value]) => Math.max(maxValue, value), 0);
+  const hasClassificationLanguage = includesAny(combined, ["data classification", "sensitivity", "restricted", "internal", "public data", "confidential", "pii", "phi", "pci"]);
+  const hasComplianceLanguage =
+    (bundle.metadata.regulatoryScope && bundle.metadata.regulatoryScope !== "none") ||
+    includesAny(combined, ["soc2", "pci", "hipaa", "compliance", "regulated"]) ||
+    includesAny(combined, ["no sensitive data", "compliance none"]);
+  pushRuleDecision(findings, "data_classification_and_compliance_noted", {
+    outcome:
+      !hasStatefulData && !sensitiveData
+        ? "na"
+        : hasClassificationLanguage && hasComplianceLanguage
+          ? "pass"
+          : sensitiveData
+            ? "fail"
+            : "partial",
+    evidence:
+      hasClassificationLanguage && hasComplianceLanguage
+        ? "The submission names data sensitivity and compliance scope."
+        : sensitiveData
+          ? "Sensitive or regulated data is implied, but the submission does not clearly classify it or state the compliance scope."
+          : "Stateful or customer data is present, but the submission does not clearly classify the data or state compliance scope.",
+  });
 
-  if (selectedProviderSignals <= 1 && dominantOtherProviderSignals >= 3) {
-    findings.push({
-      ruleId: providerMismatchRuleId(bundle.provider),
-      category: "clarity",
-      pointsDeducted: 14,
-      message: "Select the cloud provider that matches the diagram components.",
-      fix: "Re-run with the provider matching detected services and official icon naming.",
-      evidence: `Provider token mismatch detected (${bundle.provider}:${selectedProviderSignals}, other:${dominantOtherProviderSignals}).`,
-    });
-  }
+  const hasRto = includesTerm(combined, "rto");
+  const hasRpo = includesTerm(combined, "rpo");
+  pushRuleDecision(findings, "rto_rpo_defined", {
+    outcome: !hasStatefulData && !claimsHaOrDr ? "na" : hasRto && hasRpo ? "pass" : hasRto || hasRpo ? "partial" : claimsHaOrDr ? "fail" : "partial",
+    evidence:
+      hasRto && hasRpo
+        ? "Recovery time and recovery point objectives are stated."
+        : hasRto || hasRpo
+          ? "Only one recovery objective is explicit; both RTO and RPO should be named."
+          : claimsHaOrDr
+            ? "The submission claims HA/DR outcomes without naming RTO and RPO."
+            : "Stateful components are present, but recovery objectives are not shown.",
+  });
 
-  if (!hasDirectionality(combinedNarrativeText)) {
-    findings.push({
-      ruleId: "MSFT-FLOW-DIRECTION",
-      category: "clarity",
-      pointsDeducted: 6,
-      message: "Describe request and data direction explicitly.",
-      fix: "State source-to-destination flow using verbs like sends, reads, and writes.",
-      evidence: "Directional verbs and sequence markers were sparse in the paragraph.",
-    });
-  }
+  const sharedProdNonProd = includesAny(combined, [
+    "prod and dev share database",
+    "prod and test share database",
+    "shared credentials between prod and dev",
+    "shared data store for prod and dev",
+  ]);
+  const hasRegionLabel = regions.size > 0 || includesAny(combined, ["region"]);
+  const hasEnvironmentBoundary = Boolean(bundle.metadata.environment) || nonProdContext;
+  pushRuleDecision(findings, "region_and_environment_boundaries_identified", {
+    outcome: sharedProdNonProd ? "fail" : hasRegionLabel && hasEnvironmentBoundary ? "pass" : hasRegionLabel || hasEnvironmentBoundary ? "partial" : "fail",
+    evidence:
+      sharedProdNonProd
+        ? "Production and non-production boundaries are explicitly shared, which makes the environment boundary unreliable."
+        : hasRegionLabel && hasEnvironmentBoundary
+          ? "The submission names the AWS Region and environment boundary."
+          : hasRegionLabel || hasEnvironmentBoundary
+            ? "Only part of the Region/environment boundary is explicit."
+            : "The submission does not name the Region or show production/non-production boundaries.",
+  });
 
-  if (
-    normalizedCombinedText.includes("bidirectional") ||
-    normalizedCombinedText.includes("bi-directional") ||
-    normalizedCombinedText.includes("<->") ||
-    normalizedCombinedText.includes("↔")
-  ) {
-    findings.push({
-      ruleId: "CLAR-UNIDIR-RELATIONSHIPS",
-      category: "clarity",
-      pointsDeducted: 4,
-      message: "Replace bidirectional arrows with explicit one-way flow labels.",
-      fix: "Use one-way arrows and annotate request and response directions clearly.",
-      evidence: "Bidirectional relationship wording/symbols were detected.",
-    });
-  }
+  const coreMismatch = detectCoreComponentMismatch(paragraph, ocr);
+  pushRuleDecision(findings, "diagram_narrative_core_component_mismatch", {
+    outcome: coreMismatch ? "fail" : "pass",
+    evidence: coreMismatch ?? "The narrative and diagram do not show a material core-component mismatch.",
+  });
 
-  const mentionedTokenCount = countMentionedTokensInParagraph(bundle.serviceTokens, bundle.paragraph);
-  if (bundle.serviceTokens.length > 8 && mentionedTokenCount < Math.max(3, Math.floor(bundle.serviceTokens.length * 0.35))) {
-    const missing = bundle.serviceTokens.length - mentionedTokenCount;
-    findings.push({
-      ruleId: "MSFT-COMPONENT-LABEL-COVERAGE",
-      category: "clarity",
-      pointsDeducted: Math.min(12, 4 + Math.floor(missing / 2)),
-      message: "Explain each major component used in the diagram.",
-      fix: "Reference key services in the paragraph and describe each component's role.",
-      evidence: `${bundle.serviceTokens.length} service tokens detected, but only ${mentionedTokenCount} were explained.`,
-    });
-  }
+  const hasReplicationAndFailover = includesAny(combined, ["replication", "replica", "failover", "route 53 failover", "secondary region"]);
+  pushRuleDecision(findings, "stated_multi_region_requirement_mismatch", {
+    outcome: !claimsMultiRegion ? "na" : regions.size >= 2 && hasReplicationAndFailover ? "pass" : regions.size >= 2 ? "partial" : "fail",
+    evidence:
+      !claimsMultiRegion
+        ? "No Multi-Region requirement was claimed."
+        : regions.size >= 2 && hasReplicationAndFailover
+          ? "The submission claims Multi-Region and shows at least two Regions with replication/failover signals."
+          : regions.size >= 2
+            ? "Multiple Regions are shown, but replication/failover is not explicit."
+            : "The submission claims Multi-Region behavior but only shows a single Region or no Region failover design.",
+  });
 
-  const hasBoundaryLanguage =
-    normalizedCombinedText.includes("trust boundary") ||
-    normalizedCombinedText.includes("boundary") ||
-    normalizedCombinedText.includes("in scope") ||
-    normalizedCombinedText.includes("out of scope") ||
-    normalizedCombinedText.includes("scope");
+  const hasPrivateConnectivity = includesAny(combined, ["privatelink", "private endpoint", "vpc endpoint", "vpn", "direct connect", "transit gateway"]);
+  pushRuleDecision(findings, "stated_private_only_requirement_mismatch", {
+    outcome: !claimsPrivateOnly ? "na" : hasInternetEntry ? "fail" : hasPrivateConnectivity || !hasInternetEntry ? "pass" : "partial",
+    evidence:
+      !claimsPrivateOnly
+        ? "No private-only requirement was claimed."
+        : hasInternetEntry
+          ? "The submission claims private-only access but still shows a public ingress path."
+          : hasPrivateConnectivity
+            ? "The submission claims private-only access and references private connectivity patterns."
+            : "The submission claims private-only access, but the private connectivity path is not explicit.",
+  });
 
-  if (!hasBoundaryLanguage) {
-    findings.push({
-      ruleId: "CLAR-BOUNDARY-EXPLICIT",
-      category: "clarity",
-      pointsDeducted: 4,
-      message: "Make system scope and trust boundaries explicit in the diagram narrative.",
-      fix: "Add labeled boundary/scope statements for internet edge, private zones, and data stores.",
-      evidence: "Boundary/scope language was not detected in OCR text or description.",
-    });
-  }
+  const hasTls = includesAny(combined, ["https", "tls", "443", "acm"]);
+  const httpOnly = includesAny(combined, ["http-only", "http only", "port 80", "plain http"]) || (includesTerm(combined, "http") && !includesTerm(combined, "https"));
+  pushRuleDecision(findings, "internet_facing_endpoint_without_tls", {
+    outcome: !hasInternetEntry ? "na" : httpOnly ? "fail" : hasTls ? "pass" : "partial",
+    evidence:
+      !hasInternetEntry
+        ? "No public endpoint is shown."
+        : httpOnly
+          ? "A public endpoint is described without HTTPS/TLS enforcement."
+          : hasTls
+            ? "Public traffic is explicitly terminated with HTTPS/TLS."
+            : "A public endpoint is present, but TLS enforcement is not explicit.",
+  });
 
-  if (
-    tokenCount >= 10 &&
-    /\b(connects?|uses|integrates?|talks to)\b/i.test(normalizedParagraph) &&
-    !/\b(https?|grpc|jdbc|amqp|kafka|event|batch|stream|pub\/sub|rest|soap|dns|tls)\b/i.test(normalizedParagraph)
-  ) {
-    findings.push({
-      ruleId: "CLAR-REL-LABELS-MISSING",
-      category: "clarity",
-      pointsDeducted: 4,
-      message: "Label relationships with protocol or transfer intent.",
-      fix: "Specify connection labels like HTTPS, gRPC, event, stream, batch, or JDBC.",
-      evidence: "Generic relationship verbs were used without protocol/intent qualifiers.",
-    });
-  }
+  const publicDatabase = includesAny(combined, ["public database", "publicly accessible database", "database in public subnet", "rds in public subnet", "public db"]);
+  const privateDatabase = includesAny(combined, ["private subnet", "not publicly accessible", "private database", "db private"]);
+  pushRuleDecision(findings, "public_database_exposure", {
+    outcome: !hasRelationalDb && !includesTerm(combined, "database") ? "na" : publicDatabase ? "fail" : privateDatabase ? "pass" : "partial",
+    evidence:
+      publicDatabase
+        ? "The submission explicitly places a database on a public path."
+        : privateDatabase
+          ? "The database is described as private-only."
+          : "A database is present, but public/private exposure is not explicit.",
+  });
 
-  if (
-    tokenCount >= 6 &&
-    !/\b(region|availability zone|multi-az|multi az|zone strategy|paired region)\b/i.test(normalizedCombinedText)
-  ) {
-    findings.push({
-      ruleId: "CLAR-REGION-ZONE-MISSING",
-      category: "clarity",
-      pointsDeducted: 4,
-      message: "Identify region and zone placement for this architecture.",
-      fix: "Add region names and zone/availability strategy for each critical component.",
-      evidence: "No explicit region or zone strategy terms were detected.",
-    });
-  }
+  const publicBucket = includesAny(combined, ["public s3 bucket", "public-read bucket", "public read bucket", "public write bucket", "bucket is public"]);
+  const privateBucket = includesAny(combined, ["block public access", "non-public bucket", "private bucket", "origin access control", "origin access identity"]);
+  pushRuleDecision(findings, "public_s3_bucket_access", {
+    outcome: !hasS3 ? "na" : publicBucket && sensitiveData ? "fail" : privateBucket ? "pass" : "partial",
+    evidence:
+      !hasS3
+        ? "No S3 usage is shown."
+        : publicBucket && sensitiveData
+          ? "The submission describes public S3 access for non-public or customer data."
+          : privateBucket
+            ? "S3 access is described as private or fronted by a controlled origin."
+            : "S3 is present, but bucket exposure is not explicit.",
+  });
 
-  const staleMonths = bundle.metadata.lastUpdated ? monthsSinceIsoDate(bundle.metadata.lastUpdated) : null;
-  if (staleMonths !== null && staleMonths > 6) {
-    findings.push({
-      ruleId: "CLAR-STALE-DIAGRAM",
-      category: "clarity",
-      pointsDeducted: Math.min(6, 2 + Math.floor((staleMonths - 6) / 4)),
-      message: "Refresh this architecture diagram to reflect current system state.",
-      fix: "Update components and metadata, then bump version after review.",
-      evidence: `lastUpdated indicates the diagram may be stale (${Math.round(staleMonths)} months old).`,
-    });
-  }
+  const hasAdminSurface = includesAny(combined, ["ssh", "rdp", "bastion", "session manager", "ec2", "server"]);
+  const openAdmin = includesAny(combined, ["ssh 0.0.0.0/0", "rdp 0.0.0.0/0", "ssh from anywhere", "rdp from anywhere", "open ssh", "open rdp"]);
+  const controlledAdmin = includesAny(combined, ["session manager", "vpn", "restricted cidr", "allowlisted cidr", "bastion"]);
+  pushRuleDecision(findings, "unrestricted_admin_ports_from_internet", {
+    outcome: !hasAdminSurface ? "na" : openAdmin ? "fail" : controlledAdmin ? "pass" : "partial",
+    evidence:
+      !hasAdminSurface
+        ? "No administerable server path is shown."
+        : openAdmin
+          ? "The submission explicitly allows admin access from the internet."
+          : controlledAdmin
+            ? "Administrative access is described through a controlled path."
+            : "Administrative access exists, but the control boundary is not explicit.",
+  });
 
-  const semantics = collectArrowSemantics(combinedNarrativeText);
-  const hasLegend = Boolean(bundle.metadata.legend?.trim());
-  if (semantics.length >= 2 && !hasLegend) {
-    findings.push({
-      ruleId: "MSFT-LEGEND-SEMANTICS",
-      category: "clarity",
-      pointsDeducted: 7,
-      message: "Add a legend for sync, async, batch, and stream arrows.",
-      fix: "Define arrow styles and meanings in a legend so reviewers interpret flows consistently.",
-      evidence: `Multiple transfer semantics found (${semantics.join(", ")}) but legend metadata is empty.`,
-    });
-  }
+  const requiresSecrets = hasStatefulData || hasInternetEntry || includesAny(combined, ["password", "token", "credential", "secret", "api key"]);
+  const hasSecretStore = includesAny(combined, ["secrets manager", "parameter store", "securestring"]);
+  const hardcodedSecrets = includesAny(combined, ["hard-coded secret", "hardcoded secret", "secret in code", "access key in config", "credential in image", "embedded key"]);
+  pushRuleDecision(findings, "secrets_management_centralized", {
+    outcome: !requiresSecrets ? "na" : hardcodedSecrets ? "fail" : hasSecretStore ? "pass" : "partial",
+    evidence:
+      !requiresSecrets
+        ? "No secret-bearing path is obvious from the submission."
+        : hardcodedSecrets
+          ? "The submission explicitly exposes hard-coded or embedded secrets."
+          : hasSecretStore
+            ? "The submission explicitly uses a managed AWS secret store."
+            : "The workload needs secrets, but the secret storage path is not explicit.",
+  });
 
-  addMetadataFindings(bundle, findings);
+  const hasAwsIdentityPath = hasCompute || includesAny(combined, ["iam", "identity", "sso", "federation", "aws api"]);
+  const hasRoles = includesAny(combined, ["iam role", "execution role", "task role", "instance profile", "assume role"]);
+  const hasHumanSso = includesAny(combined, ["iam identity center", "sso", "federation", "federated"]);
+  const longTermKeys = includesAny(combined, ["access key", "secret access key", "long-term key", "embedded key", "root key"]);
+  pushRuleDecision(findings, "iam_roles_and_temporary_credentials", {
+    outcome: !hasAwsIdentityPath ? "na" : longTermKeys ? "fail" : hasRoles && hasHumanSso ? "pass" : "partial",
+    evidence:
+      !hasAwsIdentityPath
+        ? "No AWS identity path is evident."
+        : longTermKeys
+          ? "The submission explicitly relies on long-term or embedded AWS keys."
+          : hasRoles && hasHumanSso
+            ? "The submission references role-based app access and human SSO/federation."
+            : "AWS identity usage is present, but temporary credentials/SSO are not fully explicit.",
+  });
 
-  if (tokenCount > 18) {
-    findings.push({
-      ruleId: "MSFT-LAYERING-DENSITY",
-      category: "clarity",
-      pointsDeducted: Math.min(5, 1 + Math.floor((tokenCount - 18) / 4)),
-      message: "Split this architecture into layered diagrams.",
-      fix: "Publish context, container, and component views instead of one dense canvas.",
-      evidence: `${tokenCount} service tokens detected; diagram complexity is high.`,
-    });
-  } else if (tokenCount >= 12) {
-    findings.push({
-      ruleId: "MSFT-LAYERING-OPTIONAL",
-      category: "clarity",
-      pointsDeducted: 0,
-      message: "Optionally provide a layered view for readability.",
-      fix: "Consider separate context and component diagrams for onboarding speed.",
-      evidence: `${tokenCount} service tokens detected; layering is recommended but optional.`,
-    });
-  }
+  const hasCloudTrail = includesTerm(combined, "cloudtrail");
+  const hasMultiRegionCloudTrail =
+    hasCloudTrail &&
+    (includesAny(combined, [
+      "cloudtrail multi-region",
+      "cloudtrail is multi-region",
+      "cloudtrail all regions",
+      "cloudtrail across all regions",
+      "multi-region trail",
+      "all-region trail",
+      "multi region trail",
+    ]) ||
+      /cloudtrail.{0,32}(multi-?region|all regions?)/.test(combined));
+  const explicitCloudTrailOff = includesAny(combined, ["cloudtrail disabled", "no cloudtrail", "cloudtrail off"]);
+  pushRuleDecision(findings, "cloudtrail_multi_region_enabled", {
+    outcome: explicitCloudTrailOff ? "fail" : hasMultiRegionCloudTrail ? "pass" : hasCloudTrail ? "partial" : "partial",
+    evidence:
+      explicitCloudTrailOff
+        ? "CloudTrail is explicitly disabled or omitted by design."
+        : hasMultiRegionCloudTrail
+          ? "A multi-Region CloudTrail posture is explicitly stated."
+          : hasCloudTrail
+            ? "CloudTrail is mentioned, but multi-Region coverage is not explicit."
+            : "CloudTrail coverage is not stated for the AWS account in scope.",
+  });
 
-  const statefulSignals = hasStatefulSignals(bundle);
-  if (statefulSignals && !/\b(rto|rpo)\b/i.test(normalizedCombinedText)) {
-    findings.push({
-      ruleId: "REL-RTO-RPO-MISSING",
-      category: "reliability",
-      pointsDeducted: 8,
-      message: "Define RTO and RPO targets for stateful components.",
-      fix: "Specify numeric RTO/RPO objectives and map them to failover design.",
-      evidence: "Stateful stores were detected without explicit RTO/RPO targets.",
-    });
-  }
+  const explicitNoWaf = includesAny(combined, ["no waf", "without waf", "won't use waf"]);
+  const hasWaf = includesAny(combined, ["aws waf", "waf"]);
+  pushRuleDecision(findings, "waf_on_public_endpoints", {
+    outcome: !hasInternetEntry ? "na" : explicitNoWaf ? "fail" : hasWaf ? "pass" : "partial",
+    evidence:
+      !hasInternetEntry
+        ? "No public endpoint is shown."
+        : explicitNoWaf
+          ? "The submission explicitly avoids L7 protection for a public entry point."
+          : hasWaf
+            ? "AWS WAF is attached to the public path."
+            : "A public entry point is present, but AWS WAF is not explicit.",
+  });
 
-  if (statefulSignals && !/\b(backup|restore|snapshot|replica)\b/i.test(normalizedCombinedText)) {
-    findings.push({
-      ruleId: "REL-BACKUP-RESTORE",
-      category: "reliability",
-      pointsDeducted: 8,
-      message: "Add backup and restore coverage for stateful services.",
-      fix: "Document backup frequency, retention policy, and restore test cadence.",
-      evidence: "Stateful services were detected without backup/restore evidence.",
-    });
-  }
+  const publicPrivateSplit = includesAny(combined, ["public subnet"]) && includesAny(combined, ["private subnet"]);
+  const internalInPublic = includesAny(combined, ["app in public subnet", "application in public subnet", "database in public subnet", "rds in public subnet"]);
+  pushRuleDecision(findings, "vpc_public_private_subnet_separation", {
+    outcome: !hasVpcBasedWorkload || !hasInternetEntry ? "na" : internalInPublic ? "fail" : publicPrivateSplit ? "pass" : "partial",
+    evidence:
+      !hasVpcBasedWorkload || !hasInternetEntry
+        ? "No VPC-based internet-facing tier was detected."
+        : internalInPublic
+          ? "Internal tiers are explicitly placed on a public path."
+          : publicPrivateSplit
+            ? "The submission separates public ingress from private app/data tiers."
+            : "The VPC layout is present, but public vs private tier separation is not explicit.",
+  });
 
-  const regulatedScope = bundle.metadata.regulatoryScope && bundle.metadata.regulatoryScope !== "none";
-  if (regulatedScope && !/\b(soc2|pci|hipaa|compliance|privacy|iso ?27001)\b/i.test(normalizedCombinedText)) {
-    findings.push({
-      ruleId: "SEC-BASELINE-MISSING",
-      category: "security",
-      pointsDeducted: 8,
-      message: "Define compliance baseline and security control coverage.",
-      fix: "State required framework scope and map controls to identity, encryption, and auditing.",
-      evidence: `Regulatory scope is set (${bundle.metadata.regulatoryScope}) without compliance baseline detail.`,
-    });
-  }
+  const needsNatReview = hasVpcBasedWorkload && includesAny(combined, ["private subnet", "nat", "egress", "outbound"]) && (includesAny(combined, ["multi-az", "multi az", "two az", "2 az"]) || regions.size >= 1);
+  const natPerAz = includesAny(combined, ["nat gateway per az", "nat per az", "one nat per az", "local nat"]);
+  const singleNat = includesAny(combined, ["single nat", "one nat gateway", "shared nat gateway"]);
+  pushRuleDecision(findings, "nat_gateway_per_az_for_private_egress", {
+    outcome: !needsNatReview ? "na" : singleNat ? "fail" : natPerAz ? "pass" : "partial",
+    evidence:
+      !needsNatReview
+        ? "No multi-AZ private egress pattern was detected."
+        : singleNat
+          ? "The submission routes multi-AZ private egress through a single NAT path."
+          : natPerAz
+            ? "The submission explicitly uses per-AZ NAT gateways."
+            : "Private egress exists, but per-AZ NAT placement is not explicit.",
+  });
 
-  if (
-    statefulSignals &&
-    !/\b(pii|pci|phi|sensitive data|data classification|confidential)\b/i.test(normalizedCombinedText)
-  ) {
-    findings.push({
-      ruleId: "CLAR-DATA-CLASS-MISSING",
-      category: "security",
-      pointsDeducted: 6,
-      message: "Classify sensitive data types and storage/transit handling.",
-      fix: "Label PII/PCI/PHI classes and identify where each class is stored and transmitted.",
-      evidence: "Stateful data stores were present without data classification language.",
-    });
-  }
+  const hasAlb = includesAny(combined, ["application load balancer", "alb"]);
+  const albMultiAz = hasAlb && includesAny(combined, ["multi-az", "multi az", "two az", "2 az", "two availability zones"]);
+  const singleAzAlb = hasAlb && includesAny(combined, ["single-az alb", "single az alb", "one subnet alb"]);
+  pushRuleDecision(findings, "alb_in_at_least_two_azs", {
+    outcome: !hasAlb ? "na" : singleAzAlb ? "fail" : albMultiAz ? "pass" : "partial",
+    evidence:
+      !hasAlb
+        ? "No ALB is shown."
+        : singleAzAlb
+          ? "The ALB is explicitly shown in a single-AZ path."
+          : albMultiAz
+            ? "The ALB is explicitly multi-AZ."
+            : "An ALB is present, but multi-AZ placement is not explicit.",
+  });
 
-  addPillarFindings(bundle, findings);
-  applyScoringCalibrations(bundle, findings);
+  const singleInstance = includesAny(combined, ["single ec2 instance", "one ec2 instance", "single instance", "single task", "one task"]);
+  const redundantCompute = includesAny(combined, ["auto scaling group", "asg", "two instances", "2 instances", "two tasks", "2 tasks", "desired count 2", "redundant compute"]) || includesAny(combined, ["lambda", "serverless"]);
+  pushRuleDecision(findings, "single_instance_production_compute", {
+    outcome: !hasCompute || !(production || hasInternetEntry || claimsHaOrDr) ? "na" : singleInstance ? "fail" : redundantCompute ? "pass" : "partial",
+    evidence:
+      !hasCompute || !(production || hasInternetEntry || claimsHaOrDr)
+        ? "No production compute tier requiring redundancy is obvious."
+        : singleInstance
+          ? "The serving tier is explicitly shown as a single instance or task."
+          : redundantCompute
+            ? "The compute tier shows managed or redundant capacity."
+            : "The serving tier exists, but compute redundancy is not explicit.",
+  });
+
+  const computeMultiAz = hasCompute && includesAny(combined, ["multi-az", "multi az", "two az", "2 az", "two availability zones"]);
+  const singleAzCompute = hasCompute && includesAny(combined, ["single-az compute", "single az compute", "one az compute"]);
+  pushRuleDecision(findings, "compute_multi_az_deployment", {
+    outcome: !hasVpcBasedWorkload || !hasCompute || !(production || claimsHaOrDr) ? "na" : singleAzCompute ? "fail" : computeMultiAz ? "pass" : "partial",
+    evidence:
+      !hasVpcBasedWorkload || !hasCompute || !(production || claimsHaOrDr)
+        ? "No multi-AZ compute expectation is obvious."
+        : singleAzCompute
+          ? "The compute tier is explicitly shown in a single AZ."
+          : computeMultiAz
+            ? "The compute tier is explicitly multi-AZ."
+            : "The compute tier exists, but multi-AZ placement is not explicit.",
+  });
+
+  const scalingExplicit = includesAny(combined, ["auto scaling", "autoscaling", "serverless", "scale out", "desired count", "target tracking"]);
+  const noScaling = includesAny(combined, ["no scaling", "fixed capacity", "manually scale"]);
+  pushRuleDecision(findings, "autoscaling_defined_for_variable_load", {
+    outcome: !hasCompute && !hasInternetEntry ? "na" : noScaling ? "fail" : scalingExplicit ? "pass" : "partial",
+    evidence:
+      !hasCompute && !hasInternetEntry
+        ? "No variable-demand compute path is obvious."
+        : noScaling
+          ? "The submission explicitly states fixed capacity with no scaling path."
+          : scalingExplicit
+            ? "A scaling mechanism is explicitly described."
+            : "The workload looks user-facing or variable, but a scaling path is not explicit.",
+  });
+
+  const hasBackups = includesAny(combined, ["backup", "snapshot"]);
+  const hasRestore = includesAny(combined, ["restore", "point-in-time recovery", "pitr"]);
+  const noBackups = includesAny(combined, ["no backups", "without backups"]);
+  pushRuleDecision(findings, "no_backup_strategy_for_stateful_data", {
+    outcome: !hasStatefulData ? "na" : noBackups ? "fail" : hasBackups && hasRestore ? "pass" : "partial",
+    evidence:
+      !hasStatefulData
+        ? "No important stateful data store is obvious."
+        : noBackups
+          ? "The submission explicitly says important state has no backup path."
+          : hasBackups && hasRestore
+            ? "Backup and restore signals are explicitly present."
+            : "Stateful data is present, but a complete backup and restore path is not explicit.",
+  });
+
+  const dbMultiAz = includesAny(combined, ["rds multi-az", "multi-az database", "multi az database", "aurora cluster"]);
+  const singleAzDb = includesAny(combined, ["single-az database", "single az database", "single az rds"]);
+  pushRuleDecision(findings, "single_az_database_for_production", {
+    outcome: !hasRelationalDb || !(production || claimsHaOrDr) ? "na" : singleAzDb ? "fail" : dbMultiAz ? "pass" : "partial",
+    evidence:
+      !hasRelationalDb || !(production || claimsHaOrDr)
+        ? "No production relational database path requiring HA is obvious."
+        : singleAzDb
+          ? "The relational database is explicitly single-AZ."
+          : dbMultiAz
+            ? "The relational database is explicitly Multi-AZ or clustered."
+            : "A production relational database is present, but Multi-AZ coverage is not explicit.",
+  });
+
+  const encryptedAtRest = includesAny(combined, ["encrypted at rest", "kms", "rds encryption", "aurora encryption"]);
+  const unencryptedAtRest = includesAny(combined, ["unencrypted at rest", "unencrypted database"]);
+  pushRuleDecision(findings, "rds_encryption_at_rest", {
+    outcome: !hasRelationalDb || !sensitiveData ? "na" : unencryptedAtRest ? "fail" : encryptedAtRest ? "pass" : "partial",
+    evidence:
+      !hasRelationalDb || !sensitiveData
+        ? "No sensitive relational database path was detected."
+        : unencryptedAtRest
+          ? "Sensitive relational data is explicitly left unencrypted at rest."
+          : encryptedAtRest
+            ? "Database encryption at rest is explicitly stated."
+            : "Sensitive relational data is present, but encryption at rest is not explicit.",
+  });
+
+  const centralizedLogs = includesAny(combined, ["cloudwatch logs", "centralized logs", "log pipeline", "log archive"]);
+  const noCentralLogs = includesAny(combined, ["logs only on instance", "no centralized logs", "logs stay local"]);
+  pushRuleDecision(findings, "centralized_application_logging", {
+    outcome: !hasCompute && !hasInternetEntry ? "na" : noCentralLogs ? "fail" : centralizedLogs ? "pass" : production ? "partial" : "na",
+    evidence:
+      !hasCompute && !hasInternetEntry
+        ? "No application workload requiring centralized logs is obvious."
+        : noCentralLogs
+          ? "The submission explicitly keeps logs only on hosts without central collection."
+          : centralizedLogs
+            ? "Application/service logs are routed to a centralized destination."
+            : "The workload looks production-relevant, but centralized logs are not explicit.",
+  });
+
+  const hasAlarming = includesAny(combined, ["alarm", "alert", "cloudwatch alarm"]);
+  const hasNotificationPath = includesAny(combined, ["sns", "on-call", "pagerduty", "ticketing", "ticket", "slack"]);
+  const noAlerting = includesAny(combined, ["no alarms", "no alerting"]);
+  pushRuleDecision(findings, "cloudwatch_alarms_for_key_metrics", {
+    outcome: !(production || hasInternetEntry || claimsHaOrDr) ? "na" : noAlerting ? "fail" : hasAlarming && hasNotificationPath ? "pass" : "partial",
+    evidence:
+      !(production || hasInternetEntry || claimsHaOrDr)
+        ? "No production/SLA expectation is obvious."
+        : noAlerting
+          ? "The submission explicitly lacks alarm/alerting coverage."
+          : hasAlarming && hasNotificationPath
+            ? "Key alarms and a notification path are explicitly described."
+            : "The workload needs alerting, but alarms and notification routing are not fully explicit.",
+  });
+
+  const hasFlowLogs = includesAny(combined, ["vpc flow logs"]);
+  const explicitNoNetworkLogging = includesAny(combined, ["no flow logs", "no network logging"]);
+  pushRuleDecision(findings, "vpc_flow_logs_enabled", {
+    outcome: !hasVpcBasedWorkload ? "na" : hasFlowLogs ? "pass" : explicitNoNetworkLogging && (sensitiveData || hasInternetEntry) ? "fail" : "na",
+    evidence:
+      !hasVpcBasedWorkload
+        ? "No VPC-based workload is obvious."
+        : hasFlowLogs
+          ? "VPC Flow Logs are explicitly enabled."
+          : explicitNoNetworkLogging && (sensitiveData || hasInternetEntry)
+            ? "The submission explicitly avoids network visibility on a higher-risk VPC path."
+            : "VPC Flow Logs are not explicit; leaving this as optional polish instead of a hard deduction.",
+  });
+
+  const hasCloudFront = includesTerm(combined, "cloudfront");
+  const hasOriginAccessControl = includesAny(combined, ["origin access control", "origin access identity", "oac", "oai"]);
+  const bucketBypass = hasCloudFront && hasS3 && includesAny(combined, ["public bucket", "direct s3 access", "bucket public"]);
+  pushRuleDecision(findings, "cloudfront_s3_origin_oac_enabled", {
+    outcome: !(hasCloudFront && hasS3) ? "na" : bucketBypass ? "fail" : hasOriginAccessControl ? "pass" : "partial",
+    evidence:
+      !(hasCloudFront && hasS3)
+        ? "No CloudFront-to-S3 origin path is shown."
+        : bucketBypass
+          ? "The CloudFront S3 origin still appears directly reachable."
+          : hasOriginAccessControl
+            ? "CloudFront origin restriction is explicitly shown."
+            : "CloudFront and S3 are both present, but origin restriction is not explicit.",
+  });
+
+  const separateAccounts = includesAny(combined, ["separate aws accounts", "separate account", "prod account", "non-prod account", "organizational unit"]);
+  pushRuleDecision(findings, "multi_account_prod_isolation", {
+    outcome: !(production && nonProdContext) ? "na" : sharedProdNonProd ? "fail" : separateAccounts ? "pass" : "partial",
+    evidence:
+      !(production && nonProdContext)
+        ? "A mixed prod/non-prod estate is not obvious."
+        : sharedProdNonProd
+          ? "Production and non-production explicitly share data stores or credentials."
+          : separateAccounts
+            ? "The submission explicitly isolates prod and non-prod accounts."
+            : "Production and non-production both exist, but account-level isolation is not explicit.",
+  });
+
+  const hasIac = includesAny(combined, ["cloudformation", "cdk", "terraform", "infrastructure as code", "iac"]);
+  const manualConsole = includesAny(combined, ["manual console", "created in console", "manually created", "updated in console"]);
+  pushRuleDecision(findings, "infrastructure_as_code_indicated", {
+    outcome: !production ? "na" : manualConsole ? "fail" : hasIac ? "pass" : "partial",
+    evidence:
+      !production
+        ? "No production environment is obvious."
+        : manualConsole
+          ? "The submission explicitly relies on manual console changes for production infrastructure."
+          : hasIac
+            ? "Infrastructure as code is explicitly stated."
+            : "Production infrastructure is present, but an IaC path is not explicit.",
+  });
 
   return findings;
 }
 
+export { buildDeterministicReviewFindings };
+
 export function buildDeterministicNarrative(bundle: ArchitectureEvidenceBundle) {
-  const providerLabel = bundle.provider.toUpperCase();
-  const inputSignals = detectInputTypeSignals(bundle);
-
-  if (inputSignals.highConfidenceNonArchitecture) {
-    return `${providerLabel} review detected non-architecture content in the uploaded diagram. Scoring was generated from low-confidence signals; upload a true architecture diagram for accurate findings.`.slice(
-      0,
-      2000,
-    );
-  }
-
-  if (inputSignals.uncertainNonArchitecture) {
-    return `${providerLabel} review detected mixed content signals in the uploaded diagram. Findings were generated with reduced confidence; a cleaner architecture image should improve accuracy.`.slice(
-      0,
-      2000,
-    );
-  }
-
-  const tokenPreview = bundle.serviceTokens.slice(0, 6).join(", ");
   const paragraph = compressWhitespace(bundle.paragraph);
-  const lowSignalParagraph = isLowSignalParagraph(paragraph);
-  const tokenSentence = tokenPreview
-    ? `Detected components include ${tokenPreview}${bundle.serviceTokens.length > 6 ? ", and others" : ""}.`
-    : "Component labels were limited, so narrative confidence is lower.";
+  const normalizedParagraph = paragraph.toLowerCase();
+  const normalizedOcr = compressWhitespace(bundle.ocrText).toLowerCase();
+  const tokenPreview = bundle.serviceTokens.slice(0, 6).join(", ");
+  const inputMismatch = detectInputMismatch(normalizedParagraph, normalizedOcr);
 
-  if (lowSignalParagraph) {
-    return `${providerLabel} architecture review used OCR-derived component cues because the written description was low-signal. ${tokenSentence} Add a clearer one-paragraph flow description for higher-confidence narrative output.`.slice(
+  if (inputMismatch) {
+    return `AWS architecture review could not trust the uploaded file as a clean architecture diagram. ${inputMismatch}`.slice(
       0,
       2000,
     );
   }
 
-  return `${providerLabel} architecture review input indicates the following flow: ${paragraph} ${tokenSentence}`.slice(0, 2000);
+  if (!paragraph) {
+    return `AWS architecture review used the uploaded diagram as the primary evidence source. Detected AWS components include ${tokenPreview || "a limited set of labels"}, but the written narrative was too thin to raise confidence further.`.slice(
+      0,
+      2000,
+    );
+  }
+
+  if (isLowSignalParagraph(paragraph)) {
+    return `AWS architecture review leaned on diagram evidence because the written narrative was low-signal. Detected components include ${tokenPreview || "a limited set of AWS labels"}. Add a clearer flow description to raise confidence on the next pass.`.slice(
+      0,
+      2000,
+    );
+  }
+
+  const lead = `AWS architecture review scored this submission from the diagram plus the written narrative, not from live account access.`;
+  const components = tokenPreview
+    ? `Detected components include ${tokenPreview}${bundle.serviceTokens.length > 6 ? ", and additional AWS services" : ""}.`
+    : "Detected component labels were sparse, so the narrative carried more of the review weight.";
+
+  return `${lead} ${components} Narrative summary: ${paragraph}`.slice(0, 2000);
 }

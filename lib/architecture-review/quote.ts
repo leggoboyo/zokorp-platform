@@ -13,23 +13,23 @@ import { scaleQuoteLineItems, type QuoteLineItem } from "@/lib/quote-line-items"
 const DEFAULT_REMEDIATION_RATE_USD_PER_HOUR = 225;
 
 const CATEGORY_DEDUCTION_CAPS: Record<ArchitectureCategory, number> = {
-  security: 25,
-  reliability: 20,
-  operations: 15,
-  performance: 10,
-  cost: 10,
-  sustainability: 5,
-  clarity: 15,
+  security: 100,
+  reliability: 100,
+  operations: 100,
+  performance: 100,
+  cost: 100,
+  sustainability: 100,
+  clarity: 100,
 };
 
 const HIGH_FALSE_POSITIVE_RULE_IDS = new Set([
-  "MSFT-COMPONENT-LABEL-COVERAGE",
-  "CLAR-REL-LABELS-MISSING",
-  "CLAR-ACRONYMS-UNEXPLAINED",
-  "CLAR-OFFICIAL-ICONS-REC",
-  "CLAR-NOTATION-STANDARD",
-  "CLAR-BOUNDARY-EXPLICIT",
-  "CLAR-VERSION-CONTROL",
+  "workload_objective_and_constraints_stated",
+  "data_classification_and_compliance_noted",
+  "rto_rpo_defined",
+  "region_and_environment_boundaries_identified",
+  "waf_on_public_endpoints",
+  "vpc_flow_logs_enabled",
+  "infrastructure_as_code_indicated",
 ]);
 
 type SeverityBand = "low" | "med" | "high" | "critical";
@@ -453,6 +453,22 @@ export function mergedEvidenceText(values: string[]) {
 export function intentGroupForRule(ruleId: string) {
   const normalized = ruleId.toUpperCase();
 
+  if (normalized.includes("DIAGRAM_NARRATIVE") || normalized.startsWith("STATED_")) {
+    return "architecture_contradictions";
+  }
+
+  if (normalized.includes("TLS") || normalized.includes("PUBLIC_") || normalized.includes("SSH") || normalized.includes("RDP")) {
+    return "internet_exposure";
+  }
+
+  if (normalized.includes("DATABASE") || normalized.includes("RDS")) {
+    return "database_resilience";
+  }
+
+  if (normalized.includes("CLOUDWATCH") || normalized.includes("CLOUDTRAIL") || normalized.includes("LOGGING")) {
+    return "observability_controls";
+  }
+
   if (normalized.startsWith("MSFT-META-") || normalized.startsWith("CLAR-META-")) {
     return "clar_meta";
   }
@@ -497,7 +513,7 @@ export function intentGroupForRule(ruleId: string) {
     return "clar_labels";
   }
 
-  return normalized.split("-").slice(0, 2).join("_") || normalized;
+  return normalized.split(/[_-]/).slice(0, 2).join("_") || normalized;
 }
 
 export function compareFindingsDeterministically(

@@ -156,18 +156,18 @@ describe("architecture rule catalog", () => {
   });
 
   it("uses a published DB override for live quote copy and pricing", async () => {
-    const codeEntry = getArchitectureReviewPricingCatalogEntry("PILLAR-SECURITY");
+    const codeEntry = getArchitectureReviewPricingCatalogEntry("internet_facing_endpoint_without_tls");
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_security",
-        ruleId: "PILLAR-SECURITY",
+        ruleId: "internet_facing_endpoint_without_tls",
         category: "security",
         codeSnapshotJson: codeEntry,
         reviewStatus: ArchitectureRuleCatalogReviewStatus.PUBLISHED,
         publishedVersion: 2,
         publishedRevisionId: "revision_security_live",
-        serviceLineLabel: "Security redesign sprint",
-        publicFixSummary: "Map IAM, secret storage, and encryption controls into the diagram.",
+        serviceLineLabel: "TLS hardening sprint",
+        publicFixSummary: "Enforce HTTPS/TLS on the public path before quoting any polish work.",
         pricingMode: ArchitectureRuleCatalogPricingMode.OVERRIDE,
         overrideMinPriceUsd: 900,
         overrideMaxPriceUsd: 1100,
@@ -179,12 +179,12 @@ describe("architecture rule catalog", () => {
       flowNarrative: "Edge traffic reaches app services and a stateful store.",
       findings: [
         {
-          ruleId: "PILLAR-SECURITY",
+          ruleId: "internet_facing_endpoint_without_tls",
           category: "security",
-          pointsDeducted: 12,
-          message: "Security controls are missing.",
-          fix: "Add IAM, secret-management, and encryption details.",
-          evidence: "No security controls were described.",
+          pointsDeducted: 5,
+          message: "Public traffic is present without explicit TLS enforcement.",
+          fix: "Terminate TLS with ACM at the public entry point and enforce HTTPS-only.",
+          evidence: "The submission shows internet-facing traffic without clearly stating TLS termination.",
         },
       ],
       userEmail: "architect@zokorp.com",
@@ -197,15 +197,15 @@ describe("architecture rule catalog", () => {
 
     expect(snapshot.totalUsd).toBe(1000);
     expect(snapshot.lineItems[0]).toMatchObject({
-      ruleId: "PILLAR-SECURITY",
-      serviceLineLabel: "Security redesign sprint",
-      publicFixSummary: "Map IAM, secret storage, and encryption controls into the diagram.",
+      ruleId: "internet_facing_endpoint_without_tls",
+      serviceLineLabel: "TLS hardening sprint",
+      publicFixSummary: "Enforce HTTPS/TLS on the public path before quoting any polish work.",
       amountUsd: 1000,
       source: "published",
       publishedRevisionId: "revision_security_live",
     });
     expect(auditUsage[0]).toMatchObject({
-      ruleId: "PILLAR-SECURITY",
+      ruleId: "internet_facing_endpoint_without_tls",
       source: "published",
       pricingMode: "OVERRIDE",
       amountUsd: 1000,
@@ -213,11 +213,11 @@ describe("architecture rule catalog", () => {
   });
 
   it("falls back to code-backed pricing when a rule only has a draft", async () => {
-    const codeEntry = getArchitectureReviewPricingCatalogEntry("PILLAR-OPERATIONS");
+    const codeEntry = getArchitectureReviewPricingCatalogEntry("centralized_application_logging");
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_ops",
-        ruleId: "PILLAR-OPERATIONS",
+        ruleId: "centralized_application_logging",
         category: "operations",
         codeSnapshotJson: codeEntry,
         reviewStatus: ArchitectureRuleCatalogReviewStatus.DRAFT,
@@ -235,12 +235,12 @@ describe("architecture rule catalog", () => {
       flowNarrative: "Services process requests and write audit logs.",
       findings: [
         {
-          ruleId: "PILLAR-OPERATIONS",
+          ruleId: "centralized_application_logging",
           category: "operations",
-          pointsDeducted: 8,
-          message: "Operational controls are missing.",
-          fix: "Add metrics, alerts, logs, and runbook ownership.",
-          evidence: "No meaningful observability controls were described.",
+          pointsDeducted: 4,
+          message: "Application logs are not centralized.",
+          fix: "Ship service logs to CloudWatch Logs with retention and access controls.",
+          evidence: "The submission does not show a centralized logging path.",
         },
       ],
       userEmail: "architect@zokorp.com",
@@ -252,8 +252,8 @@ describe("architecture rule catalog", () => {
     });
 
     expect(snapshot.lineItems[0]).toMatchObject({
-      ruleId: "PILLAR-OPERATIONS",
-      serviceLineLabel: "Observability and runbook setup",
+      ruleId: "centralized_application_logging",
+      serviceLineLabel: codeEntry?.serviceLine,
       source: "fallback",
     });
     expect(snapshot.lineItems[0]?.amountUsd).toBe(report.findings[0]?.fixCostUSD);
@@ -265,36 +265,44 @@ describe("architecture rule catalog", () => {
       flowNarrative: "Traffic path is unclear and the submission is missing security, reliability, and operations details.",
       findings: [
         {
-          ruleId: "PILLAR-SECURITY",
+          ruleId: "internet_facing_endpoint_without_tls",
           category: "security",
           pointsDeducted: 12,
-          message: "Security controls are missing.",
-          fix: "Add IAM, secret-management, and encryption details.",
-          evidence: "No security controls were described.",
+          message: "Public traffic is present without explicit TLS enforcement.",
+          fix: "Terminate TLS with ACM at the public entry point and enforce HTTPS-only.",
+          evidence: "The public ingress path does not show HTTPS/TLS.",
         },
         {
-          ruleId: "PILLAR-RELIABILITY",
+          ruleId: "single_az_database_for_production",
           category: "reliability",
           pointsDeducted: 10,
-          message: "Recovery controls are missing.",
-          fix: "Add backup, restore, and failover coverage.",
-          evidence: "No reliability controls were described.",
+          message: "The production database is single-AZ.",
+          fix: "Enable Multi-AZ or redesign the database location strategy.",
+          evidence: "The submission only shows a single-AZ relational database path.",
         },
         {
-          ruleId: "PILLAR-OPERATIONS",
+          ruleId: "centralized_application_logging",
           category: "operations",
           pointsDeducted: 8,
-          message: "Operational controls are missing.",
-          fix: "Add logs, metrics, alerts, and runbook ownership.",
-          evidence: "No observability controls were described.",
+          message: "Production logging is missing.",
+          fix: "Centralize application logs and baseline retention.",
+          evidence: "The diagram does not show centralized service logs.",
         },
         {
-          ruleId: "CLAR-BOUNDARY-EXPLICIT",
+          ruleId: "workload_objective_and_constraints_stated",
           category: "clarity",
           pointsDeducted: 12,
-          message: "Trust boundaries are not explicit.",
-          fix: "Label external, application, and data trust boundaries directly on the diagram.",
-          evidence: "The diagram does not make the boundary changes obvious.",
+          message: "The workload objective and constraints are not credible yet.",
+          fix: "State the workload objective, users, load, and recovery requirements.",
+          evidence: "The narrative leaves core constraints ambiguous.",
+        },
+        {
+          ruleId: "autoscaling_defined_for_variable_load",
+          category: "performance",
+          pointsDeducted: 8,
+          message: "No scaling strategy is defined for the variable workload.",
+          fix: "Add Auto Scaling or an equivalent scaling path with guardrails.",
+          evidence: "The workload claims variability but no scaling controls are shown.",
         },
       ],
       userEmail: "architect@zokorp.com",
@@ -318,9 +326,9 @@ describe("architecture rule catalog", () => {
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_changed",
-        ruleId: "PILLAR-SECURITY",
+        ruleId: "internet_facing_endpoint_without_tls",
         category: "security",
-        codeSnapshotJson: { ruleId: "PILLAR-SECURITY", serviceLine: "Old value" },
+        codeSnapshotJson: { ruleId: "internet_facing_endpoint_without_tls", serviceLine: "Old value" },
         reviewStatus: ArchitectureRuleCatalogReviewStatus.PUBLISHED,
         publishedVersion: 1,
       }),
@@ -341,7 +349,7 @@ describe("architecture rule catalog", () => {
     expect(result.created).toBeGreaterThan(0);
     expect(result.markedStale).toBeGreaterThanOrEqual(2);
 
-    const changed = state.catalogs.find((entry) => entry.ruleId === "PILLAR-SECURITY");
+    const changed = state.catalogs.find((entry) => entry.ruleId === "internet_facing_endpoint_without_tls");
     const removed = state.catalogs.find((entry) => entry.ruleId === "REMOVED-RULE");
 
     expect(changed?.reviewStatus).toBe(ArchitectureRuleCatalogReviewStatus.STALE);
@@ -350,18 +358,18 @@ describe("architecture rule catalog", () => {
   });
 
   it("saves drafts without changing the published runtime row", async () => {
-    const codeEntry = getArchitectureReviewPricingCatalogEntry("PILLAR-COST");
+    const codeEntry = getArchitectureReviewPricingCatalogEntry("autoscaling_defined_for_variable_load");
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_cost",
-        ruleId: "PILLAR-COST",
-        category: "cost",
+        ruleId: "autoscaling_defined_for_variable_load",
+        category: "performance",
         codeSnapshotJson: codeEntry,
         reviewStatus: ArchitectureRuleCatalogReviewStatus.PUBLISHED,
         publishedVersion: 1,
         publishedRevisionId: "revision_cost_live",
-        serviceLineLabel: "Cost guardrail review",
-        publicFixSummary: "Current published summary.",
+        serviceLineLabel: "Scaling strategy sprint",
+        publicFixSummary: "Current published scaling summary.",
         pricingMode: ArchitectureRuleCatalogPricingMode.OVERRIDE,
         overrideMinPriceUsd: 650,
         overrideMaxPriceUsd: 650,
@@ -373,12 +381,12 @@ describe("architecture rule catalog", () => {
       flowNarrative: "Services fan out to multiple managed dependencies.",
       findings: [
         {
-          ruleId: "PILLAR-COST",
-          category: "cost",
+          ruleId: "autoscaling_defined_for_variable_load",
+          category: "performance",
           pointsDeducted: 8,
-          message: "Cost controls are missing.",
-          fix: "Add budget guardrails, scale limits, and lifecycle coverage.",
-          evidence: "No cost controls were described.",
+          message: "Scaling controls are missing for a variable workload.",
+          fix: "Add Auto Scaling signals, thresholds, and scale safety limits.",
+          evidence: "The architecture claims variable demand without a scaling path.",
         },
       ],
       userEmail: "architect@zokorp.com",
@@ -390,30 +398,30 @@ describe("architecture rule catalog", () => {
     });
 
     await saveArchitectureRuleCatalogDraft({
-      ruleId: "PILLAR-COST",
-      serviceLineLabel: "Draft cost optimization package",
-      publicFixSummary: "Draft summary only.",
+      ruleId: "autoscaling_defined_for_variable_load",
+      serviceLineLabel: "Draft scaling optimization package",
+      publicFixSummary: "Draft scaling summary only.",
       changedByEmail: "owner@zokorp.com",
     });
 
-    const catalog = state.catalogs.find((entry) => entry.ruleId === "PILLAR-COST");
+    const catalog = state.catalogs.find((entry) => entry.ruleId === "autoscaling_defined_for_variable_load");
     const draftRevision = state.revisions.find((entry) => entry.catalogId === "catalog_cost");
     const liveAfterDraft = await loadArchitectureEstimateSnapshot(report, {
       bookingUrl: "https://book.zokorp.com/architecture",
     });
     const directory = await getArchitectureRuleCatalogDirectory();
-    const directoryEntry = directory.entries.find((entry) => entry.ruleId === "PILLAR-COST");
+    const directoryEntry = directory.entries.find((entry) => entry.ruleId === "autoscaling_defined_for_variable_load");
 
     expect(catalog?.reviewStatus).toBe(ArchitectureRuleCatalogReviewStatus.DRAFT);
-    expect(catalog?.serviceLineLabel).toBe("Cost guardrail review");
+    expect(catalog?.serviceLineLabel).toBe("Scaling strategy sprint");
     expect(liveBeforeDraft.snapshot.lineItems[0]).toMatchObject({
       source: "published",
-      serviceLineLabel: "Cost guardrail review",
+      serviceLineLabel: "Scaling strategy sprint",
       amountUsd: 650,
     });
     expect(liveAfterDraft.snapshot.lineItems[0]).toMatchObject({
       source: "published",
-      serviceLineLabel: "Cost guardrail review",
+      serviceLineLabel: "Scaling strategy sprint",
       amountUsd: 650,
     });
     expect(directoryEntry).toMatchObject({
@@ -422,18 +430,18 @@ describe("architecture rule catalog", () => {
     });
     expect(draftRevision).toMatchObject({
       status: ArchitectureRuleCatalogReviewStatus.DRAFT,
-      serviceLineLabel: "Draft cost optimization package",
-      publicFixSummary: "Draft summary only.",
+      serviceLineLabel: "Draft scaling optimization package",
+      publicFixSummary: "Draft scaling summary only.",
       changedByEmail: "owner@zokorp.com",
     });
   });
 
   it("falls back to code-backed pricing when a previously published rule is stale", async () => {
-    const codeEntry = getArchitectureReviewPricingCatalogEntry("PILLAR-SECURITY");
+    const codeEntry = getArchitectureReviewPricingCatalogEntry("data_classification_and_compliance_noted");
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_security_stale",
-        ruleId: "PILLAR-SECURITY",
+        ruleId: "data_classification_and_compliance_noted",
         category: "security",
         codeSnapshotJson: codeEntry,
         reviewStatus: ArchitectureRuleCatalogReviewStatus.STALE,
@@ -452,12 +460,12 @@ describe("architecture rule catalog", () => {
       flowNarrative: "Traffic reaches application services and stateful systems.",
       findings: [
         {
-          ruleId: "PILLAR-SECURITY",
+          ruleId: "data_classification_and_compliance_noted",
           category: "security",
-          pointsDeducted: 12,
-          message: "Security controls are missing.",
-          fix: "Document identity, secret, and encryption controls.",
-          evidence: "No explicit security controls were described.",
+          pointsDeducted: 3,
+          message: "Sensitive data is implied, but classification and compliance scope are not explicit.",
+          fix: "Add a short data inventory with sensitivity and compliance scope.",
+          evidence: "The submission references customer data but does not classify it.",
         },
       ],
       userEmail: "architect@zokorp.com",
@@ -477,21 +485,21 @@ describe("architecture rule catalog", () => {
   });
 
   it("publishes a reviewed revision and leaves immutable code-backed fields untouched", async () => {
-    const codeEntry = getArchitectureReviewPricingCatalogEntry("CLAR-STALE-DIAGRAM");
+    const codeEntry = getArchitectureReviewPricingCatalogEntry("infrastructure_as_code_indicated");
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_stale",
-        ruleId: "CLAR-STALE-DIAGRAM",
-        category: "clarity",
+        ruleId: "infrastructure_as_code_indicated",
+        category: "operations",
         codeSnapshotJson: codeEntry,
         reviewStatus: ArchitectureRuleCatalogReviewStatus.UNREVIEWED,
       }),
     );
 
     const formData = new FormData();
-    formData.set("ruleId", "CLAR-STALE-DIAGRAM");
-    formData.set("serviceLineLabel", "Diagram refresh sprint");
-    formData.set("publicFixSummary", "Refresh the stale architecture view and recertify the operating flow.");
+    formData.set("ruleId", "infrastructure_as_code_indicated");
+    formData.set("serviceLineLabel", "IaC delivery baseline");
+    formData.set("publicFixSummary", "Move the production footprint into reviewed infrastructure as code workflows.");
     formData.set("pricingMode", "OVERRIDE");
     formData.set("overrideMinPriceUsd", "450");
     formData.set("overrideMaxPriceUsd", "650");
@@ -504,14 +512,14 @@ describe("architecture rule catalog", () => {
       changedByEmail: "owner@zokorp.com",
     });
 
-    const catalog = state.catalogs.find((entry) => entry.ruleId === "CLAR-STALE-DIAGRAM");
+    const catalog = state.catalogs.find((entry) => entry.ruleId === "infrastructure_as_code_indicated");
     const publishedRevision = state.revisions.find((entry) => entry.catalogId === "catalog_stale");
 
     expect(parsed).not.toHaveProperty("category");
     expect(catalog).toMatchObject({
-      category: "clarity",
+      category: "operations",
       reviewStatus: ArchitectureRuleCatalogReviewStatus.PUBLISHED,
-      serviceLineLabel: "Diagram refresh sprint",
+      serviceLineLabel: "IaC delivery baseline",
       pricingMode: ArchitectureRuleCatalogPricingMode.OVERRIDE,
       overrideMinPriceUsd: 450,
       overrideMaxPriceUsd: 650,
@@ -519,7 +527,7 @@ describe("architecture rule catalog", () => {
     });
     expect(publishedRevision).toMatchObject({
       status: ArchitectureRuleCatalogReviewStatus.PUBLISHED,
-      serviceLineLabel: "Diagram refresh sprint",
+      serviceLineLabel: "IaC delivery baseline",
       changedByEmail: "owner@zokorp.com",
     });
   });

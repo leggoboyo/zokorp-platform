@@ -1,29 +1,30 @@
 import { describe, expect, it } from "vitest";
 
 import { buildArchitectureReviewEmailContent } from "@/lib/architecture-review/email";
+import { getArchitectureReviewPricingCatalogEntry } from "@/lib/architecture-review/pricing-catalog";
 import { buildArchitectureReviewReport } from "@/lib/architecture-review/report";
 
 describe("architecture review email content", () => {
   it("renders the implementation estimate and booking link without package menus", () => {
     const report = buildArchitectureReviewReport({
       provider: "aws",
-      flowNarrative: "Client requests enter ALB, app tier calls services, and writes to a managed database.",
+      flowNarrative: "Client requests enter through CloudFront and ALB before reaching private services and a managed database.",
       findings: [
         {
-          ruleId: "PILLAR-SECURITY",
+          ruleId: "internet_facing_endpoint_without_tls",
           category: "security",
-          pointsDeducted: 12,
-          message: "Document security controls for identity, secrets, and encryption.",
-          fix: "Name IAM/auth controls, encryption boundaries, and secret-management steps.",
-          evidence: "No explicit security controls were present in the paragraph.",
+          pointsDeducted: 5,
+          message: "Public traffic is present without explicit TLS enforcement.",
+          fix: "Terminate TLS with ACM at the public entry point and enforce HTTPS-only.",
+          evidence: "The diagram shows internet-facing traffic but does not make HTTPS/TLS termination explicit.",
         },
         {
-          ruleId: "PILLAR-OPERATIONS",
+          ruleId: "centralized_application_logging",
           category: "operations",
-          pointsDeducted: 8,
-          message: "Define monitoring and operational ownership.",
-          fix: "Add metrics, alerts, logs, and runbook ownership for this flow.",
-          evidence: "No operations controls were identified in the paragraph.",
+          pointsDeducted: 6,
+          message: "Application logs are not centralized.",
+          fix: "Ship service logs to CloudWatch Logs with baseline retention and access controls.",
+          evidence: "The submission does not show a centralized logging path for production services.",
         },
       ],
       userEmail: "architect@zokorp.com",
@@ -53,31 +54,31 @@ describe("architecture review email content", () => {
     const report = buildArchitectureReviewReport({
       provider: "aws",
       flowNarrative:
-        "Users enter through an API layer and the diagram references app services without fully explaining how requests move across the system.",
+        "Users enter through a public path and reach application services, but the written explanation stays light on requirements and operational detail.",
       findings: [
         {
-          ruleId: "MSFT-COMPONENT-LABEL-COVERAGE",
+          ruleId: "workload_objective_and_constraints_stated",
           category: "clarity",
-          pointsDeducted: 6,
-          message: "Explain the role of each major component.",
-          fix: "State what each service does and how the request flows through it.",
-          evidence: "Several services are named but not fully explained.",
+          pointsDeducted: 1,
+          message: "The workload objective is stated, but measurable constraints are thin.",
+          fix: "Add objective, users, load, uptime, and recovery constraints.",
+          evidence: "The narrative describes the workload but leaves key constraints implicit.",
         },
         {
-          ruleId: "CLAR-BOUNDARY-EXPLICIT",
-          category: "clarity",
-          pointsDeducted: 4,
-          message: "Make the trust boundaries explicit.",
-          fix: "Label the external, application, and data trust boundaries directly on the diagram.",
-          evidence: "The diagram does not clearly show where the trust boundary changes.",
+          ruleId: "region_and_environment_boundaries_identified",
+          category: "operations",
+          pointsDeducted: 2,
+          message: "Region and environment boundaries are only partially explicit.",
+          fix: "Label the AWS Region and separate production from non-production boundaries.",
+          evidence: "The submission references the workload but not a full Region/environment boundary.",
         },
         {
-          ruleId: "PILLAR-SECURITY",
+          ruleId: "waf_on_public_endpoints",
           category: "security",
-          pointsDeducted: 12,
-          message: "Document security controls for identity, secrets, and encryption.",
-          fix: "Name IAM boundaries, secret storage, and encryption points.",
-          evidence: "Security controls are not explicit in the current narrative.",
+          pointsDeducted: 3,
+          message: "The public entry point exists, but WAF coverage is not explicit.",
+          fix: "Attach AWS WAF to the public path with managed rules and rate limits.",
+          evidence: "The diagram shows internet-facing traffic without naming WAF controls.",
         },
       ],
       userEmail: "architect@zokorp.com",
@@ -100,18 +101,19 @@ describe("architecture review email content", () => {
   });
 
   it("lists each quoted rule line in the customer email", () => {
+    const ruleEntry = getArchitectureReviewPricingCatalogEntry("data_classification_and_compliance_noted");
     const report = buildArchitectureReviewReport({
       provider: "aws",
       flowNarrative:
         "Traffic enters through CloudFront and ALB, services run in private subnets, and stateful systems support the production workload.",
       findings: [
         {
-          ruleId: "SEC-BASELINE-MISSING",
+          ruleId: "data_classification_and_compliance_noted",
           category: "security",
-          pointsDeducted: 8,
-          message: "Map the architecture to the required control baseline.",
-          fix: "Document the control family placement and ownership model.",
-          evidence: "Regulated scope is present without explicit control mapping.",
+          pointsDeducted: 3,
+          message: "Sensitive data is implied, but classification and compliance scope are not explicit.",
+          fix: "Add a short data inventory with sensitivity and compliance scope.",
+          evidence: "The submission mentions customer data without clearly classifying it.",
         },
       ],
       userEmail: "architect@zokorp.com",
@@ -128,24 +130,25 @@ describe("architecture review email content", () => {
 
     const content = buildArchitectureReviewEmailContent(report);
 
-    expect(content.text).toContain("SEC-BASELINE-MISSING");
-    expect(content.text).toContain("Compliance baseline mapping");
-    expect(content.html).toContain("SEC-BASELINE-MISSING");
-    expect(content.html).toContain("Compliance baseline mapping");
+    expect(content.text).toContain("data_classification_and_compliance_noted");
+    expect(content.text).toContain(ruleEntry!.serviceLine);
+    expect(content.html).toContain("data_classification_and_compliance_noted");
+    expect(content.html).toContain(ruleEntry!.serviceLine);
   });
 
   it("renders official source links for quoted architecture findings", () => {
+    const ruleEntry = getArchitectureReviewPricingCatalogEntry("cloudtrail_multi_region_enabled");
     const report = buildArchitectureReviewReport({
       provider: "aws",
-      flowNarrative: "Requests traverse edge, application, and data tiers but security controls are still thin.",
+      flowNarrative: "Requests traverse edge, application, and data tiers but audit coverage is still thin.",
       findings: [
         {
-          ruleId: "PILLAR-SECURITY",
-          category: "security",
-          pointsDeducted: 12,
-          message: "Document security controls for identity, secrets, and encryption.",
-          fix: "Name IAM boundaries, secret storage, and encryption points.",
-          evidence: "Security controls are not explicit in the current narrative.",
+          ruleId: "cloudtrail_multi_region_enabled",
+          category: "operations",
+          pointsDeducted: 4,
+          message: "CloudTrail coverage is not explicit for the AWS account in scope.",
+          fix: "Enable a multi-Region CloudTrail trail with protected log delivery.",
+          evidence: "The architecture does not show CloudTrail or log-archive coverage.",
         },
       ],
       userEmail: "architect@zokorp.com",
@@ -153,8 +156,9 @@ describe("architecture review email content", () => {
     });
 
     const content = buildArchitectureReviewEmailContent(report);
+    const sourceLabel = ruleEntry!.officialSourceLinks[0]!.label;
 
-    expect(content.text).toContain("AWS Security Reference Architecture");
-    expect(content.html).toContain("AWS Security Reference Architecture");
+    expect(content.text).toContain(sourceLabel);
+    expect(content.html).toContain(sourceLabel);
   });
 });

@@ -1,83 +1,59 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AWS_ARCHITECTURE_LAUNCH_V1_RULES,
+  getAwsArchitectureLaunchV1Rule,
+} from "@/lib/architecture-review/aws-launch-v1-catalog";
+import {
   ARCHITECTURE_REVIEW_PACKAGE_CATALOG,
   ARCHITECTURE_REVIEW_PRICING_CATALOG,
   getArchitectureReviewPricingCatalogEntry,
 } from "@/lib/architecture-review/pricing-catalog";
+import { calculateFixCostUSD } from "@/lib/architecture-review/quote";
 
 describe("architecture review pricing catalog", () => {
-  it("covers the current deterministic finding catalog without duplicate rule ids", () => {
+  it("covers the AWS launch-v1 rule catalog without duplicate rule ids", () => {
     const ruleIds = ARCHITECTURE_REVIEW_PRICING_CATALOG.map((entry) => entry.ruleId);
     expect(new Set(ruleIds).size).toBe(ruleIds.length);
-
-    expect(ruleIds).toEqual([
-      "MSFT-META-TITLE",
-      "MSFT-META-OWNER",
-      "MSFT-META-LAST-UPDATED",
-      "MSFT-META-VERSION",
-      "PILLAR-SECURITY",
-      "PILLAR-RELIABILITY",
-      "PILLAR-OPERATIONS",
-      "PILLAR-PERFORMANCE",
-      "PILLAR-COST",
-      "PILLAR-SECURITY-DEPTH",
-      "PILLAR-RELIABILITY-DEPTH",
-      "PILLAR-OPERATIONS-DEPTH",
-      "PILLAR-SUSTAINABILITY-OPTIONAL",
-      "CLAR-OFFICIAL-REFERENCE-PATTERN",
-      "INPUT-NOT-ARCH-DIAGRAM",
-      "INPUT-NON-ARCH-SUSPECT",
-      "INPUT-PARAGRAPH-QUALITY",
-      "AWS-PROVIDER-MISMATCH",
-      "AZURE-PROVIDER-MISMATCH",
-      "GCP-PROVIDER-MISMATCH",
-      "MSFT-FLOW-DIRECTION",
-      "CLAR-UNIDIR-RELATIONSHIPS",
-      "MSFT-COMPONENT-LABEL-COVERAGE",
-      "CLAR-BOUNDARY-EXPLICIT",
-      "CLAR-REL-LABELS-MISSING",
-      "CLAR-REGION-ZONE-MISSING",
-      "CLAR-STALE-DIAGRAM",
-      "MSFT-LEGEND-SEMANTICS",
-      "MSFT-LAYERING-DENSITY",
-      "MSFT-LAYERING-OPTIONAL",
-      "REL-RTO-RPO-MISSING",
-      "REL-BACKUP-RESTORE",
-      "SEC-BASELINE-MISSING",
-      "CLAR-DATA-CLASS-MISSING",
-    ]);
+    expect(ruleIds).toEqual(AWS_ARCHITECTURE_LAUNCH_V1_RULES.map((rule) => rule.id));
   });
 
-  it("captures variable pricing bands for range-based findings", () => {
-    const coverageEntry = getArchitectureReviewPricingCatalogEntry("MSFT-COMPONENT-LABEL-COVERAGE");
-    const staleEntry = getArchitectureReviewPricingCatalogEntry("CLAR-STALE-DIAGRAM");
+  it("captures pricing ranges from the AWS rule weights and partial-credit rules", () => {
+    const multiRegionRule = getAwsArchitectureLaunchV1Rule("stated_multi_region_requirement_mismatch");
+    const iacRule = getAwsArchitectureLaunchV1Rule("infrastructure_as_code_indicated");
+    const multiRegionEntry = getArchitectureReviewPricingCatalogEntry("stated_multi_region_requirement_mismatch");
+    const iacEntry = getArchitectureReviewPricingCatalogEntry("infrastructure_as_code_indicated");
 
-    expect(coverageEntry).toMatchObject({
-      minPointsDeducted: 4,
-      maxPointsDeducted: 12,
-      minFixCostUSD: 33,
-      maxFixCostUSD: 54,
+    expect(multiRegionRule).not.toBeNull();
+    expect(iacRule).not.toBeNull();
+
+    expect(multiRegionEntry).toMatchObject({
+      minPointsDeducted: multiRegionRule!.scoreWeight - multiRegionRule!.maxPartialCredit,
+      maxPointsDeducted: multiRegionRule!.scoreWeight,
+      minFixCostUSD: calculateFixCostUSD(
+        multiRegionRule!.category,
+        multiRegionRule!.scoreWeight - multiRegionRule!.maxPartialCredit,
+      ),
+      maxFixCostUSD: calculateFixCostUSD(multiRegionRule!.category, multiRegionRule!.scoreWeight),
     });
 
-    expect(staleEntry).toMatchObject({
-      minPointsDeducted: 2,
-      maxPointsDeducted: 6,
-      minFixCostUSD: 28,
-      maxFixCostUSD: 38,
+    expect(iacEntry).toMatchObject({
+      minPointsDeducted: iacRule!.scoreWeight - iacRule!.maxPartialCredit,
+      maxPointsDeducted: iacRule!.scoreWeight,
+      minFixCostUSD: calculateFixCostUSD(iacRule!.category, iacRule!.scoreWeight - iacRule!.maxPartialCredit),
+      maxFixCostUSD: calculateFixCostUSD(iacRule!.category, iacRule!.scoreWeight),
     });
   });
 
-  it("marks non-priced recommendations and rejection-only rules correctly", () => {
-    expect(getArchitectureReviewPricingCatalogEntry("PILLAR-SUSTAINABILITY-OPTIONAL")).toMatchObject({
+  it("marks consultation-only and optional-polish rules with the correct quote posture", () => {
+    expect(getArchitectureReviewPricingCatalogEntry("vpc_flow_logs_enabled")).toMatchObject({
       quoteImpact: "zero-cost-optional",
-      minFixCostUSD: 0,
-      maxFixCostUSD: 0,
+      pricingNotes: expect.stringContaining("Optional polish"),
     });
 
-    expect(getArchitectureReviewPricingCatalogEntry("INPUT-NOT-ARCH-DIAGRAM")).toMatchObject({
+    expect(getArchitectureReviewPricingCatalogEntry("public_database_exposure")).toMatchObject({
       quoteImpact: "review-rejected",
-      pricingNotes: expect.stringContaining("No quote should be sent"),
+      pricingNotes: expect.stringContaining("Launch v1 blocker"),
     });
   });
 
@@ -98,15 +74,15 @@ describe("architecture review pricing catalog", () => {
   });
 
   it("includes source links, confidence guidance, and remediation ranges in the runtime catalog", () => {
-    expect(getArchitectureReviewPricingCatalogEntry("PILLAR-SECURITY")).toMatchObject({
+    expect(getArchitectureReviewPricingCatalogEntry("cloudtrail_multi_region_enabled")).toMatchObject({
       officialSourceLinks: expect.arrayContaining([
         expect.objectContaining({
           label: expect.stringContaining("AWS"),
           url: expect.stringContaining("https://"),
         }),
       ]),
-      confidenceGuidance: expect.stringContaining("Confidence"),
-      partialCreditGuidance: expect.stringContaining("Partial credit"),
+      confidenceGuidance: expect.stringContaining("Fail only if explicit"),
+      partialCreditGuidance: expect.stringContaining("partial"),
       remediationHoursLow: expect.any(Number),
       remediationHoursHigh: expect.any(Number),
     });

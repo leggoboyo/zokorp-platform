@@ -46,14 +46,14 @@ describe("architecture quote calculator", () => {
     expect(quote).toBe(249 + 290 + 340);
   });
 
-  it("caps category deductions instead of summing unlimited penalties", () => {
+  it("uses the full weighted deduction model for launch-v1 scoring", () => {
     const score = calculateOverallScore([
       { category: "security", pointsDeducted: 18 },
       { category: "security", pointsDeducted: 17 },
       { category: "clarity", pointsDeducted: 12 },
     ]);
 
-    expect(score).toBe(63);
+    expect(score).toBe(53);
   });
 
   it("keeps low-confidence reviews at the advisory baseline", () => {
