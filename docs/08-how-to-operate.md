@@ -33,6 +33,27 @@
   - human-readable pass/fail lines
   - JSON summary for copy/paste into incident notes or handoff messages
 
+## 2b) Run the live browser customer-journey audit from CLI
+- Command:
+  - `npm run journey:audit:production`
+- What it verifies:
+  - home page renders on the canonical site
+  - top navigation reaches `Software`, `Services`, `Case Studies`, `Contact Us`, and `About`
+  - `/software` shows only the 3 launch products
+  - retired public products stay absent from the catalog
+  - each launch product page renders its expected public access state
+- Optional authenticated checks:
+  - set `JOURNEY_EMAIL` and `JOURNEY_PASSWORD` before running
+  - set `JOURNEY_EXPECT_SUBSCRIPTION=true` if that account should already have MLOps access
+  - with those env vars present, the audit also signs in, checks `/account`, and validates authenticated product states
+- Optional runtime controls:
+  - `JOURNEY_BASE_URL` to point at a preview or non-production target
+  - `JOURNEY_HEADED=true` to watch the browser run
+  - `JOURNEY_BROWSER_CHANNEL=chrome` to prefer local Chrome, with bundled Chromium fallback
+- Output:
+  - screenshots and `summary.json` under `output/playwright/customer-journey-audit/`
+  - non-zero exit code if any checked browser step fails
+
 ## 3) Add or update Stripe prices
 - Open `/admin/prices` as an admin user.
 - Attach Stripe `price_...` IDs to products.
