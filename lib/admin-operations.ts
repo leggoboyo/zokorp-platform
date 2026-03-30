@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 
+const FOLLOW_UP_ATTENTION_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 type OperationsIssue = {
   id: string;
   createdAt: Date;
@@ -19,10 +21,14 @@ export type AdminOperationsSnapshot = {
     failedQuoteCompanions: number;
     recentValidatorRuns: number;
     recentMlopsRuns: number;
+    recentBookedCalls: number;
+    followUpAttention: number;
   };
   architectureEmailIssues: OperationsIssue[];
   crmSyncIssues: OperationsIssue[];
   estimateCompanionIssues: OperationsIssue[];
+  bookedCallSignals: OperationsIssue[];
+  followUpAttentionIssues: OperationsIssue[];
   toolRunSignals: OperationsIssue[];
 };
 
@@ -45,7 +51,9 @@ function readNumber(record: Record<string, unknown> | null, key: string) {
 }
 
 export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnapshot> {
-  const [emailOutboxes, crmLeads, estimateCompanions, toolRuns] = await Promise.all([
+  const staleThreshold = new Date(Date.now() - FOLLOW_UP_ATTENTION_WINDOW_MS);
+
+  const [emailOutboxes, crmLeads, estimateCompanions, toolRuns, bookedCalls, staleServiceRequests] = await Promise.all([
     db.architectureReviewEmailOutbox.findMany({
       where: {
         status: {
@@ -107,7 +115,89 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
       },
       take: 25,
     }),
+    db.leadInteraction.findMany({
+      where: {
+        action: "call_booked",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 20,
+      include: {
+        lead: {
+          select: {
+            email: true,
+          },
+        },
+        serviceRequest: {
+          select: {
+            trackingCode: true,
+            status: true,
+          },
+        },
+      },
+    }),
+    db.serviceRequest.findMany({
+      where: {
+        status: {
+          in: ["SUBMITTED", "TRIAGED", "PROPOSAL_SENT"],
+        },
+        updatedAt: {
+          lt: staleThreshold,
+        },
+      },
+      orderBy: {
+        updatedAt: "asc",
+      },
+      take: 20,
+      include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
+      },
+    }),
   ]);
+
+  const staleEstimateCandidates = await db.estimateCompanion.findMany({
+    where: {
+      status: "created",
+      updatedAt: {
+        lt: staleThreshold,
+      },
+    },
+    orderBy: {
+      updatedAt: "asc",
+    },
+    take: 20,
+  });
+
+  const staleEstimateReferenceCodes = staleEstimateCandidates
+    .map((item) => item.referenceCode)
+    .filter((value): value is string => Boolean(value));
+  const bookedCallByReference = new Set(
+    staleEstimateReferenceCodes.length === 0
+      ? []
+      : (
+          await db.leadInteraction.findMany({
+            where: {
+              action: "call_booked",
+              estimateReferenceCode: {
+                in: staleEstimateReferenceCodes,
+              },
+            },
+            select: {
+              estimateReferenceCode: true,
+            },
+          })
+        )
+          .map((item) => item.estimateReferenceCode)
+          .filter((value): value is string => Boolean(value)),
+  );
+  const staleEstimatesWithoutFollowUp = staleEstimateCandidates.filter(
+    (item) => !bookedCallByReference.has(item.referenceCode),
+  );
 
   return {
     stats: {
@@ -117,6 +207,8 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
       failedQuoteCompanions: estimateCompanions.length,
       recentValidatorRuns: toolRuns.filter((item) => item.action === "tool.zokorp_validator_run").length,
       recentMlopsRuns: toolRuns.filter((item) => item.action === "tool.mlops_forecast_run").length,
+      recentBookedCalls: bookedCalls.length,
+      followUpAttention: staleServiceRequests.length + staleEstimatesWithoutFollowUp.length,
     },
     architectureEmailIssues: emailOutboxes.map((item) => ({
       id: item.id,
@@ -158,6 +250,48 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
       details: [item.referenceCode, item.externalNumber, item.provider].filter((value): value is string => Boolean(value)),
       href: "/account",
     })),
+    bookedCallSignals: bookedCalls.map((item) => ({
+      id: item.id,
+      createdAt: item.createdAt,
+      title: "Booked follow-up synced",
+      statusLabel: item.serviceRequest ? "linked" : "lead only",
+      statusTone: item.serviceRequest ? "success" : "info",
+      summary: `${item.lead.email} · ${item.provider ?? "provider unknown"} · ${item.source}`,
+      details: [
+        item.estimateReferenceCode ? `Estimate ${item.estimateReferenceCode}` : null,
+        item.serviceRequest?.trackingCode ? `Service request ${item.serviceRequest.trackingCode}` : null,
+        item.serviceRequest?.status ? `Status ${item.serviceRequest.status}` : null,
+      ].filter((value): value is string => Boolean(value)),
+      href: item.serviceRequest ? "/admin/service-requests" : "/admin/leads",
+    })),
+    followUpAttentionIssues: [
+      ...staleEstimatesWithoutFollowUp.map((item) => ({
+        id: item.id,
+        createdAt: item.updatedAt,
+        title: "Estimate awaiting follow-up",
+        statusLabel: "attention",
+        statusTone: "warning" as const,
+        summary: `${item.customerEmail} · ${item.referenceCode}`,
+        details: [
+          item.sourceLabel,
+          `${Math.max(1, Math.round((Date.now() - item.updatedAt.getTime()) / (24 * 60 * 60 * 1000)))} day(s) without booked follow-up`,
+        ],
+        href: "/admin/operations",
+      })),
+      ...staleServiceRequests.map((item) => ({
+        id: item.id,
+        createdAt: item.updatedAt,
+        title: "Service request needs operator update",
+        statusLabel: "attention",
+        statusTone: "warning" as const,
+        summary: `${item.trackingCode} · ${item.user.email ?? "unknown email"} · ${item.status}`,
+        details: [
+          item.title,
+          item.latestNote ? `Latest note: ${item.latestNote}` : "No recent customer-visible note",
+        ],
+        href: "/admin/service-requests",
+      })),
+    ].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime()),
     toolRunSignals: toolRuns.map((item) => {
       const metadata = asRecord(item.metadataJson);
 

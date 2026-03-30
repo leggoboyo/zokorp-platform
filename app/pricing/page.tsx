@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { shouldHidePublicProductPricing } from "@/lib/billing-readiness";
 import { CatalogUnavailableError, getSoftwareCatalogCached } from "@/lib/catalog";
+import { SOFT_LAUNCH_POSTURE } from "@/lib/launch-posture";
 import { buildPageMetadata } from "@/lib/site";
 
 export const revalidate = 300;
@@ -70,6 +71,13 @@ export default async function PricingPage() {
         </p>
       </section>
 
+      <Alert tone="info" className="rounded-2xl border-sky-200 bg-sky-50/70">
+        <AlertTitle>{SOFT_LAUNCH_POSTURE.label}</AlertTitle>
+        <AlertDescription>
+          Public software pricing is shown only where the billing posture is approved. Services remain estimate-first so scope, refund posture, and delivery assumptions are explicit before money changes hands.
+        </AlertDescription>
+      </Alert>
+
       {catalogUnavailable ? (
         <Alert tone="warning" className="rounded-2xl border-amber-200 bg-amber-50/70">
           <AlertTitle>Pricing catalog temporarily unavailable</AlertTitle>
@@ -124,6 +132,9 @@ export default async function PricingPage() {
       <section className="surface soft-grid rounded-2xl p-6 md:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Services</p>
         <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">Service work is scoped to the problem</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+          {SOFT_LAUNCH_POSTURE.pricingLabel}
+        </p>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           {serviceOffers.map((offer) => (
             <article key={offer.title} className="rounded-xl border border-slate-200 bg-white p-5">

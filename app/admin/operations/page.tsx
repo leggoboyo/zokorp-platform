@@ -35,6 +35,8 @@ export default async function AdminOperationsPage() {
           { label: "Architecture email failed", value: snapshot.stats.failedArchitectureEmail },
           { label: "CRM attention", value: snapshot.stats.crmNeedsAttention },
           { label: "Quote issues", value: snapshot.stats.failedQuoteCompanions },
+          { label: "Booked calls", value: snapshot.stats.recentBookedCalls },
+          { label: "Follow-up attention", value: snapshot.stats.followUpAttention },
           { label: "Validator runs", value: snapshot.stats.recentValidatorRuns },
           { label: "MLOps runs", value: snapshot.stats.recentMlopsRuns },
         ].map((item) => (
@@ -65,6 +67,16 @@ export default async function AdminOperationsPage() {
             title: "Estimate companion attention",
             description: "Recent formal estimates that failed or were not configured on the external provider.",
             entries: snapshot.estimateCompanionIssues,
+          },
+          {
+            title: "Booked-call signals",
+            description: "Recent booked follow-ups that were matched back into account and service-request state.",
+            entries: snapshot.bookedCallSignals,
+          },
+          {
+            title: "Follow-up attention",
+            description: "Estimates and service requests that still need an operator response path.",
+            entries: snapshot.followUpAttentionIssues,
           },
           {
             title: "Recent tool-run signals",

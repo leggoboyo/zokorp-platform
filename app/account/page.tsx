@@ -43,6 +43,16 @@ type ToolRunTimelineEntry = {
   hrefLabel: string;
 };
 
+type FollowUpTimelineEntry = {
+  id: string;
+  createdAt: Date;
+  title: string;
+  badgeLabel: string;
+  badgeVariant: TimelineBadgeVariant;
+  summary: string;
+  details: string[];
+};
+
 function isServiceRequestOpen(status: ServiceRequestStatus) {
   return status !== ServiceRequestStatus.DELIVERED && status !== ServiceRequestStatus.CLOSED;
 }
@@ -288,6 +298,37 @@ function buildToolRunTimelineEntries(input: {
   return [...architectureEntries, ...auditEntries].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 }
 
+function buildFollowUpTimelineEntries(
+  leadInteractions: Array<{
+    id: string;
+    createdAt: Date;
+    source: string;
+    action: string;
+    provider: string | null;
+    estimateReferenceCode: string | null;
+    serviceRequest: { trackingCode: string; status: ServiceRequestStatus } | null;
+  }>,
+): FollowUpTimelineEntry[] {
+  return leadInteractions.map((interaction) => ({
+    id: interaction.id,
+    createdAt: interaction.createdAt,
+    title: interaction.action === "call_booked" ? "Architecture follow-up booked" : "Architecture follow-up signal",
+    badgeLabel: interaction.serviceRequest ? interaction.serviceRequest.status : "Recorded",
+    badgeVariant: interaction.serviceRequest ? "success" : "info",
+    summary: [
+      interaction.provider ?? "provider unknown",
+      interaction.source,
+      interaction.estimateReferenceCode ? `Estimate ${interaction.estimateReferenceCode}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    details: [
+      interaction.serviceRequest?.trackingCode ? `Linked service request ${interaction.serviceRequest.trackingCode}` : "No linked service request yet",
+      `Recorded ${new Date(interaction.createdAt).toLocaleString()}`,
+    ],
+  }));
+}
+
 export default async function AccountPage() {
   const session = await auth();
   const email = session?.user?.email;
@@ -336,6 +377,25 @@ export default async function AccountPage() {
         architectureReviewJobs: {
           orderBy: { createdAt: "desc" },
           take: 12,
+        },
+        leadInteractions: {
+          where: {
+            action: {
+              in: ["call_booked", "cta_clicked"],
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 20,
+          include: {
+            serviceRequest: {
+              select: {
+                trackingCode: true,
+                status: true,
+              },
+            },
+          },
         },
         emailPreference: true,
       },
@@ -435,6 +495,7 @@ export default async function AccountPage() {
     architectureReviews,
     auditLogs: user.auditLogs,
   });
+  const followUpEntries = buildFollowUpTimelineEntries(user.leadInteractions);
   const emailPreferences = {
     operationalResultEmails: user.emailPreference?.operationalResultEmails ?? true,
     marketingFollowUpEmails: user.emailPreference?.marketingFollowUpEmails ?? false,
@@ -536,6 +597,7 @@ export default async function AccountPage() {
           <Tabs defaultValue="service-requests" className="space-y-5">
             <TabsList className="w-full justify-start" aria-label="Account sections">
               <TabsTrigger value="service-requests">Service Requests</TabsTrigger>
+              <TabsTrigger value="follow-ups">Follow-ups</TabsTrigger>
               <TabsTrigger value="credits">Credits</TabsTrigger>
               <TabsTrigger value="entitlements">Entitlements</TabsTrigger>
               <TabsTrigger value="purchases">Purchases</TabsTrigger>
@@ -590,6 +652,44 @@ export default async function AccountPage() {
                             Latest update: {request.latestNote}
                           </div>
                         ) : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="follow-ups" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-slate-600">
+                  Review booked-call signals and estimate-linked follow-up events tied back into your account.
+                </p>
+                <Link href="/services" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                  Return to services
+                </Link>
+              </div>
+
+              {followUpEntries.length === 0 ? (
+                <Card tone="muted" className="rounded-3xl p-5">
+                  <CardContent>
+                    <p className="text-sm text-slate-600">No booked follow-up events recorded yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {followUpEntries.map((entry) => (
+                    <TimelineCard
+                      key={entry.id}
+                      title={entry.title}
+                      meta={entry.createdAt.toLocaleString()}
+                      badge={<Badge variant={entry.badgeVariant}>{entry.badgeLabel}</Badge>}
+                      summary={entry.summary}
+                      details={
+                        <>
+                          {entry.details.map((detail) => (
+                            <span key={detail}>{detail}</span>
+                          ))}
+                        </>
                       }
                     />
                   ))}

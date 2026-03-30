@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { SOFT_LAUNCH_POSTURE, SOFT_LAUNCH_PUBLIC_PROOF_NOTES } from "@/lib/launch-posture";
 import { buildPageMetadata } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
@@ -28,6 +29,24 @@ const principles = [
   },
 ];
 
+const launchNotes = [
+  {
+    title: "Founder-led by design",
+    detail:
+      "The public launch is intentionally narrow so software, delivery, and follow-up stay aligned. The goal is a trustworthy operating system for AWS-focused work, not a bloated consulting brochure.",
+  },
+  {
+    title: "Representative proof mode",
+    detail:
+      "ZoKorp does not publish named client claims or inflated delivery proof until approvals exist. Public proof stays conservative on purpose.",
+  },
+  {
+    title: "Current launch scope",
+    detail:
+      "Architecture Diagram Reviewer, FTR-first Validator, and a forecasting beta are live today. Broader MLOps positioning is intentionally deferred.",
+  },
+];
+
 export default function AboutPage() {
   return (
     <div className="space-y-8">
@@ -41,12 +60,34 @@ export default function AboutPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
+        {launchNotes.map((item) => (
+          <article key={item.title} className="surface lift-card rounded-2xl p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{SOFT_LAUNCH_POSTURE.label}</p>
+            <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">{item.title}</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{item.detail}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
         {principles.map((principle) => (
           <article key={principle.title} className="surface lift-card rounded-2xl p-6">
             <h2 className="font-display text-2xl font-semibold text-slate-900">{principle.title}</h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">{principle.detail}</p>
           </article>
         ))}
+      </section>
+
+      <section className="surface soft-grid rounded-2xl p-6 md:p-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Public proof posture</p>
+        <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">What ZoKorp will and will not claim publicly</h2>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {SOFT_LAUNCH_PUBLIC_PROOF_NOTES.map((note) => (
+            <div key={note} className="rounded-xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
+              {note}
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="surface soft-grid rounded-2xl p-6 md:p-8">
@@ -71,6 +112,9 @@ export default function AboutPage() {
 
       <Card tone="glass" className="rounded-2xl p-6">
         <h2 className="font-display text-2xl font-semibold text-slate-900">Where to go next</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          Pricing stays conservative, proof stays safe, and delivery posture stays explicit until the broader launch bar is met.
+        </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link href="/pricing" className={buttonVariants()}>
             View pricing

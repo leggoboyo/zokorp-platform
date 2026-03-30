@@ -62,6 +62,31 @@
   - the synthetic audit account is enough for sign-in and protected-page checks
   - if you later want to verify email delivery end to end, use a real monitored inbox alias instead of the synthetic `.test` account
 
+## 2c) Run the soft-launch operational proof from CLI
+- Command:
+  - `npm run ops:proof:production`
+- What it verifies:
+  - the non-admin audit account can sign in
+  - a real `FTR` credit exists and is consumed by one production validator run
+  - the validator run writes account-linked history and delivery-state metadata
+  - a synthetic booked-call event creates a linked `ServiceRequest`
+  - the script attempts the internal Calendly ingest route first and records if local verification falls back to direct linkage proof
+- Output:
+  - `output/playwright/production-operational-proof/summary.json`
+  - proof screenshots in the same folder
+- Important:
+  - this command mutates the dedicated audit account on purpose
+  - it consumes one real validator credit and creates one synthetic booked-call service request for the audit user
+  - it is intended as a repeatable operator proof, not a marketing demo
+
+## 2d) Run the full soft-launch audit bundle
+- Command:
+  - `npm run soft-launch:audit:production`
+- What it does:
+  - runs provider audit
+  - runs the live signed-in browser journey audit
+  - runs the non-admin validator + booked-call operational proof
+
 ## 3) Add or update Stripe prices
 - Open `/admin/prices` as an admin user.
 - Attach Stripe `price_...` IDs to products.

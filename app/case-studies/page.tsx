@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { SOFT_LAUNCH_POSTURE } from "@/lib/launch-posture";
 import { buildPageMetadata } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
@@ -65,6 +66,13 @@ export default function CaseStudiesPage() {
         </p>
       </section>
 
+      <Card tone="muted" className="rounded-2xl p-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{SOFT_LAUNCH_POSTURE.proofModeLabel}</p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          These are representative patterns, not named client endorsements. They are here to show the kind of delivery work ZoKorp is built for without overstating proof that has not been cleared for public use.
+        </p>
+      </Card>
+
       <section className="grid gap-5">
         {caseStudies.map((study) => (
           <article key={study.title} className="surface lift-card rounded-2xl p-6 md:p-7">
@@ -97,7 +105,7 @@ export default function CaseStudiesPage() {
       <Card tone="glass" className="rounded-2xl p-6">
         <h2 className="font-display text-2xl font-semibold text-slate-900">Need the platform version of this work?</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Start with the software catalog or request a scoped service conversation for larger delivery needs.
+          Start with the software catalog or request a scoped service conversation for larger delivery needs. If you need proof beyond representative patterns, the current path is a direct founder-led conversation rather than a fake testimonial wall.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link href="/software" className={buttonVariants()}>

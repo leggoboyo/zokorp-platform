@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
+import { SOFT_LAUNCH_RESPONSE_WINDOWS } from "@/lib/launch-posture";
 import { buildPageMetadata } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
@@ -52,6 +53,14 @@ export default function ContactPage() {
           Include the product name, your company, and whether the message is about pricing, support, or delivery.
           That reduces back-and-forth and makes follow-up faster.
         </p>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {SOFT_LAUNCH_RESPONSE_WINDOWS.map((item) => (
+            <div key={item.title} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{item.title}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{item.detail}</p>
+            </div>
+          ))}
+        </div>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link href="/services#service-request" className={buttonVariants()}>
             Request services

@@ -14,6 +14,8 @@
     "test:watch": "vitest",
     "smoke:production": "node scripts/production_smoke_check.mjs",
     "ops:audit:production": "node scripts/production_provider_audit.mjs",
+    "ops:proof:production": "node scripts/production_operational_proof.mjs",
+    "soft-launch:audit:production": "npm run ops:audit:production && npm run journey:audit:production && npm run ops:proof:production",
     "journey:setup:production": "node scripts/provision_browser_audit_user.mjs --environment=production",
     "journey:audit:production": "node scripts/browser_customer_journey_audit.mjs",
     "prisma:generate": "prisma generate",

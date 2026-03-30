@@ -4,6 +4,7 @@ import { ServiceRequestPanel } from "@/components/service-request-panel";
 import { buttonVariants } from "@/components/ui/button";
 import { buildCalendlyBookingUrl } from "@/lib/calendly";
 import { auth } from "@/lib/auth";
+import { SOFT_LAUNCH_POSTURE, SOFT_LAUNCH_RESPONSE_WINDOWS } from "@/lib/launch-posture";
 import { buildPageMetadata, getSiteUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -88,6 +89,29 @@ const serviceFaq = [
     answer:
       "No. Consultations are handled as service requests and can be scoped independently from SaaS subscriptions.",
   },
+  {
+    question: "What happens after I submit a request?",
+    answer:
+      "ZoKorp triages the request first, then either replies with a scoped next step, a booking follow-up, or a recommendation to use software first. The soft-launch posture stays estimate-first instead of forcing immediate consulting checkout.",
+  },
+];
+
+const launchPackaging = [
+  {
+    title: "Architecture remediation sprint",
+    detail:
+      "Best when an architecture review already identified bounded fixes, tradeoffs, or diagram cleanup that can be turned around quickly.",
+  },
+  {
+    title: "AWS readiness package",
+    detail:
+      "Best when you need structured evidence, review discipline, or milestone preparation before a partner or delivery checkpoint.",
+  },
+  {
+    title: "Software-backed advisory",
+    detail:
+      "Best when you want self-serve review first, then a scoped expert follow-up rather than open-ended consulting from day one.",
+  },
 ];
 
 export default async function ServicesPage() {
@@ -103,7 +127,7 @@ export default async function ServicesPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Services</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Build with confidence, not guesswork</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200 md:text-base">
-          ZoKorp combines deterministic architecture review, itemized implementation estimating, and hands-on delivery for teams that need a practical next step instead of another vague advisory deck.
+          ZoKorp combines deterministic architecture review, itemized implementation estimating, and hands-on delivery for teams that need a practical next step instead of another vague advisory deck. The current posture is intentionally narrow: software-backed AWS advisory, bounded remediation, and estimate-first scoped delivery.
         </p>
         <div className="mt-6 flex flex-wrap gap-2">
           <a href={architectureBookingUrl} className={buttonVariants({ variant: "secondary" })}>
@@ -118,6 +142,14 @@ export default async function ServicesPage() {
           >
             Track in account
           </Link>
+        </div>
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          {SOFT_LAUNCH_RESPONSE_WINDOWS.map((item) => (
+            <div key={item.title} className="rounded-2xl border border-white/15 bg-white/8 px-4 py-3 backdrop-blur">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">{item.title}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-100">{item.detail}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -135,6 +167,22 @@ export default async function ServicesPage() {
             </ul>
           </article>
         ))}
+      </section>
+
+      <section className="surface soft-grid rounded-2xl p-6 md:p-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Packaging</p>
+        <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">How service work is packaged right now</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+          {SOFT_LAUNCH_POSTURE.label} means no overstated enterprise bench, no fake delivery volume claims, and no forced pay-now consulting flow. The site stays explicit about what is productized today versus what still needs a scoped conversation.
+        </p>
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {launchPackaging.map((item) => (
+            <article key={item.title} className="rounded-xl border border-slate-200 bg-white p-5">
+              <h3 className="font-display text-2xl font-semibold text-slate-900">{item.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{item.detail}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="surface soft-grid rounded-2xl p-6 md:p-8">
@@ -163,7 +211,7 @@ export default async function ServicesPage() {
           <h2 className="font-display text-2xl font-semibold text-slate-900">Need software-backed delivery?</h2>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             ZoKorp software tools support the same delivery patterns used in consulting engagements,
-            starting with validation workflows and account-based usage tracking.
+            starting with validation workflows and account-based usage tracking. If the software already identifies the fix, the next step is usually a scoped remediation estimate rather than another discovery loop.
           </p>
           <Link href="/software" className={`${buttonVariants()} mt-5`}>
             Explore software catalog
