@@ -38,6 +38,7 @@
   - `npm run journey:setup:production`
   - This provisions or rotates a dedicated non-admin verified audit account in the production database and writes local credentials to `.env.audit.local`.
   - The default audit login is `browser-audit@zokorp-platform.test`, which is intentionally synthetic and only meant for sign-in/browser checks.
+  - Extra local overrides already stored in `.env.audit.local` are preserved when the command rotates the audit account.
 - Command:
   - `npm run journey:audit:production`
 - What it verifies:
@@ -78,6 +79,7 @@
   - this command mutates the dedicated audit account on purpose
   - it consumes one real validator credit and creates one synthetic booked-call service request for the audit user
   - it is intended as a repeatable operator proof, not a marketing demo
+  - add `CALENDLY_SYNC_SECRET` to `.env.audit.local` if you want the proof runner to verify the live internal ingest route directly instead of falling back when provider-secret export is unavailable
 
 ## 2d) Run the full soft-launch audit bundle
 - Command:
@@ -86,6 +88,7 @@
   - runs provider audit
   - runs the live signed-in browser journey audit
   - runs the non-admin validator + booked-call operational proof
+  - waits briefly before the operational proof and retries that proof automatically if production database pool pressure causes a transient failure
 
 ## 3) Add or update Stripe prices
 - Open `/admin/prices` as an admin user.

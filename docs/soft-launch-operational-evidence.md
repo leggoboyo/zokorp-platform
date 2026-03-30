@@ -12,6 +12,9 @@
   - `npm run journey:audit:production`
 - Soft-launch operational proof:
   - `npm run ops:proof:production`
+- Full soft-launch bundle:
+  - `npm run soft-launch:audit:production`
+  - this now includes a settle window and proof-step retry when the production database session pool is briefly saturated
 
 ## What `ops:proof:production` verifies
 - A dedicated non-admin audit account can sign in to production
@@ -27,6 +30,12 @@
   - `output/playwright/production-operational-proof/summary.json`
 - Browser screenshots:
   - `output/playwright/production-operational-proof/*.png`
+
+## Local operator setup note
+- Keep the dedicated browser-audit credentials in `.env.audit.local`.
+- If the live booked-call proof should verify the internal ingest route directly from your machine, also store:
+  - `CALENDLY_SYNC_SECRET=<current production sync secret>`
+- The audit-account provisioning command now preserves that extra local override instead of wiping it out.
 
 ## Important caveats
 - The booked-call proof is synthetic at the provider boundary. It proves linkage and operator visibility, not a human-created external Calendly booking.

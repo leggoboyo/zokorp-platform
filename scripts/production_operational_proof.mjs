@@ -14,6 +14,9 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
 const outputDir = resolve(repoRoot, "output", "playwright", "production-operational-proof");
 const envFilePath = resolve(repoRoot, ".env.audit.local");
+const defaultDatabaseRetryAttempts = Number.parseInt(process.env.PROOF_DB_RETRY_ATTEMPTS ?? "8", 10);
+const defaultDatabaseRetryBaseDelayMs = Number.parseInt(process.env.PROOF_DB_RETRY_BASE_DELAY_MS ?? "1500", 10);
+const defaultDatabaseRetryMaxDelayMs = Number.parseInt(process.env.PROOF_DB_RETRY_MAX_DELAY_MS ?? "10000", 10);
 
 function ensureOutputDir() {
   mkdirSync(outputDir, { recursive: true });
@@ -68,7 +71,7 @@ function isSessionPoolError(error) {
   return message.includes("MaxClientsInSessionMode") || message.toLowerCase().includes("max clients reached");
 }
 
-async function withDatabaseRetry(label, fn, attempts = 5) {
+async function withDatabaseRetry(label, fn, attempts = defaultDatabaseRetryAttempts) {
   let lastError;
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -81,7 +84,8 @@ async function withDatabaseRetry(label, fn, attempts = 5) {
       }
 
       console.warn(`${label} hit session pool pressure on attempt ${attempt}/${attempts}. Retrying...`);
-      await sleep(750 * attempt);
+      const backoffMs = Math.min(defaultDatabaseRetryBaseDelayMs * (2 ** (attempt - 1)), defaultDatabaseRetryMaxDelayMs);
+      await sleep(backoffMs);
     }
   }
 
@@ -398,7 +402,8 @@ async function queryValidatorProof(prisma, { userId, productId, proofStartedAt, 
 
 async function runSyntheticBookedCallProof({
   prisma,
-  env,
+  calendlySyncSecret,
+  ingestBaseUrl,
   email,
   userId,
 }) {
@@ -409,11 +414,11 @@ async function runSyntheticBookedCallProof({
   let routeStatus = null;
 
   try {
-    const response = await fetch(new URL("/api/internal/calendly/booked-call", env.NEXTAUTH_URL).toString(), {
+    const response = await fetch(new URL("/api/internal/calendly/booked-call", ingestBaseUrl).toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-calendly-sync-secret": env.CALENDLY_SYNC_SECRET,
+        "x-calendly-sync-secret": calendlySyncSecret,
       },
       body: JSON.stringify({
         email,
@@ -562,9 +567,15 @@ async function main() {
     const env = pulled.env;
     const baseUrl = auditEnv.JOURNEY_BASE_URL ?? env.NEXTAUTH_URL ?? "https://app.zokorp.com";
     const databaseUrl = withSingleConnection(env.DIRECT_DATABASE_URL || env.DATABASE_URL);
+    const calendlySyncSecret = auditEnv.CALENDLY_SYNC_SECRET?.trim() || env.CALENDLY_SYNC_SECRET?.trim() || "";
+    const initialDatabaseSettleMs = Number.parseInt(process.env.PROOF_DB_INITIAL_SETTLE_MS ?? "0", 10);
 
     if (!auditEnv.JOURNEY_EMAIL || !auditEnv.JOURNEY_PASSWORD) {
       throw new Error("JOURNEY_EMAIL and JOURNEY_PASSWORD must exist in .env.audit.local.");
+    }
+
+    if (!calendlySyncSecret) {
+      throw new Error("CALENDLY_SYNC_SECRET is missing. Add it to .env.audit.local for direct booked-call proof.");
     }
 
     prisma = new PrismaClient({
@@ -575,6 +586,11 @@ async function main() {
       },
       log: ["error"],
     });
+
+    if (initialDatabaseSettleMs > 0) {
+      console.log(`Waiting ${initialDatabaseSettleMs}ms before starting direct database proof checks.`);
+      await sleep(initialDatabaseSettleMs);
+    }
 
     const proofStartedAt = new Date();
     const proofRunKey = proofStartedAt.toISOString();
@@ -601,7 +617,8 @@ async function main() {
     const bookedCallProof = await withDatabaseRetry("runSyntheticBookedCallProof", () =>
       runSyntheticBookedCallProof({
         prisma,
-        env,
+        calendlySyncSecret,
+        ingestBaseUrl: baseUrl,
         email: auditEnv.JOURNEY_EMAIL,
         userId: validatorAccess.userId,
       }),

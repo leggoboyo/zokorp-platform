@@ -57,6 +57,12 @@ function parseEnvFile(path) {
   return env;
 }
 
+function serializeEnvFile(input) {
+  return `${Object.entries(input)
+    .map(([key, value]) => `${key}=${quoteEnvValue(String(value))}`)
+    .join("\n")}\n`;
+}
+
 function runCommand(command, args) {
   return execFileSync(command, args, {
     encoding: "utf8",
@@ -264,12 +270,22 @@ async function main() {
     });
 
     const baseUrl = resolveBaseUrl(environment, env);
+    const existingEnv = existsSync(localEnvPath) ? parseEnvFile(localEnvPath) : {};
+    const preservedEntries = Object.fromEntries(
+      Object.entries(existingEnv).filter(([key]) => !["JOURNEY_EMAIL", "JOURNEY_PASSWORD", "JOURNEY_BASE_URL"].includes(key)),
+    );
+
+    const nextEnv = {
+      ...preservedEntries,
+      JOURNEY_EMAIL: email,
+      JOURNEY_PASSWORD: password,
+      JOURNEY_BASE_URL: baseUrl,
+    };
+
     const localEnvContent = [
       "# Local browser audit credentials for ZoKorp CLI checks.",
       "# This file is git-ignored and can be rotated by re-running the provisioning command.",
-      `JOURNEY_EMAIL=${quoteEnvValue(email)}`,
-      `JOURNEY_PASSWORD=${quoteEnvValue(password)}`,
-      `JOURNEY_BASE_URL=${quoteEnvValue(baseUrl)}`,
+      serializeEnvFile(nextEnv).trimEnd(),
       "",
     ].join("\n");
 
