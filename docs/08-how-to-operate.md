@@ -34,6 +34,10 @@
   - JSON summary for copy/paste into incident notes or handoff messages
 
 ## 2b) Run the live browser customer-journey audit from CLI
+- One-time setup for a reusable sign-in account:
+  - `npm run journey:setup:production`
+  - This provisions or rotates a dedicated non-admin verified audit account in the production database and writes local credentials to `.env.audit.local`.
+  - The default audit login is `browser-audit@zokorp-platform.test`, which is intentionally synthetic and only meant for sign-in/browser checks.
 - Command:
   - `npm run journey:audit:production`
 - What it verifies:
@@ -43,7 +47,8 @@
   - retired public products stay absent from the catalog
   - each launch product page renders its expected public access state
 - Optional authenticated checks:
-  - set `JOURNEY_EMAIL` and `JOURNEY_PASSWORD` before running
+  - if `.env.audit.local` exists, the audit loads `JOURNEY_EMAIL` and `JOURNEY_PASSWORD` automatically
+  - you can still override with shell env vars if you want to use a different account
   - set `JOURNEY_EXPECT_SUBSCRIPTION=true` if that account should already have MLOps access
   - with those env vars present, the audit also signs in, checks `/account`, and validates authenticated product states
 - Optional runtime controls:
@@ -53,6 +58,9 @@
 - Output:
   - screenshots and `summary.json` under `output/playwright/customer-journey-audit/`
   - non-zero exit code if any checked browser step fails
+- Important:
+  - the synthetic audit account is enough for sign-in and protected-page checks
+  - if you later want to verify email delivery end to end, use a real monitored inbox alias instead of the synthetic `.test` account
 
 ## 3) Add or update Stripe prices
 - Open `/admin/prices` as an admin user.

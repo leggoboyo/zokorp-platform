@@ -1,17 +1,71 @@
 #!/usr/bin/env node
 
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { chromium } from "playwright";
 
-const baseUrl = process.env.JOURNEY_BASE_URL ?? "https://app.zokorp.com";
-const outputDir = process.env.JOURNEY_OUTPUT_DIR ?? "output/playwright/customer-journey-audit";
-const headed = process.env.JOURNEY_HEADED === "true";
-const browserChannel = process.env.JOURNEY_BROWSER_CHANNEL ?? "chrome";
-const loginEmail = process.env.JOURNEY_EMAIL ?? "";
-const loginPassword = process.env.JOURNEY_PASSWORD ?? "";
-const expectSubscription = process.env.JOURNEY_EXPECT_SUBSCRIPTION === "true";
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(scriptDir, "..");
+
+function parseEnvFile(path) {
+  const env = {};
+  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const separatorIndex = line.indexOf("=");
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    let value = line.slice(separatorIndex + 1);
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    env[key] = value;
+  }
+
+  return env;
+}
+
+function loadJourneyEnv() {
+  const configuredPath = process.env.JOURNEY_ENV_FILE ? resolve(process.cwd(), process.env.JOURNEY_ENV_FILE) : null;
+  const candidates = [
+    configuredPath,
+    resolve(repoRoot, ".env.audit.local"),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return parseEnvFile(candidate);
+    }
+  }
+
+  return {};
+}
+
+const fileEnv = loadJourneyEnv();
+
+function readSetting(name, fallback = "") {
+  return process.env[name] ?? fileEnv[name] ?? fallback;
+}
+
+const baseUrl = readSetting("JOURNEY_BASE_URL", "https://app.zokorp.com");
+const outputDir = readSetting("JOURNEY_OUTPUT_DIR", "output/playwright/customer-journey-audit");
+const headed = readSetting("JOURNEY_HEADED") === "true";
+const browserChannel = readSetting("JOURNEY_BROWSER_CHANNEL", "chrome");
+const loginEmail = readSetting("JOURNEY_EMAIL");
+const loginPassword = readSetting("JOURNEY_PASSWORD");
+const expectSubscription = readSetting("JOURNEY_EXPECT_SUBSCRIPTION") === "true";
 
 const publicNavChecks = [
   {
@@ -178,9 +232,9 @@ async function runAuthJourney(page, steps) {
   }
 
   await navigateAndAssert(page, "/login", "Sign in");
-  await page.getByLabel("Business email").fill(loginEmail);
-  await page.getByLabel("Password").fill(loginPassword);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.locator("#email").fill(loginEmail);
+  await page.locator("#password").fill(loginPassword);
+  await page.locator("form").first().getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(new RegExp("\\/account$"), { timeout: 20_000 });
   await assertVisibleText(page, "Welcome back");
   await assertVisibleText(page, loginEmail);

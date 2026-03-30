@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "smoke:production": "node scripts/production_smoke_check.mjs",
     "ops:audit:production": "node scripts/production_provider_audit.mjs",
+    "journey:setup:production": "node scripts/provision_browser_audit_user.mjs --environment=production",
     "journey:audit:production": "node scripts/browser_customer_journey_audit.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
