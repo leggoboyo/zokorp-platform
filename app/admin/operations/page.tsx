@@ -1,8 +1,13 @@
 import Link from "next/link";
 
+import {
+  retryArchitectureReviewEmailOutboxAction,
+  triggerEstimateCompanionSyncNowAction,
+  triggerZohoLeadSyncNowAction,
+} from "@/app/admin/actions";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TimelineCard } from "@/components/ui/timeline-card";
 import { getAdminOperationsSnapshot } from "@/lib/admin-operations";
@@ -13,6 +18,44 @@ export const dynamic = "force-dynamic";
 export default async function AdminOperationsPage() {
   await requireAdminPageAccess("/admin/operations");
   const snapshot = await getAdminOperationsSnapshot();
+  const sections = [
+    {
+      key: "architecture-email",
+      title: "Architecture email delivery",
+      description: "Pending or failed delivery attempts for Architecture Diagram Reviewer emails.",
+      entries: snapshot.architectureEmailIssues,
+    },
+    {
+      key: "crm-sync",
+      title: "CRM sync attention",
+      description: "Architecture-review lead syncs that are pending or failed against Zoho.",
+      entries: snapshot.crmSyncIssues,
+    },
+    {
+      key: "estimate-sync",
+      title: "Estimate companion attention",
+      description: "Recent formal estimates that failed or were not configured on the external provider.",
+      entries: snapshot.estimateCompanionIssues,
+    },
+    {
+      key: "booked-calls",
+      title: "Booked-call signals",
+      description: "Recent booked follow-ups that were matched back into account and service-request state.",
+      entries: snapshot.bookedCallSignals,
+    },
+    {
+      key: "follow-up",
+      title: "Follow-up attention",
+      description: "Estimates and service requests that still need an operator response path.",
+      entries: snapshot.followUpAttentionIssues,
+    },
+    {
+      key: "tool-runs",
+      title: "Recent tool-run signals",
+      description: "Recent validator and forecasting runs with delivery, estimate, or confidence signals.",
+      entries: snapshot.toolRunSignals,
+    },
+  ] as const;
 
   return (
     <div className="space-y-6">
@@ -52,42 +95,41 @@ export default async function AdminOperationsPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        {[
-          {
-            title: "Architecture email delivery",
-            description: "Pending or failed delivery attempts for Architecture Diagram Reviewer emails.",
-            entries: snapshot.architectureEmailIssues,
-          },
-          {
-            title: "CRM sync attention",
-            description: "Architecture-review lead syncs that are pending or failed against Zoho.",
-            entries: snapshot.crmSyncIssues,
-          },
-          {
-            title: "Estimate companion attention",
-            description: "Recent formal estimates that failed or were not configured on the external provider.",
-            entries: snapshot.estimateCompanionIssues,
-          },
-          {
-            title: "Booked-call signals",
-            description: "Recent booked follow-ups that were matched back into account and service-request state.",
-            entries: snapshot.bookedCallSignals,
-          },
-          {
-            title: "Follow-up attention",
-            description: "Estimates and service requests that still need an operator response path.",
-            entries: snapshot.followUpAttentionIssues,
-          },
-          {
-            title: "Recent tool-run signals",
-            description: "Recent validator and forecasting runs with delivery, estimate, or confidence signals.",
-            entries: snapshot.toolRunSignals,
-          },
-        ].map((section) => (
+        {sections.map((section) => (
           <Card key={section.title} className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5">
             <CardHeader className="gap-2">
-              <h2 className="font-display text-2xl font-semibold text-slate-900">{section.title}</h2>
-              <p className="text-sm leading-6 text-slate-600">{section.description}</p>
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-2">
+                  <h2 className="font-display text-2xl font-semibold text-slate-900">{section.title}</h2>
+                  <p className="text-sm leading-6 text-slate-600">{section.description}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {section.key === "crm-sync" ? (
+                    <form action={triggerZohoLeadSyncNowAction}>
+                      <Button type="submit" variant="secondary" size="sm">
+                        Run Zoho sync now
+                      </Button>
+                    </form>
+                  ) : null}
+                  {section.key === "estimate-sync" ? (
+                    <form action={triggerEstimateCompanionSyncNowAction}>
+                      <Button type="submit" variant="secondary" size="sm">
+                        Run estimate sync now
+                      </Button>
+                    </form>
+                  ) : null}
+                  {section.key === "booked-calls" ? (
+                    <Link href="/admin/service-requests" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                      Review booked-call state
+                    </Link>
+                  ) : null}
+                  {section.key === "follow-up" ? (
+                    <Link href="/admin/service-requests" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                      Review quote follow-up
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {section.entries.length === 0 ? (
@@ -114,11 +156,21 @@ export default async function AdminOperationsPage() {
                       ) : undefined
                     }
                     footer={
-                      entry.href ? (
-                        <Link href={entry.href} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                          Open related workspace
-                        </Link>
-                      ) : undefined
+                      <div className="flex flex-wrap gap-2">
+                        {section.key === "architecture-email" ? (
+                          <form action={retryArchitectureReviewEmailOutboxAction}>
+                            <input type="hidden" name="outboxId" value={entry.id} />
+                            <Button type="submit" variant="secondary" size="sm">
+                              Retry email send
+                            </Button>
+                          </form>
+                        ) : null}
+                        {entry.href ? (
+                          <Link href={entry.href} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                            Open related workspace
+                          </Link>
+                        ) : null}
+                      </div>
                     }
                   />
                 ))

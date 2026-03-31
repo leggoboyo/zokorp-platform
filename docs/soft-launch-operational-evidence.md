@@ -38,9 +38,8 @@
 - The audit-account provisioning command now preserves that extra local override instead of wiping it out.
 
 ## Important caveats
-- The booked-call proof is synthetic at the provider boundary. It proves linkage and operator visibility, not a human-created external Calendly booking.
-- Before broad launch, the stronger external proofs are still:
-  - one real founder-controlled Calendly booking observed end to end
+- The synthetic booked-call check remains useful as a repeatable CLI proof, but it is no longer the only booked-call evidence.
+- A real founder-controlled Calendly booking has now also been observed end to end.
 
 ## Confirmed monitored inbox proof
 - Verified on March 30, 2026 using the real mailbox `consulting@zokorp.com`.

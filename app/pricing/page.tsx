@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { shouldHidePublicProductPricing } from "@/lib/billing-readiness";
 import { CatalogUnavailableError, getSoftwareCatalogCached } from "@/lib/catalog";
 import { SOFT_LAUNCH_POSTURE } from "@/lib/launch-posture";
+import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_POLICY_NOTES } from "@/lib/public-launch-contract";
 import { buildPageMetadata } from "@/lib/site";
 
 export const revalidate = 300;
@@ -134,6 +135,10 @@ export default async function PricingPage() {
         <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">Service work is scoped to the problem</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
           {SOFT_LAUNCH_POSTURE.pricingLabel}
+        </p>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          {PUBLIC_LAUNCH_POLICY_NOTES.services} Human follow-up stays routed through{" "}
+          <span className="font-medium text-slate-900">{PUBLIC_LAUNCH_CONTACT.primaryEmail}</span> or a tagged booking CTA, with an initial response target within one business day.
         </p>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           {serviceOffers.map((offer) => (

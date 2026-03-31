@@ -1,9 +1,11 @@
+import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_POLICY_NOTES } from "@/lib/public-launch-contract";
+
 export const SOFT_LAUNCH_POSTURE = {
   label: "Founder-led soft launch",
   proofModeLabel: "Safe placeholder proof mode",
-  supportResponseLabel: "Best-effort first response within 1 business day",
-  urgentSecurityLabel: "Urgent security issues are prioritized the same business day when possible",
-  pricingLabel: "Published pricing stays conservative until billing, refund, and tax posture are fully locked",
+  supportResponseLabel: PUBLIC_LAUNCH_CONTACT.responseWindowLabel,
+  urgentSecurityLabel: PUBLIC_LAUNCH_CONTACT.securityResponseLabel,
+  pricingLabel: PUBLIC_LAUNCH_POLICY_NOTES.pricing,
   serviceScopeLabel: "Software-backed advisory, remediation, and scoped delivery",
   caseStudyLabel: "Representative delivery patterns, not named client endorsements",
   mlopsLabel: "Forecasting beta only",

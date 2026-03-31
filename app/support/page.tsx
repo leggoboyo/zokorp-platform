@@ -2,8 +2,10 @@ import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { buildCalendlyBookingUrl } from "@/lib/calendly";
 import { SOFT_LAUNCH_RESPONSE_WINDOWS } from "@/lib/launch-posture";
-import { buildPageMetadata } from "@/lib/site";
+import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
+import { buildPageMetadata, getSiteUrl } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
   title: "Support",
@@ -31,6 +33,11 @@ const supportTopics = [
 ];
 
 export default function SupportPage() {
+  const architectureBookingUrl = buildCalendlyBookingUrl({
+    baseUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getSiteUrl()}/services#service-request`,
+    utmMedium: "support-page",
+  });
+
   return (
     <div className="space-y-8">
       <section className="hero-surface animate-fade-up px-6 py-9 text-white md:px-8">
@@ -53,9 +60,10 @@ export default function SupportPage() {
       <Card tone="glass" className="rounded-2xl p-6">
         <h2 className="font-display text-2xl font-semibold text-slate-900">How to contact support</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Email <span className="font-medium text-slate-900">zkhawaja@zokorp.com</span> with the product name,
+          Email <span className="font-medium text-slate-900">{PUBLIC_LAUNCH_CONTACT.primaryEmail}</span> with the product name,
           your account email, and a short description of the issue. For billing issues, include the product and
           purchase context. For security issues, mark the subject line as urgent. For Architecture Reviewer or Validator follow-up, include the estimate reference if one was generated.
+          {" "}{PUBLIC_LAUNCH_CONTACT.responseWindowLabel}.
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {SOFT_LAUNCH_RESPONSE_WINDOWS.map((item) => (
@@ -66,6 +74,9 @@ export default function SupportPage() {
           ))}
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
+          <a href={architectureBookingUrl} className={buttonVariants()}>
+            {PUBLIC_LAUNCH_CONTACT.bookingLabel}
+          </a>
           <Link href="/refunds" className={buttonVariants({ variant: "secondary" })}>
             Refund posture
           </Link>

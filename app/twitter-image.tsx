@@ -32,7 +32,7 @@ export default function TwitterImage() {
             Server-validated tools for practical AWS and AI delivery work.
           </div>
         </div>
-        <div style={{ fontSize: 22, opacity: 0.92 }}>zokorp-web.vercel.app</div>
+        <div style={{ fontSize: 22, opacity: 0.92 }}>app.zokorp.com</div>
       </div>
     ),
     size,

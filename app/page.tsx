@@ -4,8 +4,10 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_PLACEHOLDER_NOTES } from "@/lib/public-launch-contract";
 import { cn } from "@/lib/utils";
 import { buildPageMetadata, getSiteUrl, siteConfig } from "@/lib/site";
+import { buildCalendlyBookingUrl } from "@/lib/calendly";
 
 export const metadata: Metadata = buildPageMetadata({
   title: siteConfig.platformName,
@@ -61,9 +63,14 @@ const operatingSignals = [
   "Verified business accounts",
   "Stripe-hosted billing",
   "Server-validated uploads",
+  "Initial response within one business day",
 ];
 
 export default function HomePage() {
+  const architectureBookingUrl = buildCalendlyBookingUrl({
+    baseUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getSiteUrl()}/services#service-request`,
+    utmMedium: "homepage",
+  });
   const structuredData = [
     {
       "@context": "https://schema.org",
@@ -131,6 +138,17 @@ export default function HomePage() {
                 Request Services
               </Link>
             </div>
+            <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-100/90">
+              Human path:{" "}
+              <a className="font-semibold text-white underline decoration-white/40 underline-offset-4" href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`}>
+                {PUBLIC_LAUNCH_CONTACT.primaryEmail}
+              </a>{" "}
+              or{" "}
+              <a className="font-semibold text-white underline decoration-white/40 underline-offset-4" href={architectureBookingUrl}>
+                {PUBLIC_LAUNCH_CONTACT.bookingLabel.toLowerCase()}
+              </a>
+              . {PUBLIC_LAUNCH_CONTACT.responseWindowLabel}.
+            </p>
           </div>
 
           <div className="relative overflow-hidden rounded-[calc(var(--radius-xl)+0.25rem)] border border-white/12 bg-[radial-gradient(circle_at_top_right,rgba(125,240,255,0.14),transparent_28%),linear-gradient(155deg,rgba(7,18,35,0.88),rgba(8,34,56,0.82)_54%,rgba(8,85,108,0.72))] p-6 text-white shadow-[0_28px_70px_rgba(15,23,42,0.34)] ring-1 ring-white/8 backdrop-blur-sm">
@@ -258,6 +276,13 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </section>
+
+      <Card tone="muted" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Broad-launch replacement slot</p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          {PUBLIC_LAUNCH_PLACEHOLDER_NOTES.founder} {PUBLIC_LAUNCH_PLACEHOLDER_NOTES.proof}
+        </p>
+      </Card>
     </div>
   );
 }

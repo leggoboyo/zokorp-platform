@@ -1,6 +1,6 @@
 # Launch Readiness Evidence Matrix
 
-Date: March 25, 2026 (updated March 26, 2026)
+Date: March 25, 2026 (updated March 30, 2026)
 
 ## Environment Truth
 
@@ -35,7 +35,7 @@ Date: March 25, 2026 (updated March 26, 2026)
 | Architecture review status cache behavior | `curl -si 'https://app.zokorp.com/api/architecture-review-status?jobId=cmn6hsc500003lb04kehewmt3'` | `401` with `Cache-Control: no-store` | Pass |
 | Admin forbidden behavior in code | `tests/admin-page-access.test.ts` | `UNAUTHORIZED` redirects to login; `FORBIDDEN` raises forbidden boundary | Pass |
 | Admin forbidden UI deployment | Production deploy `dpl_Eb6KoHxjki6AafqCBC7A53vyWJLU` | `app/forbidden.tsx` shipped live | Pass |
-| Live browser auth lifecycle | Not completed in this pass | Register / verify / reset / admin login still need mailbox/browser proof | Caveat |
+| Live browser auth lifecycle | `npm run journey:audit:production` + monitored mailbox proof | Signed-in browser audit passes and password-reset email delivery is confirmed in Inbox | Pass |
 
 ## `/services` Funnel And Calendly Tracking
 
@@ -46,7 +46,7 @@ Date: March 25, 2026 (updated March 26, 2026)
 | `/services` post-submit live state | Atlas narrow browser run after commit `1f9c4f9` | `NEW_BUILD_LIVE`; success heading `Request recorded`; form hidden after submit; account navigation works; artifact `SR-260326-CK7DE` created | Pass |
 | Live `/services` CTA | Production HTML | Raw untagged Calendly URL removed; live CTA is now tagged | Pass |
 | Live `/services` copy | Production HTML | Copy now says tracked request immediately, booked-call sync later after same-email match | Pass |
-| Real booked-call ingestion artifact | Not completed in this pass | No new founder-controlled live booking artifact yet | Caveat |
+| Real booked-call ingestion artifact | Real founder-controlled `/services` booking + GitHub Actions sync + production DB verification | `LeadInteraction`, linked `ServiceRequest`, and ingest audit record confirmed | Pass |
 
 ## Billing And Paid Validation
 
@@ -84,7 +84,7 @@ Date: March 25, 2026 (updated March 26, 2026)
 | Track | Why It Is Still Open | Status |
 | --- | --- | --- |
 | Domain cutover | Requires registrar / DNS / possibly Squarespace UI access | Open |
-| Full auth lifecycle proof | Requires mailbox/browser access for `consulting@zokorp.com` and `zkhawaja@zokorp.com` | Open |
+| Full auth lifecycle proof | Signed-in audit plus monitored mailbox proof completed for soft-launch needs | Closed for soft launch |
 | Non-admin paid-validator consumption proof | Requires one browser purchase-plus-run on a non-admin account | Open |
-| Calendly booking ingestion proof | Requires one real founder-controlled booking and follow-up verification | Open |
+| Calendly booking ingestion proof | Real founder-controlled booking verified end to end on March 30, 2026 | Closed |
 | WorkDrive capability diagnosis | Requires Zoho / WorkDrive account UI access | Open |

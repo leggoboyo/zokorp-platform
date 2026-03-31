@@ -51,7 +51,7 @@ describe("ServicesPage", () => {
     expect(html).toContain("utm_campaign=architecture-follow-up");
     expect(html).toContain("Signed in as");
     expect(html).toContain("consulting@zokorp.com");
-    expect(html).toContain("Best-effort first response within 1 business day");
+    expect(html).toContain("Initial response within one business day");
     expect(html).toContain("No blind pay-now consulting checkout");
     expect(html).not.toContain("Sign in to submit a request and track milestones from your account.");
   });

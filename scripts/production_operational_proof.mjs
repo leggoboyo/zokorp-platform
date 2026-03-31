@@ -639,7 +639,7 @@ async function main() {
         "Validator proof consumes one real FTR credit and checks account-linked delivery state.",
         "Booked-call proof verifies service-request linkage with a synthetic provider event.",
         "The script attempts the internal Calendly ingest route first and records when local verification falls back to direct data-path proof.",
-        "A real external Calendly booking artifact and a real monitored inbox remain the stronger pre-broad-launch proofs.",
+        "Real monitored inbox proof and one real external Calendly booking have already been confirmed separately for the current soft-launch claim.",
       ],
     };
 

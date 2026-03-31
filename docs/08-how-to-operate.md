@@ -90,6 +90,36 @@
   - runs the non-admin validator + booked-call operational proof
   - waits briefly before the operational proof and retries that proof automatically if production database pool pressure causes a transient failure
 
+## 2e) Current scheduled-job and secret dependency map
+- Architecture review queue drain:
+  - workflow: `.github/workflows/architecture-review-worker.yml`
+  - requires:
+    - `ARCH_REVIEW_WORKER_URL`
+    - `ARCH_REVIEW_WORKER_SECRET`
+- Architecture review follow-ups:
+  - workflow: `.github/workflows/architecture-followups.yml`
+  - requires:
+    - `ARCH_REVIEW_FOLLOWUP_URL`
+    - `ARCH_REVIEW_FOLLOWUP_SECRET`
+- Calendly booking sync:
+  - workflow: `.github/workflows/calendly-booking-sync.yml`
+  - requires:
+    - `CALENDLY_PERSONAL_ACCESS_TOKEN`
+    - `CALENDLY_SYNC_INGEST_URL`
+    - `CALENDLY_SYNC_SECRET`
+- Zoho lead sync:
+  - workflow: `.github/workflows/zoho-sync-leads.yml`
+  - requires:
+    - `ZOHO_SYNC_URL`
+    - `ZOHO_SYNC_SECRET`
+- Zoho estimate sync:
+  - workflow: `.github/workflows/zoho-sync-estimate-companions.yml`
+  - requires:
+    - `ZOHO_ESTIMATE_COMPANION_SYNC_URL`
+    - `CRON_SECRET`
+- Operator note:
+  - `/admin/operations` is now the first stop for retrying Zoho lead sync, retrying estimate sync, checking booked-call linkage, reviewing quote-follow-up attention, and retrying failed architecture-review email delivery from the outbox.
+
 ## 3) Add or update Stripe prices
 - Open `/admin/prices` as an admin user.
 - Attach Stripe `price_...` IDs to products.

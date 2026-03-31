@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
 
 const platformLinks = [
   { href: "/software", label: "Software" },
@@ -81,7 +82,8 @@ export function SiteFooter() {
               </li>
             ))}
           </ul>
-          <p className="pt-2 text-sm font-medium text-slate-700">zkhawaja@zokorp.com</p>
+          <p className="pt-2 text-sm font-medium text-slate-700">{PUBLIC_LAUNCH_CONTACT.primaryEmail}</p>
+          <p className="text-xs leading-6 text-slate-500">{PUBLIC_LAUNCH_CONTACT.responseWindowLabel}</p>
         </section>
       </div>
       <div className="section-divider mx-auto w-full max-w-7xl" />

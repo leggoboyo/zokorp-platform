@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
 import { buildPageMetadata } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
@@ -59,7 +60,7 @@ export default function SecurityPage() {
         <h2 className="font-display text-3xl font-semibold text-slate-900">Security contact</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
           Report suspected account abuse, access issues, or security concerns to
-          <span className="font-medium text-slate-900"> zkhawaja@zokorp.com</span>. Include the affected account email,
+          <span className="font-medium text-slate-900"> {PUBLIC_LAUNCH_CONTACT.primaryEmail}</span>. Include the affected account email,
           the product involved, and the behavior you observed.
         </p>
       </Card>

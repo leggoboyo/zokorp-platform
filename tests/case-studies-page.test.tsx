@@ -21,5 +21,6 @@ describe("CaseStudiesPage", () => {
     expect(html).toContain("Safe placeholder proof mode");
     expect(html).toContain("not named client endorsements");
     expect(html).toContain("Representative delivery patterns");
+    expect(html).toContain("Broad-launch replacement slot");
   });
 });

@@ -2,7 +2,8 @@
 
 ## Safety status
 - No DNS changes were made to apex (`@`) or `www` in this session.
-- `app.zokorp.com` is approved for rollout as a separate subdomain, pending one DNS record add.
+- `app.zokorp.com` is live on Vercel.
+- `zokorp.com` and `www.zokorp.com` are attached to Vercel project `zokorp-web`, but DNS still points at Squarespace.
 
 ## Collection metadata
 - Last refreshed: 2026-03-02 (America/Chicago)
@@ -23,7 +24,7 @@
 - Current apex redirect behavior:
   - `https://zokorp.com` -> `301` to `https://www.zokorp.com/`
 - Canonical domain target for migration:
-  - `www.zokorp.com`
+  - `https://app.zokorp.com`
 
 ## Baseline DNS records (current)
 
@@ -55,17 +56,25 @@
 - Any unrelated CNAME/TXT records not explicitly required for Vercel domain connection
 - Existing web records for `@` and `www` while rolling out `app.zokorp.com`
 
-## Approved now: subdomain rollout only (`app.zokorp.com`)
-- Vercel-side domain setup status: complete (`app.zokorp.com` added to project `zokorp-web`)
+## Current Vercel-side domain setup
+- `app.zokorp.com`: added to project and live
+- `zokorp.com`: added to project, DNS pending
+- `www.zokorp.com`: added to project, DNS pending
+
+## Approved now: root-domain DNS cutover into Vercel redirect flow
 - Required DNS record at provider (Squarespace DNS):
   - `A` record
-  - Host/Name: `app`
+  - Host/Name: `@`
+  - Value/Points to: `76.76.21.21`
+  - TTL: default or `300` seconds if editable
+  - `A` record
+  - Host/Name: `www`
   - Value/Points to: `76.76.21.21`
   - TTL: default or `300` seconds if editable
 - Verification target:
-  - `https://app.zokorp.com` serves ZoKorp Vercel app with valid SSL
+  - `https://zokorp.com/...` redirects to `https://app.zokorp.com/...`
+  - `https://www.zokorp.com/...` redirects to `https://app.zokorp.com/...`
 - Scope guardrails:
-  - Do not modify `@` or `www`
   - Do not modify MX/TXT verification records
 
 ## Safest migration path
@@ -81,26 +90,18 @@
 - Yes. Domain transfer is not required to move hosting from Squarespace to Vercel.
 - Preferred approach: keep registrar unchanged, change only DNS records needed for web serving.
 
-## Cutover workflow (plan-only)
-1. In Vercel, add `zokorp.com` and `www.zokorp.com`.
-2. Copy exact required DNS values from Vercel (no guesswork).
+## Cutover workflow (current)
+1. Keep registrar unchanged.
+2. Replace only the apex and `www` web-hosting records with Vercel’s required `A -> 76.76.21.21` records.
 3. Apply only required web records in DNS.
 4. Keep all non-web records unchanged.
 5. Validate:
    - domain verification status in Vercel
    - SSL certificate issuance
-   - `zokorp.com` redirecting to `www.zokorp.com`
+   - `zokorp.com` redirecting to `https://app.zokorp.com`
+   - `www.zokorp.com` redirecting to `https://app.zokorp.com`
    - auth callback URLs
-  - payment return URLs and webhook endpoints (if enabled)
-
-## Subdomain-only workflow (execute now)
-1. Keep existing `@` and `www` records unchanged (Squarespace remains live).
-2. Add only `A app -> 76.76.21.21`.
-3. Wait for propagation and Vercel domain verification.
-4. Validate:
-  - `https://app.zokorp.com` returns ZoKorp app
-  - `https://zokorp.com` and `https://www.zokorp.com` still return existing Squarespace site
-  - mail flow unaffected
+   - payment return URLs and webhook endpoints (if enabled)
 
 ## Rollback plan
 
@@ -126,11 +127,11 @@
 5. For subdomain rollback, remove `app` A record and verify `app.zokorp.com` no longer resolves.
 
 ### Success indicators
-- `www.zokorp.com` serves the new Vercel app
-- `zokorp.com` redirects to `www.zokorp.com`
+- `www.zokorp.com` redirects to `https://app.zokorp.com`
+- `zokorp.com` redirects to `https://app.zokorp.com`
 - SSL valid on both hostnames
 - No email delivery disruption
-- For current phase: `app.zokorp.com` serves Vercel app while `zokorp.com/www` remain on Squarespace
+- `app.zokorp.com` continues serving the Vercel app
 
 ### Failure indicators
 - `404`/`502` on apex or `www`

@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { buildCalendlyBookingUrl } from "@/lib/calendly";
 import { auth } from "@/lib/auth";
 import { SOFT_LAUNCH_POSTURE, SOFT_LAUNCH_RESPONSE_WINDOWS } from "@/lib/launch-posture";
+import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_PLACEHOLDER_NOTES } from "@/lib/public-launch-contract";
 import { buildPageMetadata, getSiteUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -143,6 +144,13 @@ export default async function ServicesPage() {
             Track in account
           </Link>
         </div>
+        <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-200">
+          Primary human paths are{" "}
+          <a className="font-semibold text-white underline decoration-white/40 underline-offset-4" href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`}>
+            {PUBLIC_LAUNCH_CONTACT.primaryEmail}
+          </a>{" "}
+          and the tagged booking link above. {PUBLIC_LAUNCH_CONTACT.responseWindowLabel}. Forms remain available, but they are secondary during the soft launch.
+        </p>
         <div className="mt-6 grid gap-3 md:grid-cols-3">
           {SOFT_LAUNCH_RESPONSE_WINDOWS.map((item) => (
             <div key={item.title} className="rounded-2xl border border-white/15 bg-white/8 px-4 py-3 backdrop-blur">
@@ -182,6 +190,9 @@ export default async function ServicesPage() {
               <p className="mt-3 text-sm leading-6 text-slate-600">{item.detail}</p>
             </article>
           ))}
+        </div>
+        <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
+          <span className="font-semibold text-slate-900">Broad-launch replacement slot:</span> {PUBLIC_LAUNCH_PLACEHOLDER_NOTES.founder}
         </div>
       </section>
 

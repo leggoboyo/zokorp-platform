@@ -22,5 +22,6 @@ describe("AboutPage", () => {
     expect(html).toContain("Representative proof mode");
     expect(html).toContain("Current launch scope");
     expect(html).toContain("Public proof posture");
+    expect(html).toContain("Founder profile slot");
   });
 });

@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
 import { buildPageMetadata } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
@@ -44,7 +45,7 @@ const sections = [
     title: "Retention enforcement and contact",
     paragraphs: [
       "ZoKorp runs scheduled cleanup to delete expired archives, remove duplicate-detection fingerprints, and scrub any legacy sensitive records that should no longer remain in storage.",
-      "Questions about privacy or data handling can be sent to zkhawaja@zokorp.com.",
+      `Questions about privacy or data handling can be sent to ${PUBLIC_LAUNCH_CONTACT.primaryEmail}.`,
     ],
   },
 ];

@@ -11,6 +11,11 @@ import {
   saveArchitectureRuleCatalogDraft,
   syncArchitectureRuleCatalog,
 } from "@/lib/architecture-review/rule-catalog";
+import {
+  retryArchitectureReviewEmailOutbox,
+  triggerEstimateCompanionSyncNow,
+  triggerZohoLeadSyncNow,
+} from "@/lib/admin-operations-control";
 import { db } from "@/lib/db";
 import { isCheckoutEnabledStripePriceId } from "@/lib/stripe-price-id";
 
@@ -33,6 +38,10 @@ const updateServiceRequestSchema = z.object({
   requestId: z.string().cuid(),
   status: z.nativeEnum(ServiceRequestStatus),
   latestNote: z.string().trim().max(240).optional(),
+});
+
+const retryArchitectureEmailSchema = z.object({
+  outboxId: z.string().cuid(),
 });
 
 function revalidateAdminViews() {
@@ -244,4 +253,34 @@ export async function publishArchitectureRuleCatalogAction(formData: FormData) {
 
   revalidateAdminViews();
   revalidatePath(`/admin/architecture-catalog/${parsed.ruleId}`);
+}
+
+export async function retryArchitectureReviewEmailOutboxAction(formData: FormData) {
+  await requireAdmin();
+
+  const parsed = retryArchitectureEmailSchema.safeParse({
+    outboxId: formData.get("outboxId"),
+  });
+
+  if (!parsed.success) {
+    throw new Error("Invalid architecture email retry request");
+  }
+
+  await retryArchitectureReviewEmailOutbox({
+    outboxId: parsed.data.outboxId,
+  });
+
+  revalidateAdminViews();
+}
+
+export async function triggerZohoLeadSyncNowAction() {
+  await requireAdmin();
+  await triggerZohoLeadSyncNow();
+  revalidateAdminViews();
+}
+
+export async function triggerEstimateCompanionSyncNowAction() {
+  await requireAdmin();
+  await triggerEstimateCompanionSyncNow();
+  revalidateAdminViews();
 }

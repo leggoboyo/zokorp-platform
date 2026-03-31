@@ -13,7 +13,7 @@
   - GitHub Actions: architecture worker drain, Calendly sync, Zoho sync, follow-up jobs
 
 ## Canonical live surfaces
-- Public marketing domain today: `https://www.zokorp.com`
+- Public marketing root domain today: still legacy Squarespace on `https://www.zokorp.com`
 - Apex redirect today: `https://zokorp.com` -> `https://www.zokorp.com/`
 - Platform app: `https://app.zokorp.com`
 - Vercel default domain: `https://zokorp-web.vercel.app`
@@ -26,12 +26,14 @@
 - Calendly booking URL in production:
   - `https://calendly.com/zkhawaja-zokorp/zokorp-architecture-review-follow-up`
 
-## Verified production state (2026-03-25 CDT)
+## Verified production state (2026-03-31 CDT)
 - Production Vercel alias `app.zokorp.com` is live and serving the current platform build.
-- `zokorp.com` / `www.zokorp.com` still serve the legacy Squarespace marketing site, not the Vercel app.
+- `zokorp.com`, `www.zokorp.com`, and `app.zokorp.com` are all attached to Vercel project `zokorp-web`, but DNS for apex and `www` still points at Squarespace.
 - Password registration, email verification, password login, password reset, and verified-business-email gating are live.
 - Free tools are live and delivering results by email.
 - Architecture review is live as a booking-first free flow with implementation estimates by email.
+- Monitored inbox proof is complete for `consulting@zokorp.com`.
+- One real founder-controlled `/services` booking is complete and matched into `LeadInteraction` and `ServiceRequest` records.
 - GitHub Actions scheduler jobs are active for:
   - `Drain Architecture Review Queue`
   - `Sync Calendly Booked Calls`
@@ -48,4 +50,5 @@
 ## Launch-shaping implications
 - `app.zokorp.com` is the source of truth for product readiness.
 - `www.zokorp.com` is currently the biggest public-facing mismatch because it does not reflect the current platform positioning or services flow.
+- Root-domain cutover is now primarily a DNS task, not a code or Vercel-project task.
 - Any “ready to market” decision should treat domain unification, WorkDrive archival expectations, and live billing proof as explicit gates rather than assumptions.

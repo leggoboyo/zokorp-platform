@@ -2,7 +2,7 @@
 
 import { fileURLToPath } from "node:url";
 
-const defaultBaseUrl = process.env.SMOKE_BASE_URL ?? "https://zokorp-web.vercel.app";
+const defaultBaseUrl = process.env.SMOKE_BASE_URL ?? "https://app.zokorp.com";
 const defaultTimeoutMs = Number(process.env.SMOKE_TIMEOUT_MS ?? 15000);
 
 const routeChecks = [

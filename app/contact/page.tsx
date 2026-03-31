@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
+import { buildCalendlyBookingUrl } from "@/lib/calendly";
 import { SOFT_LAUNCH_RESPONSE_WINDOWS } from "@/lib/launch-posture";
-import { buildPageMetadata } from "@/lib/site";
+import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
+import { buildPageMetadata, getSiteUrl } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
   title: "Contact",
@@ -26,14 +28,19 @@ const contactPaths = [
 ];
 
 export default function ContactPage() {
+  const architectureBookingUrl = buildCalendlyBookingUrl({
+    baseUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getSiteUrl()}/services#service-request`,
+    utmMedium: "contact-page",
+  });
+
   return (
     <div className="space-y-8">
       <section className="glass-surface animate-fade-up rounded-2xl p-6 md:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Contact</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold text-slate-900">Start the right conversation</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-          ZoKorp uses one platform for software, billing, and service follow-up. The fastest contact path is still
-          email, especially for scoped delivery or account questions.
+          ZoKorp uses one platform for software, billing, and service follow-up. The fastest contact path is direct
+          email plus the tagged booking link when a human follow-up call makes sense.
         </p>
       </section>
 
@@ -48,10 +55,10 @@ export default function ContactPage() {
 
       <section className="surface soft-grid rounded-2xl p-6 md:p-8">
         <h2 className="font-display text-3xl font-semibold text-slate-900">Primary contact</h2>
-        <p className="mt-3 text-lg font-medium text-slate-900">zkhawaja@zokorp.com</p>
+        <p className="mt-3 text-lg font-medium text-slate-900">{PUBLIC_LAUNCH_CONTACT.primaryEmail}</p>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
           Include the product name, your company, and whether the message is about pricing, support, or delivery.
-          That reduces back-and-forth and makes follow-up faster.
+          That reduces back-and-forth and makes follow-up faster. {PUBLIC_LAUNCH_CONTACT.responseWindowLabel}.
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {SOFT_LAUNCH_RESPONSE_WINDOWS.map((item) => (
@@ -62,6 +69,9 @@ export default function ContactPage() {
           ))}
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
+          <a href={architectureBookingUrl} className={buttonVariants()}>
+            {PUBLIC_LAUNCH_CONTACT.bookingLabel}
+          </a>
           <Link href="/services#service-request" className={buttonVariants()}>
             Request services
           </Link>

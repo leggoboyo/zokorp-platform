@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
 import { buildPageMetadata } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
@@ -62,7 +63,8 @@ export default function RefundsPage() {
 
       <Card tone="muted" className="rounded-2xl p-6">
         <p className="text-sm leading-6 text-slate-600">
-          For billing questions or a refund review request, include your account email, product name, purchase context, and the reason you believe a corrective adjustment is warranted.
+          For billing questions or a refund review request, include your account email, product name, purchase context, and the reason you believe a corrective adjustment is warranted. Send the request to{" "}
+          <span className="font-medium text-slate-900">{PUBLIC_LAUNCH_CONTACT.primaryEmail}</span> and expect an initial response within one business day.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/support" className={buttonVariants()}>

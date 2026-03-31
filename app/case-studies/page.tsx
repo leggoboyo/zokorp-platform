@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SOFT_LAUNCH_POSTURE } from "@/lib/launch-posture";
+import { PUBLIC_LAUNCH_PLACEHOLDER_NOTES } from "@/lib/public-launch-contract";
 import { buildPageMetadata } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
@@ -70,6 +71,9 @@ export default function CaseStudiesPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{SOFT_LAUNCH_POSTURE.proofModeLabel}</p>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           These are representative patterns, not named client endorsements. They are here to show the kind of delivery work ZoKorp is built for without overstating proof that has not been cleared for public use.
+        </p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          {PUBLIC_LAUNCH_PLACEHOLDER_NOTES.proof}
         </p>
       </Card>
 

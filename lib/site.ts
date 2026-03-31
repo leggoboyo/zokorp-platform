@@ -1,20 +1,22 @@
 import type { Metadata } from "next";
 
+import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
+
 export const siteConfig = {
   name: "ZoKorp",
   platformName: "ZoKorp Platform",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://zokorp-web.vercel.app",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://app.zokorp.com",
   description:
     "ZoKorp combines AWS AI delivery, account-linked software, and practical validation workflows in one customer platform.",
-  supportEmail: "zkhawaja@zokorp.com",
-  location: "Houston, Texas, United States",
+  supportEmail: PUBLIC_LAUNCH_CONTACT.primaryEmail,
+  location: PUBLIC_LAUNCH_CONTACT.location,
 };
 
 export function getSiteUrl() {
   try {
     return new URL(siteConfig.url).origin;
   } catch {
-    return "https://zokorp-web.vercel.app";
+    return "https://app.zokorp.com";
   }
 }
 
