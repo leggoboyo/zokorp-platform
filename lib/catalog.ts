@@ -78,7 +78,7 @@ const FALLBACK_PUBLIC_CATALOG: CatalogProduct[] = [
   {
     id: "fallback-mlops-foundation-platform",
     slug: "mlops-foundation-platform",
-    name: "ZoKorp MLOps Foundation Platform",
+    name: "ZoKorp Forecasting Beta",
     description:
       "Forecasting beta for SMB teams: upload spreadsheet data, run practical revenue forecasts, review outputs, and expand later with paid add-ons.",
     accessModel: AccessModel.SUBSCRIPTION,
@@ -124,6 +124,7 @@ function sanitizePublicProduct(product: CatalogProduct): CatalogProduct {
   if (product.slug === "mlops-foundation-platform") {
     return {
       ...product,
+      name: "ZoKorp Forecasting Beta",
       description:
         "Forecasting beta for SMB teams: upload spreadsheet data, run practical revenue forecasts, review outputs, and expand later with paid add-ons.",
     };

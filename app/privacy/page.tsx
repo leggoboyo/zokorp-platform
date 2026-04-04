@@ -37,7 +37,7 @@ const sections = [
   {
     title: "Forecasting beta data handling",
     paragraphs: [
-      "The ZoKorp MLOps Foundation Platform is currently a forecasting beta. By default, uploaded forecasting files are processed to produce the result and supporting audit metadata, but the raw uploaded dataset is not treated as a long-term platform data warehouse.",
+      "ZoKorp Forecasting Beta is currently a narrow forecasting workflow, not a broad MLOps platform. By default, uploaded forecasting files are processed to produce the result and supporting audit metadata, but the raw uploaded dataset is not treated as a long-term platform data warehouse.",
       "Live data connectors and broad persistent dataset storage are intentionally out of scope for the current beta launch.",
     ],
   },

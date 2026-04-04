@@ -23,6 +23,7 @@ import { validatorPriceTierFromAmount, validatorProfileCreditsFromTiers, validat
 import { db } from "@/lib/db";
 import { buildPageMetadata } from "@/lib/site";
 import { isCheckoutEnabledStripePriceId } from "@/lib/stripe-price-id";
+import { getToolDefinition } from "@/lib/tool-registry";
 import { cn } from "@/lib/utils";
 import { getValidatorTargetOptions } from "@/lib/validator-library";
 import type { ValidationProfile } from "@/lib/zokorp-validator-engine";
@@ -254,9 +255,11 @@ export async function generateMetadata({
     });
   }
 
+  const toolDefinition = getToolDefinition(product.slug);
+
   return buildPageMetadata({
-    title: product.name,
-    description: product.description,
+    title: toolDefinition?.displayName ?? product.name,
+    description: toolDefinition?.productDescription ?? product.description,
     path: `/software/${product.slug}`,
   });
 }
@@ -320,17 +323,13 @@ export default async function SoftwareDetailPage({
   const currentEmail = session?.user?.email;
   const signedIn = Boolean(currentEmail);
   const isAdminTester = session?.user?.role === Role.ADMIN;
-  const isValidator = product.slug === "zokorp-validator";
-  const isArchitectureReviewer = product.slug === "architecture-diagram-reviewer";
-  const isMLOpsPlatform = product.slug === "mlops-foundation-platform";
-  const requiresVerifiedFreeToolAccount = isArchitectureReviewer;
-  const productDescription = isArchitectureReviewer
-    ? "AWS-only architecture review for PNG, JPG, PDF, or SVG uploads with deterministic findings, source links, and estimate-first follow-up."
-    : isMLOpsPlatform
-      ? "Forecasting beta for SMB teams. Upload CSV or XLSX revenue history, review a deterministic forecast, and keep temporary run history in your account."
-      : isValidator
-        ? "FTR-first validation workflow with deterministic scoring, safe rewrite guidance, email delivery, and estimate-first follow-up."
-        : product.description;
+  const toolDefinition = getToolDefinition(product.slug);
+  const isValidator = toolDefinition?.variant === "validator";
+  const isArchitectureReviewer = toolDefinition?.variant === "architecture-reviewer";
+  const isMLOpsPlatform = toolDefinition?.variant === "mlops-forecast-beta";
+  const productDisplayName = toolDefinition?.displayName ?? product.name;
+  const requiresVerifiedFreeToolAccount = toolDefinition?.requiresVerifiedFreeToolAccount ?? false;
+  const productDescription = toolDefinition?.productDescription ?? product.description;
   const validatorTargets = isValidator
     ? getValidatorTargetOptions().filter((target) => isAdminTester || target.profile === "FTR")
     : [];
@@ -453,8 +452,8 @@ export default async function SoftwareDetailPage({
       </Badge>
       {isValidator ? <Badge variant="outline">1 credit per run</Badge> : null}
       {isValidator && !isAdminTester ? <Badge variant="outline">FTR public launch</Badge> : null}
-      {isArchitectureReviewer ? <Badge variant="outline">Email-only review</Badge> : null}
-      {isMLOpsPlatform ? <Badge variant="outline">Forecasting beta</Badge> : null}
+      {isArchitectureReviewer ? <Badge variant="outline">Email-delivered review</Badge> : null}
+      {isMLOpsPlatform ? <Badge variant="outline">Forecasting beta only</Badge> : null}
       {!isValidator && !isArchitectureReviewer && !isMLOpsPlatform ? (
         <Badge variant="outline">Account-linked access</Badge>
       ) : null}
@@ -565,7 +564,7 @@ export default async function SoftwareDetailPage({
           </CardHeader>
           <CardContent>
             <p className="text-sm leading-6 text-slate-600">
-              Review anonymized provider patterns, monthly digests, and remediation snippets before submitting your own diagram.
+              Review anonymized provider patterns, monthly digests, and remediation snippets before submitting your own diagram. The live scoring engine stays narrower than the full benchmark library until each provider rule set is fully calibrated.
             </p>
           </CardContent>
           <CardFooter>
@@ -607,7 +606,7 @@ export default async function SoftwareDetailPage({
   return (
     <ToolPageLayout
       eyebrow="Software Tool"
-      title={product.name}
+      title={productDisplayName}
       description={productDescription}
       meta={toolMeta}
       alert={

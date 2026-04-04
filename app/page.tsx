@@ -4,7 +4,11 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_PLACEHOLDER_NOTES } from "@/lib/public-launch-contract";
+import {
+  PUBLIC_LAUNCH_CONTACT,
+  PUBLIC_LAUNCH_FOUNDER_PROFILE,
+  PUBLIC_LAUNCH_PROOF_ASSET,
+} from "@/lib/public-launch-contract";
 import { cn } from "@/lib/utils";
 import { buildPageMetadata, getSiteUrl, siteConfig } from "@/lib/site";
 import { buildCalendlyBookingUrl } from "@/lib/calendly";
@@ -277,12 +281,24 @@ export default function HomePage() {
         </Card>
       </section>
 
-      <Card tone="muted" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Broad-launch replacement slot</p>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          {PUBLIC_LAUNCH_PLACEHOLDER_NOTES.founder} {PUBLIC_LAUNCH_PLACEHOLDER_NOTES.proof}
-        </p>
-      </Card>
+      <section className="grid gap-4 md:grid-cols-2">
+        <Card tone="muted" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Founder-led launch</p>
+          <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">
+            {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+          </h2>
+          <p className="mt-1 text-sm font-medium text-slate-700">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
+        </Card>
+
+        <Card tone="glass" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Verified proof asset</p>
+          <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">
+            {PUBLIC_LAUNCH_PROOF_ASSET.title}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{PUBLIC_LAUNCH_PROOF_ASSET.summary}</p>
+        </Card>
+      </section>
     </div>
   );
 }

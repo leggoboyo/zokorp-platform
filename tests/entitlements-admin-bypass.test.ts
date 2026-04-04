@@ -11,6 +11,7 @@ const {
   transactionMock,
   txProductFindUniqueMock,
   txCreditBalanceUpdateManyMock,
+  txCreditBalanceFindUniqueMock,
   txCreditBalanceAggregateMock,
   txEntitlementUpdateManyMock,
   txEntitlementFindFirstMock,
@@ -20,6 +21,7 @@ const {
   transactionMock: vi.fn(),
   txProductFindUniqueMock: vi.fn(),
   txCreditBalanceUpdateManyMock: vi.fn(),
+  txCreditBalanceFindUniqueMock: vi.fn(),
   txCreditBalanceAggregateMock: vi.fn(),
   txEntitlementUpdateManyMock: vi.fn(),
   txEntitlementFindFirstMock: vi.fn(),
@@ -53,6 +55,7 @@ describe("entitlement admin bypass", () => {
         },
         creditBalance: {
           updateMany: txCreditBalanceUpdateManyMock,
+          findUnique: txCreditBalanceFindUniqueMock,
           aggregate: txCreditBalanceAggregateMock,
         },
         entitlement: {
@@ -125,6 +128,9 @@ describe("entitlement admin bypass", () => {
       remainingUses: 8,
     });
     txCreditBalanceUpdateManyMock.mockResolvedValue({ count: 1 });
+    txCreditBalanceFindUniqueMock.mockResolvedValue({
+      remainingUses: 7,
+    });
     txCreditBalanceAggregateMock.mockResolvedValue({
       _sum: {
         remainingUses: 7,

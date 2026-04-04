@@ -1,4 +1,6 @@
 import { db } from "@/lib/db";
+import { isSchemaDriftError } from "@/lib/db-errors";
+import { resolveServiceRequestOwnerLabel } from "@/lib/service-requests";
 
 const FOLLOW_UP_ATTENTION_WINDOW_MS = 48 * 60 * 60 * 1000;
 
@@ -53,7 +55,7 @@ function readNumber(record: Record<string, unknown> | null, key: string) {
 export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnapshot> {
   const staleThreshold = new Date(Date.now() - FOLLOW_UP_ATTENTION_WINDOW_MS);
 
-  const [emailOutboxes, crmLeads, estimateCompanions, toolRuns, bookedCalls, staleServiceRequests] = await Promise.all([
+  const [emailOutboxes, crmLeads, estimateCompanions, toolRuns, legacyToolRunLogs, bookedCalls, staleServiceRequests] = await Promise.all([
     db.architectureReviewEmailOutbox.findMany({
       where: {
         status: {
@@ -104,6 +106,22 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
       },
       take: 20,
     }),
+    (async () => {
+      try {
+        return await db.toolRun.findMany({
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 25,
+        });
+      } catch (error) {
+        if (isSchemaDriftError(error)) {
+          return [];
+        }
+
+        throw error;
+      }
+    })(),
     db.auditLog.findMany({
       where: {
         action: {
@@ -199,14 +217,136 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
     (item) => !bookedCallByReference.has(item.referenceCode),
   );
 
+  const hasPersistedToolRuns = toolRuns.length > 0;
+  const toolRunSignals = hasPersistedToolRuns
+    ? toolRuns.map((item) => {
+        if (item.toolSlug === "zokorp-validator") {
+          return {
+            id: item.id,
+            createdAt: item.createdAt,
+            title: `Validator run · ${item.profile ?? "FTR"}`,
+            statusLabel: item.deliveryStatus ?? (item.score !== null ? `${item.score}%` : "completed"),
+            statusTone:
+              item.deliveryStatus === "failed"
+                ? "danger"
+                : item.score !== null && item.score < 60
+                  ? "warning"
+                  : item.estimateAmountUsd !== null
+                    ? "info"
+                    : "secondary",
+            summary: [
+              item.targetLabel ?? "Checklist target",
+              item.score !== null ? `Score ${item.score}%` : null,
+              item.estimateAmountUsd !== null ? `Quote $${item.estimateAmountUsd}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            details: [
+              item.estimateSla ? `SLA ${item.estimateSla}` : null,
+              item.estimateReferenceCode ? `Estimate ${item.estimateReferenceCode}` : null,
+              item.inputFileName,
+            ].filter((value): value is string => Boolean(value)),
+            href: "/software/zokorp-validator",
+          } satisfies OperationsIssue;
+        }
+
+        return {
+          id: item.id,
+          createdAt: item.createdAt,
+          title: "Forecasting beta run",
+          statusLabel:
+            item.confidenceScore !== null && item.confidenceScore !== undefined
+              ? `${item.confidenceScore}%`
+              : item.status.toLowerCase(),
+          statusTone:
+            (item.confidenceScore ?? 0) >= 75
+              ? "success"
+              : (item.confidenceScore ?? 0) >= 50
+                ? "info"
+                : "warning",
+          summary: [
+            item.sourceName ?? item.summary,
+            item.sourceType ? item.sourceType.toUpperCase() : null,
+            item.confidenceLabel ? `${item.confidenceLabel} confidence` : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          details: [item.inputFileName, item.deliveryStatus ? `Email ${item.deliveryStatus}` : null].filter(
+            (value): value is string => Boolean(value),
+          ),
+          href: "/software/mlops-foundation-platform",
+        } satisfies OperationsIssue;
+      })
+    : legacyToolRunLogs.map((item) => {
+        const metadata = asRecord(item.metadataJson);
+
+        if (item.action === "tool.zokorp_validator_run") {
+          const deliveryStatus = readString(metadata, "deliveryStatus");
+          const quoteCompanionStatus = readString(metadata, "quoteCompanionStatus");
+          const score = readNumber(metadata, "score");
+
+          return {
+            id: item.id,
+            createdAt: item.createdAt,
+            title: `Validator run · ${readString(metadata, "profile") ?? "FTR"}`,
+            statusLabel: deliveryStatus ?? "logged",
+            statusTone:
+              deliveryStatus === "failed" || quoteCompanionStatus === "failed"
+                ? "danger"
+                : deliveryStatus === "not_configured"
+                  ? "info"
+                  : score !== null && score < 60
+                    ? "warning"
+                    : "secondary",
+            summary: [
+              readString(metadata, "targetLabel") ?? "Checklist target",
+              score !== null ? `Score ${score}%` : null,
+              quoteCompanionStatus ? `Quote ${quoteCompanionStatus}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            details: [
+              readString(metadata, "quoteCompanionReference"),
+              readString(metadata, "quoteCompanionError"),
+              readString(metadata, "filename"),
+            ].filter((value): value is string => Boolean(value)),
+            href: "/software/zokorp-validator",
+          } satisfies OperationsIssue;
+        }
+
+        return {
+          id: item.id,
+          createdAt: item.createdAt,
+          title: "MLOps forecasting beta run",
+          statusLabel: readNumber(metadata, "confidenceScore") !== null ? `${readNumber(metadata, "confidenceScore")}%` : "logged",
+          statusTone:
+            (readNumber(metadata, "confidenceScore") ?? 0) >= 75
+              ? "success"
+              : (readNumber(metadata, "confidenceScore") ?? 0) >= 50
+                ? "info"
+                : "warning",
+          summary: [
+            readString(metadata, "sourceName") ?? "Forecast input",
+            readString(metadata, "sourceType")?.toUpperCase() ?? null,
+            metadata?.demoRun === true ? "Demo run" : "Customer run",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          details: [readString(metadata, "cadenceLabel"), readString(metadata, "confidenceLabel")].filter(
+            (value): value is string => Boolean(value),
+          ),
+          href: "/software/mlops-foundation-platform",
+        } satisfies OperationsIssue;
+      });
+
   return {
     stats: {
       pendingArchitectureEmail: emailOutboxes.filter((item) => item.status === "pending").length,
       failedArchitectureEmail: emailOutboxes.filter((item) => item.status === "failed").length,
       crmNeedsAttention: crmLeads.length,
       failedQuoteCompanions: estimateCompanions.length,
-      recentValidatorRuns: toolRuns.filter((item) => item.action === "tool.zokorp_validator_run").length,
-      recentMlopsRuns: toolRuns.filter((item) => item.action === "tool.mlops_forecast_run").length,
+      recentValidatorRuns: toolRunSignals.filter((item) => item.href === "/software/zokorp-validator").length,
+      recentMlopsRuns: toolRunSignals.filter((item) => item.href === "/software/mlops-foundation-platform").length,
       recentBookedCalls: bookedCalls.length,
       followUpAttention: staleServiceRequests.length + staleEstimatesWithoutFollowUp.length,
     },
@@ -284,7 +424,7 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
         title: "Service request needs operator update",
         statusLabel: "attention",
         statusTone: "warning" as const,
-        summary: `${item.trackingCode} · ${item.user.email ?? "unknown email"} · ${item.status}`,
+        summary: `${item.trackingCode} · ${resolveServiceRequestOwnerLabel(item)} · ${item.status}`,
         details: [
           item.title,
           item.latestNote ? `Latest note: ${item.latestNote}` : "No recent customer-visible note",
@@ -292,66 +432,6 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
         href: "/admin/service-requests",
       })),
     ].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime()),
-    toolRunSignals: toolRuns.map((item) => {
-      const metadata = asRecord(item.metadataJson);
-
-      if (item.action === "tool.zokorp_validator_run") {
-        const deliveryStatus = readString(metadata, "deliveryStatus");
-        const quoteCompanionStatus = readString(metadata, "quoteCompanionStatus");
-        const score = readNumber(metadata, "score");
-
-        return {
-          id: item.id,
-          createdAt: item.createdAt,
-          title: `Validator run · ${readString(metadata, "profile") ?? "FTR"}`,
-          statusLabel: deliveryStatus ?? "logged",
-          statusTone:
-            deliveryStatus === "failed" || quoteCompanionStatus === "failed"
-              ? "danger"
-              : deliveryStatus === "not_configured"
-                ? "info"
-                : score !== null && score < 60
-                  ? "warning"
-                  : "secondary",
-          summary: [
-            readString(metadata, "targetLabel") ?? "Checklist target",
-            score !== null ? `Score ${score}%` : null,
-            quoteCompanionStatus ? `Quote ${quoteCompanionStatus}` : null,
-          ]
-            .filter(Boolean)
-            .join(" · "),
-          details: [
-            readString(metadata, "quoteCompanionReference"),
-            readString(metadata, "quoteCompanionError"),
-            readString(metadata, "filename"),
-          ].filter((value): value is string => Boolean(value)),
-          href: "/software/zokorp-validator",
-        } satisfies OperationsIssue;
-      }
-
-      return {
-        id: item.id,
-        createdAt: item.createdAt,
-        title: "MLOps forecasting beta run",
-        statusLabel: readNumber(metadata, "confidenceScore") !== null ? `${readNumber(metadata, "confidenceScore")}%` : "logged",
-        statusTone:
-          (readNumber(metadata, "confidenceScore") ?? 0) >= 75
-            ? "success"
-            : (readNumber(metadata, "confidenceScore") ?? 0) >= 50
-              ? "info"
-              : "warning",
-        summary: [
-          readString(metadata, "sourceName") ?? "Forecast input",
-          readString(metadata, "sourceType")?.toUpperCase() ?? null,
-          metadata?.demoRun === true ? "Demo run" : "Customer run",
-        ]
-          .filter(Boolean)
-          .join(" · "),
-        details: [readString(metadata, "cadenceLabel"), readString(metadata, "confidenceLabel")].filter(
-          (value): value is string => Boolean(value),
-        ),
-        href: "/software/mlops-foundation-platform",
-      } satisfies OperationsIssue;
-    }),
+    toolRunSignals,
   };
 }

@@ -41,8 +41,8 @@ const products = [
   {
     id: "prod-3",
     slug: "mlops-foundation-platform",
-    name: "ZoKorp MLOps Foundation Platform",
-    description: "Subscription MLOps governance workflows for SMB teams.",
+    name: "ZoKorp Forecasting Beta",
+    description: "Subscription forecasting beta workflow for SMB teams.",
     accessModel: "SUBSCRIPTION" as const,
     prices: [
       {
@@ -65,10 +65,10 @@ describe("SoftwareCatalogShell", () => {
     render(<SoftwareCatalogShell products={products} />);
 
     fireEvent.change(screen.getByLabelText(/search software catalog/i), {
-      target: { value: "governance" },
+      target: { value: "forecast" },
     });
 
-    expect(screen.getByText(/ZoKorp MLOps Foundation Platform/i)).toBeTruthy();
+    expect(screen.getByText(/ZoKorp Forecasting Beta/i)).toBeTruthy();
     expect(screen.queryByText(/^ZoKorpValidator$/i)).toBeNull();
     expect(screen.queryByText(/^Architecture Diagram Reviewer$/i)).toBeNull();
   });
@@ -91,6 +91,6 @@ describe("SoftwareCatalogShell", () => {
 
     expect(screen.getByText(/^ZoKorpValidator$/i)).toBeTruthy();
     expect(screen.getByText(/^Architecture Diagram Reviewer$/i)).toBeTruthy();
-    expect(screen.getByText(/ZoKorp MLOps Foundation Platform/i)).toBeTruthy();
+    expect(screen.getByText(/ZoKorp Forecasting Beta/i)).toBeTruthy();
   });
 });

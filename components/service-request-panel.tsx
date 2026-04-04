@@ -30,6 +30,7 @@ type SubmissionResponse = {
   id: string;
   trackingCode: string;
   status: string;
+  linkedToAccount?: boolean;
 };
 
 type ServiceRequestPanelProps = {
@@ -88,11 +89,6 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!isSignedIn) {
-      setError("Please sign in first so your service request can be tracked in your account.");
-      return;
-    }
-
     const form = event.currentTarget;
     const formData = new FormData(form);
 
@@ -102,6 +98,10 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
       summary: String(formData.get("summary") ?? "").trim(),
       preferredStart: String(formData.get("preferredStart") ?? "").trim() || undefined,
       budgetRange: String(formData.get("budgetRange") ?? "").trim() || undefined,
+      requesterEmail: !isSignedIn ? String(formData.get("requesterEmail") ?? "").trim() || undefined : undefined,
+      requesterName: !isSignedIn ? String(formData.get("requesterName") ?? "").trim() || undefined : undefined,
+      requesterCompanyName:
+        !isSignedIn ? String(formData.get("requesterCompanyName") ?? "").trim() || undefined : undefined,
     };
 
     setIsSubmitting(true);
@@ -120,11 +120,6 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
       const data = (await response.json()) as Partial<SubmissionResponse> & { error?: string };
 
       if (!response.ok) {
-        if (response.status === 401) {
-          setError("Please sign in first so your service request can be tracked in your account.");
-          return;
-        }
-
         setError(data.error ?? "Unable to submit request right now.");
         return;
       }
@@ -133,6 +128,7 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
         id: data.id ?? "",
         trackingCode: data.trackingCode ?? "",
         status: data.status ?? "SUBMITTED",
+        linkedToAccount: data.linkedToAccount ?? isSignedIn,
       });
       form.reset();
     } catch {
@@ -157,12 +153,11 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Service Hub</p>
           <h2 className="font-display mt-1 text-3xl font-semibold text-slate-900">Request consultation or delivery</h2>
         </div>
-        <Badge variant="secondary">Tracked in account</Badge>
+        <Badge variant="secondary">{isSignedIn ? "Tracked in account" : "No account required"}</Badge>
       </div>
 
       <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-        Submit this form to create a tracked service request immediately. Booked calls are synced into the account and
-        ops timeline after Calendly confirms the booking and the same email matches an account.
+        Submit this form to start a service conversation immediately. Signed-in customers get an account-linked request right away, and public prospects can submit first and attach account history later using the same email.
       </p>
 
       {isSignedIn ? (
@@ -174,13 +169,24 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
         </Alert>
       ) : (
         <Alert tone="info" className="mt-5">
-          <p>Sign in to submit a request and track milestones from your account.</p>
-          <Link
-            href="/login?callbackUrl=/services"
-            className={`${buttonVariants({ size: "sm" })} mt-3`}
-          >
-            Sign in
-          </Link>
+          <p>
+            No account is required for the first contact. Use your work email so the request can be linked into an
+            account later if you move into software, billing, or tracked delivery.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href="/login?callbackUrl=/services"
+              className={buttonVariants({ size: "sm" })}
+            >
+              Sign in instead
+            </Link>
+            <Link
+              href="/register"
+              className={buttonVariants({ variant: "secondary", size: "sm" })}
+            >
+              Create account
+            </Link>
+          </div>
         </Alert>
       )}
 
@@ -189,17 +195,23 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
           <AlertTitle>Request recorded</AlertTitle>
           <AlertDescription>
             Tracking code: <span className="font-mono font-semibold">{submittedRequest.trackingCode}</span>. Your
-            request is now visible in the account timeline with the current status of{" "}
-            <span className="font-semibold">{submittedRequest.status.toLowerCase()}</span>.
+            request now has the current status of <span className="font-semibold">{submittedRequest.status.toLowerCase()}</span>.
           </AlertDescription>
           <p className="mt-2 text-sm leading-6">
-            Use your account timeline for updates. If you also book a follow-up call, that booking appears separately
-            after Calendly confirms it against the same email.
+            {submittedRequest.linkedToAccount
+              ? "Use your account timeline for updates. If you also book a follow-up call, that booking appears separately after Calendly confirms it against the same email."
+              : "ZoKorp can follow up by email using the contact details you submitted. If you later create an account with the same email, this request can be picked up from that account history."}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link href="/account" className={buttonVariants({ size: "sm" })}>
-              Open account timeline
-            </Link>
+            {submittedRequest.linkedToAccount ? (
+              <Link href="/account" className={buttonVariants({ size: "sm" })}>
+                Open account timeline
+              </Link>
+            ) : (
+              <Link href="/register" className={buttonVariants({ size: "sm" })}>
+                Create account later
+              </Link>
+            )}
             <Button type="button" variant="secondary" size="sm" onClick={resetSubmissionState}>
               Submit another request
             </Button>
@@ -229,6 +241,38 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
               name="preferredStart"
             />
           </label>
+
+          {!isSignedIn ? (
+            <>
+              <label className="space-y-1">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Work email</span>
+                <Input
+                  type="email"
+                  name="requesterEmail"
+                  required
+                  placeholder="you@company.com"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Your name</span>
+                <Input
+                  name="requesterName"
+                  maxLength={120}
+                  placeholder="Full name"
+                />
+              </label>
+
+              <label className="space-y-1 md:col-span-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Company</span>
+                <Input
+                  name="requesterCompanyName"
+                  maxLength={120}
+                  placeholder="Company or team name"
+                />
+              </label>
+            </>
+          ) : null}
 
           <label className="space-y-1 md:col-span-2">
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Request title</span>
@@ -268,7 +312,7 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
           </label>
 
           <div className="flex items-end">
-            <Button type="submit" disabled={isSubmitting || !isSignedIn}>
+            <Button type="submit" disabled={isSubmitting}>
               {submitLabel}
             </Button>
           </div>

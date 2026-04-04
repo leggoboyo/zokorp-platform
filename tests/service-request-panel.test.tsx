@@ -16,8 +16,23 @@ import { ServiceRequestPanel } from "@/components/service-request-panel";
 
 describe("ServiceRequestPanel", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
+  let sessionEmail: string | null;
+  let responseBody: {
+    id: string;
+    trackingCode: string;
+    status: string;
+    linkedToAccount?: boolean;
+  };
 
   beforeEach(() => {
+    sessionEmail = "consulting@zokorp.com";
+    responseBody = {
+      id: "sr_123",
+      trackingCode: "SR-260326-ABCDE",
+      status: "SUBMITTED",
+      linkedToAccount: true,
+    };
+
     fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
 
@@ -26,9 +41,11 @@ describe("ServiceRequestPanel", () => {
           ok: true,
           status: 200,
           json: async () => ({
-            user: {
-              email: "consulting@zokorp.com",
-            },
+            user: sessionEmail
+              ? {
+                  email: sessionEmail,
+                }
+              : undefined,
           }),
         } as Response;
       }
@@ -37,11 +54,7 @@ describe("ServiceRequestPanel", () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({
-            id: "sr_123",
-            trackingCode: "SR-260326-ABCDE",
-            status: "OPEN",
-          }),
+          json: async () => responseBody,
         } as Response;
       }
 
@@ -76,7 +89,7 @@ describe("ServiceRequestPanel", () => {
 
     expect(successAlert).toBeTruthy();
     expect(screen.getByText(/SR-260326-ABCDE/i)).toBeTruthy();
-    expect(successAlert?.textContent).toContain("current status of open");
+    expect(successAlert?.textContent).toContain("current status of submitted");
     expect(screen.getByRole("link", { name: /open account timeline/i }).getAttribute("href")).toBe("/account");
     expect(screen.getByRole("button", { name: /submit another request/i })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /submit service request/i })).toBeNull();
@@ -84,5 +97,46 @@ describe("ServiceRequestPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /submit another request/i }));
 
     await waitFor(() => expect(screen.getByRole("button", { name: /submit service request/i })).toBeTruthy());
+  });
+
+  it("supports a public submission without requiring sign-in and offers account creation after success", async () => {
+    sessionEmail = null;
+    responseBody = {
+      id: "sr_public",
+      trackingCode: "SR-260326-PUBLIC",
+      status: "SUBMITTED",
+      linkedToAccount: false,
+    };
+
+    render(<ServiceRequestPanel signedIn={false} currentEmail={null} />);
+
+    fireEvent.change(screen.getByLabelText(/work email/i), {
+      target: { value: "founder@zokorp.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/your name/i), {
+      target: { value: "Zohaib" },
+    });
+    fireEvent.change(screen.getByLabelText(/company/i), {
+      target: { value: "ZoKorp" },
+    });
+    fireEvent.change(screen.getByLabelText(/request title/i), {
+      target: { value: "ATLAS-AUDIT-2026-03-26 service request" },
+    });
+    fireEvent.change(screen.getByLabelText(/what do you need/i), {
+      target: { value: "Need a production-readiness consultation for an AWS delivery and tooling launch plan." },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /submit service request/i }));
+
+    await waitFor(() => expect(screen.getByText(/request recorded/i)).toBeTruthy());
+    expect(screen.getByRole("link", { name: /create account later/i }).getAttribute("href")).toBe("/register");
+    expect(screen.getByText(/no account is required for the first contact/i)).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/services/requests",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining("\"requesterEmail\":\"founder@zokorp.com\""),
+      }),
+    );
   });
 });

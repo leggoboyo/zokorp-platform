@@ -50,8 +50,10 @@ function revalidateAdminViews() {
   revalidatePath("/software/[slug]", "page");
   revalidatePath("/services");
   revalidatePath("/account");
+  revalidatePath("/admin/billing");
   revalidatePath("/admin/architecture-catalog");
   revalidatePath("/admin/architecture-catalog/[ruleId]", "page");
+  revalidatePath("/admin/billing");
   revalidatePath("/admin/operations");
   revalidatePath("/admin/products");
   revalidatePath("/admin/prices");

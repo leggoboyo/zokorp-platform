@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SOFT_LAUNCH_POSTURE } from "@/lib/launch-posture";
-import { PUBLIC_LAUNCH_PLACEHOLDER_NOTES } from "@/lib/public-launch-contract";
+import { PUBLIC_LAUNCH_PROOF_ASSET } from "@/lib/public-launch-contract";
 import { buildPageMetadata } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
@@ -73,8 +73,21 @@ export default function CaseStudiesPage() {
           These are representative patterns, not named client endorsements. They are here to show the kind of delivery work ZoKorp is built for without overstating proof that has not been cleared for public use.
         </p>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          {PUBLIC_LAUNCH_PLACEHOLDER_NOTES.proof}
+          Alongside these representative patterns, ZoKorp can point to one real proof asset today: operational production evidence verified on March 30, 2026 across result-email delivery, booked-call ingestion, and account-linked workflow tracking.
         </p>
+      </Card>
+
+      <Card tone="glass" className="rounded-2xl p-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Verified proof asset</p>
+        <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">{PUBLIC_LAUNCH_PROOF_ASSET.title}</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-600">{PUBLIC_LAUNCH_PROOF_ASSET.summary}</p>
+        <ul className="mt-4 grid gap-2 md:grid-cols-3">
+          {PUBLIC_LAUNCH_PROOF_ASSET.highlights.map((item) => (
+            <li key={item} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              {item}
+            </li>
+          ))}
+        </ul>
       </Card>
 
       <section className="grid gap-5">

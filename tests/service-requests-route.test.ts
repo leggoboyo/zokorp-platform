@@ -4,17 +4,21 @@ const {
   requireSameOriginMock,
   consumeRateLimitMock,
   getRequestFingerprintMock,
-  requireUserMock,
+  authMock,
+  userFindUniqueMock,
   createServiceRequestMock,
   auditCreateMock,
+  upsertLeadMock,
   isSchemaDriftErrorMock,
 } = vi.hoisted(() => ({
   requireSameOriginMock: vi.fn(),
   consumeRateLimitMock: vi.fn(),
   getRequestFingerprintMock: vi.fn(),
-  requireUserMock: vi.fn(),
+  authMock: vi.fn(),
+  userFindUniqueMock: vi.fn(),
   createServiceRequestMock: vi.fn(),
   auditCreateMock: vi.fn(),
+  upsertLeadMock: vi.fn(),
   isSchemaDriftErrorMock: vi.fn(),
 }));
 
@@ -28,15 +32,23 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 
 vi.mock("@/lib/auth", () => ({
-  requireUser: requireUserMock,
+  auth: authMock,
 }));
 
 vi.mock("@/lib/service-requests", () => ({
   createServiceRequest: createServiceRequestMock,
+  resolveServiceRequestOwnerLabel: vi.fn(),
+}));
+
+vi.mock("@/lib/privacy-leads", () => ({
+  upsertLead: upsertLeadMock,
 }));
 
 vi.mock("@/lib/db", () => ({
   db: {
+    user: {
+      findUnique: userFindUniqueMock,
+    },
     auditLog: {
       create: auditCreateMock,
     },
@@ -56,18 +68,25 @@ describe("service requests route", () => {
     requireSameOriginMock.mockReturnValue(null);
     consumeRateLimitMock.mockResolvedValue({ allowed: true });
     getRequestFingerprintMock.mockReturnValue("fingerprint");
-    requireUserMock.mockResolvedValue({
+    authMock.mockResolvedValue({
+      user: {
+        email: "consulting@zokorp.com",
+      },
+    });
+    userFindUniqueMock.mockResolvedValue({
       id: "user_123",
       email: "consulting@zokorp.com",
+      name: "Zohaib Khawaja",
     });
     createServiceRequestMock.mockResolvedValue({
       id: "sr_123",
       trackingCode: "SR-260326-ABCDE",
-      status: "OPEN",
+      status: "SUBMITTED",
       type: "CONSULTATION",
       title: "ATLAS-AUDIT-2026-03-26 service request",
     });
     auditCreateMock.mockRejectedValue(new Error("audit unavailable"));
+    upsertLeadMock.mockResolvedValue(undefined);
     isSchemaDriftErrorMock.mockReturnValue(false);
   });
 
@@ -75,7 +94,7 @@ describe("service requests route", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns success even when audit logging fails after the request is created", async () => {
+  it("returns success even when audit logging fails after a signed-in request is created", async () => {
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const response = await POST(
@@ -99,14 +118,70 @@ describe("service requests route", () => {
     await expect(response.json()).resolves.toEqual({
       id: "sr_123",
       trackingCode: "SR-260326-ABCDE",
-      status: "OPEN",
+      status: "SUBMITTED",
+      linkedToAccount: true,
     });
     expect(createServiceRequestMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user_123",
+        requesterEmail: "consulting@zokorp.com",
+        requesterName: "Zohaib Khawaja",
+        requesterSource: "account",
         type: "CONSULTATION",
       }),
     );
+    expect(upsertLeadMock).not.toHaveBeenCalled();
+    expect(auditCreateMock).toHaveBeenCalledTimes(1);
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("accepts a public request, records a lead, and returns a non-account-linked response", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    authMock.mockResolvedValue(null);
+    userFindUniqueMock.mockResolvedValue(null);
+    auditCreateMock.mockResolvedValue({});
+
+    const response = await POST(
+      new Request("https://app.zokorp.com/api/services/requests", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://app.zokorp.com",
+        },
+        body: JSON.stringify({
+          type: "CONSULTATION",
+          title: "Need architecture remediation help",
+          summary: "Need follow-up help translating a scored architecture review into a short remediation plan.",
+          requesterEmail: "founder@customerco.com",
+          requesterName: "Customer Founder",
+          requesterCompanyName: "CustomerCo",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toEqual({
+      id: "sr_123",
+      trackingCode: "SR-260326-ABCDE",
+      status: "SUBMITTED",
+      linkedToAccount: false,
+    });
+    expect(createServiceRequestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: null,
+        requesterEmail: "founder@customerco.com",
+        requesterName: "Customer Founder",
+        requesterCompanyName: "CustomerCo",
+        requesterSource: "public_form",
+      }),
+    );
+    expect(upsertLeadMock).toHaveBeenCalledWith({
+      email: "founder@customerco.com",
+      name: "Customer Founder",
+      companyName: "CustomerCo",
+    });
     expect(auditCreateMock).toHaveBeenCalledTimes(1);
 
     consoleErrorSpy.mockRestore();

@@ -5,7 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { buildCalendlyBookingUrl } from "@/lib/calendly";
 import { auth } from "@/lib/auth";
 import { SOFT_LAUNCH_POSTURE, SOFT_LAUNCH_RESPONSE_WINDOWS } from "@/lib/launch-posture";
-import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_PLACEHOLDER_NOTES } from "@/lib/public-launch-contract";
+import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_FOUNDER_PROFILE } from "@/lib/public-launch-contract";
 import { buildPageMetadata, getSiteUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -192,7 +192,8 @@ export default async function ServicesPage() {
           ))}
         </div>
         <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
-          <span className="font-semibold text-slate-900">Broad-launch replacement slot:</span> {PUBLIC_LAUNCH_PLACEHOLDER_NOTES.founder}
+          <span className="font-semibold text-slate-900">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}:</span>{" "}
+          {PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}
         </div>
       </section>
 

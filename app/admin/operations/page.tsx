@@ -65,7 +65,7 @@ export default async function AdminOperationsPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Admin Workspace</p>
             <h1 className="font-display text-4xl font-semibold text-slate-900">Operations</h1>
             <p className="max-w-3xl text-sm leading-6 text-slate-600">
-              Review email delivery, CRM sync, quote-companion, and recent tool-run signals without dropping into raw provider logs.
+              Review email delivery, CRM sync, quote-companion, and recent tool-run signals without dropping into raw provider logs. Dedicated Stripe and credit-ledger exceptions live in the billing workspace.
             </p>
           </div>
           <AdminNav current="operations" />
@@ -104,6 +104,11 @@ export default async function AdminOperationsPage() {
                   <p className="text-sm leading-6 text-slate-600">{section.description}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {section.key === "estimate-sync" ? (
+                    <Link href="/admin/billing" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                      Open billing workspace
+                    </Link>
+                  ) : null}
                   {section.key === "crm-sync" ? (
                     <form action={triggerZohoLeadSyncNowAction}>
                       <Button type="submit" variant="secondary" size="sm">

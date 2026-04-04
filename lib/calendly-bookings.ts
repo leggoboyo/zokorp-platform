@@ -7,12 +7,17 @@ import { createServiceRequest } from "@/lib/service-requests";
 async function ensureServiceRequestForBookedCall(input: {
   interactionId: string;
   userId: string;
+  requesterEmail: string;
+  requesterName?: string | null;
   bookedAtIso: string | null;
   estimateReferenceCode: string | null;
   provider: string;
 }) {
   const request = await createServiceRequest({
     userId: input.userId,
+    requesterEmail: input.requesterEmail,
+    requesterName: input.requesterName ?? null,
+    requesterSource: "account",
     type: ServiceRequestType.CONSULTATION,
     title: "Architecture Review Follow-up",
     summary: [
@@ -120,6 +125,8 @@ export async function ingestArchitectureBookedCall(input: {
     const serviceRequest = await ensureServiceRequestForBookedCall({
       interactionId: interaction.id,
       userId: user.id,
+      requesterEmail: email,
+      requesterName: user.name ?? input.name ?? null,
       bookedAtIso,
       estimateReferenceCode,
       provider,

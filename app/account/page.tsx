@@ -2,12 +2,14 @@ import Link from "next/link";
 import {
   type ArchitectureReviewJob,
   type AuditLog,
+  type CreditLedgerEntry,
   CreditTier,
   EntitlementStatus,
   type EstimateCompanion,
   Role,
   ServiceRequestStatus,
   type ServiceRequest,
+  type ToolRun,
 } from "@prisma/client";
 import { redirect } from "next/navigation";
 
@@ -51,6 +53,13 @@ type FollowUpTimelineEntry = {
   badgeVariant: TimelineBadgeVariant;
   summary: string;
   details: string[];
+};
+
+type CreditLedgerEntryWithProduct = CreditLedgerEntry & {
+  product: {
+    name: string;
+    slug: string;
+  };
 };
 
 function isServiceRequestOpen(status: ServiceRequestStatus) {
@@ -204,6 +213,7 @@ function mlopsRunBadgeVariant(confidenceScore: number | null): TimelineBadgeVari
 
 function buildToolRunTimelineEntries(input: {
   architectureReviews: ArchitectureReviewJob[];
+  toolRuns: ToolRun[];
   auditLogs: AuditLog[];
 }) {
   const architectureEntries: ToolRunTimelineEntry[] = input.architectureReviews.map((review) => ({
@@ -225,6 +235,59 @@ function buildToolRunTimelineEntries(input: {
     href: "/software/architecture-diagram-reviewer",
     hrefLabel: "Open reviewer",
   }));
+
+  const persistedToolRunEntries: ToolRunTimelineEntry[] = input.toolRuns.map((run) => {
+    if (run.toolSlug === "zokorp-validator") {
+      return {
+        id: run.id,
+        createdAt: run.createdAt,
+        title: `ZoKorpValidator · ${run.profile ?? "FTR"}`,
+        badgeLabel: run.score !== null ? `${run.score}%` : "Completed",
+        badgeVariant: validatorRunBadgeVariant(run.score, run.deliveryStatus ?? null),
+        summary: [run.targetLabel ?? "Checklist target selected", run.deliveryStatus ? `Email ${run.deliveryStatus}` : null]
+          .filter(Boolean)
+          .join(" · "),
+        details: [
+          run.estimateAmountUsd !== null && run.estimateAmountUsd !== undefined
+            ? new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD",
+                maximumFractionDigits: 0,
+              }).format(run.estimateAmountUsd)
+            : null,
+          run.estimateSla ? `Estimated SLA ${run.estimateSla}` : null,
+          run.estimateReferenceCode ? `Formal estimate ${run.estimateReferenceCode}` : null,
+        ].filter((value): value is string => Boolean(value)),
+        href: "/software/zokorp-validator",
+        hrefLabel: "Open validator",
+      };
+    }
+
+    return {
+      id: run.id,
+      createdAt: run.createdAt,
+      title: run.toolLabel,
+      badgeLabel:
+        run.confidenceScore !== null && run.confidenceScore !== undefined
+          ? `Confidence ${run.confidenceScore}%`
+          : "Completed",
+      badgeVariant: mlopsRunBadgeVariant(run.confidenceScore ?? null),
+      summary: [run.sourceName ?? run.summary, run.sourceType ? run.sourceType.toUpperCase() : null]
+        .filter(Boolean)
+        .join(" · "),
+      details: [run.confidenceLabel ? `${run.confidenceLabel} confidence` : null].filter(
+        (value): value is string => Boolean(value),
+      ),
+      href: "/software/mlops-foundation-platform",
+      hrefLabel: "Open forecasting beta",
+    };
+  });
+
+  if (persistedToolRunEntries.length > 0) {
+    return [...architectureEntries, ...persistedToolRunEntries].sort(
+      (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+    );
+  }
 
   const auditEntries: ToolRunTimelineEntry[] = input.auditLogs.flatMap((log) => {
     const metadata = asRecord(log.metadataJson);
@@ -296,6 +359,51 @@ function buildToolRunTimelineEntries(input: {
   });
 
   return [...architectureEntries, ...auditEntries].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+}
+
+function creditLedgerReasonLabel(reason: CreditLedgerEntry["reason"]) {
+  switch (reason) {
+    case "PURCHASE":
+      return "Purchase";
+    case "CONSUMPTION":
+      return "Consumption";
+    case "MANUAL_ADJUSTMENT":
+      return "Manual adjustment";
+    case "REFUND":
+      return "Refund";
+    case "REVERSAL":
+      return "Reversal";
+    default:
+      return reason;
+  }
+}
+
+function creditLedgerBadgeVariant(reason: CreditLedgerEntry["reason"], delta: number): TimelineBadgeVariant {
+  if (reason === "PURCHASE") {
+    return "success";
+  }
+
+  if (reason === "CONSUMPTION") {
+    return "info";
+  }
+
+  if (reason === "REFUND" || reason === "REVERSAL") {
+    return "warning";
+  }
+
+  if (delta > 0) {
+    return "success";
+  }
+
+  if (delta < 0) {
+    return "warning";
+  }
+
+  return "secondary";
+}
+
+function formatCreditDelta(delta: number) {
+  return delta > 0 ? `+${delta}` : `${delta}`;
 }
 
 function buildFollowUpTimelineEntries(
@@ -378,6 +486,21 @@ export default async function AccountPage() {
           orderBy: { createdAt: "desc" },
           take: 12,
         },
+        toolRuns: {
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 24,
+        },
+        creditLedgerEntries: {
+          include: {
+            product: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 40,
+        },
         leadInteractions: {
           where: {
             action: {
@@ -405,7 +528,10 @@ export default async function AccountPage() {
       try {
         serviceRequests = await db.serviceRequest.findMany({
           where: {
-            userId: user.id,
+            OR: [
+              { userId: user.id },
+              { requesterEmail: email.toLowerCase() },
+            ],
           },
           orderBy: {
             createdAt: "desc",
@@ -493,9 +619,11 @@ export default async function AccountPage() {
   const architectureReviews = user.architectureReviewJobs;
   const toolRunEntries = buildToolRunTimelineEntries({
     architectureReviews,
+    toolRuns: user.toolRuns,
     auditLogs: user.auditLogs,
   });
   const followUpEntries = buildFollowUpTimelineEntries(user.leadInteractions);
+  const creditLedgerEntries = user.creditLedgerEntries as CreditLedgerEntryWithProduct[];
   const emailPreferences = {
     operationalResultEmails: user.emailPreference?.operationalResultEmails ?? true,
     marketingFollowUpEmails: user.emailPreference?.marketingFollowUpEmails ?? false,
@@ -532,8 +660,18 @@ export default async function AccountPage() {
               </Link>
             ) : null}
             {isAdminAccount ? (
+              <Link href="/admin/billing" className={buttonVariants({ variant: "secondary" })}>
+                Admin billing
+              </Link>
+            ) : null}
+            {isAdminAccount ? (
               <Link href="/admin/operations" className={buttonVariants({ variant: "secondary" })}>
                 Admin operations
+              </Link>
+            ) : null}
+            {isAdminAccount ? (
+              <Link href="/admin/billing" className={buttonVariants({ variant: "secondary" })}>
+                Admin billing
               </Link>
             ) : null}
             {isAdminAccount ? (
@@ -567,6 +705,7 @@ export default async function AccountPage() {
           { label: "Open Requests", value: openServiceRequests.length },
           { label: "Active Subscriptions", value: activeSubscriptions.length },
           { label: "Credit Wallets", value: activeCredits.length },
+          { label: "Credit Activity", value: creditLedgerEntries.length },
           { label: "Recent Purchases", value: user.checkoutFulfillments.length },
           { label: "Formal Estimates", value: estimateCompanions.length },
           { label: "Tool Runs", value: toolRunEntries.length },
@@ -599,6 +738,7 @@ export default async function AccountPage() {
               <TabsTrigger value="service-requests">Service Requests</TabsTrigger>
               <TabsTrigger value="follow-ups">Follow-ups</TabsTrigger>
               <TabsTrigger value="credits">Credits</TabsTrigger>
+              <TabsTrigger value="credit-activity">Credit Activity</TabsTrigger>
               <TabsTrigger value="entitlements">Entitlements</TabsTrigger>
               <TabsTrigger value="purchases">Purchases</TabsTrigger>
               <TabsTrigger value="estimates">Estimates</TabsTrigger>
@@ -610,7 +750,7 @@ export default async function AccountPage() {
             <TabsContent value="service-requests" className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-slate-600">
-                  Track customer-visible request status, delivery notes, and preferred timing in one timeline.
+                  Track customer-visible request status, delivery notes, and preferred timing in one timeline. Requests submitted before account creation also appear here when they match this business email.
                 </p>
                 <Link href="/services#service-request" className={buttonVariants({ variant: "secondary", size: "sm" })}>
                   Submit another request
@@ -644,6 +784,10 @@ export default async function AccountPage() {
                             <span>Preferred start: {new Date(request.preferredStart).toLocaleDateString("en-US")}</span>
                           ) : null}
                           {request.budgetRange ? <span>Budget: {request.budgetRange}</span> : null}
+                          <span>
+                            Source: {request.requesterSource === "account" ? "Account form" : "Public request form"}
+                          </span>
+                          {request.requesterEmail !== user.email ? <span>Requester email: {request.requesterEmail}</span> : null}
                         </>
                       }
                       footer={
@@ -698,6 +842,9 @@ export default async function AccountPage() {
             </TabsContent>
 
             <TabsContent value="credits" className="space-y-4">
+              <p className="text-sm text-slate-600">
+                Credit wallets show how many validator or product-specific uses are currently available. For an immutable purchase-and-consumption timeline, use the credit activity tab.
+              </p>
               {user.creditBalances.length === 0 ? (
                 <Card tone="muted" className="rounded-3xl p-5">
                   <CardContent>
@@ -720,6 +867,49 @@ export default async function AccountPage() {
                         <p>Last updated: {wallet.updatedAt.toLocaleString()}</p>
                       </CardContent>
                     </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="credit-activity" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-slate-600">
+                  Immutable credit ledger entries show every credit purchase and every validator consumption event recorded against this account.
+                </p>
+                <Link href="/account/billing" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                  Open billing portal
+                </Link>
+              </div>
+
+              {creditLedgerEntries.length === 0 ? (
+                <Card tone="muted" className="rounded-3xl p-5">
+                  <CardContent>
+                    <p className="text-sm text-slate-600">No credit purchase or consumption activity has been recorded yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {creditLedgerEntries.map((entry) => (
+                    <TimelineCard
+                      key={entry.id}
+                      title={`${entry.product.name} · ${formatTierLabel(entry.tier)}`}
+                      meta={new Date(entry.createdAt).toLocaleString()}
+                      badge={<Badge variant={creditLedgerBadgeVariant(entry.reason, entry.delta)}>{creditLedgerReasonLabel(entry.reason)}</Badge>}
+                      summary={[
+                        `${formatCreditDelta(entry.delta)} use${Math.abs(entry.delta) === 1 ? "" : "s"}`,
+                        `Balance after ${entry.balanceAfter}`,
+                        entry.sourceRecordKey ? `Ref ${entry.sourceRecordKey}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      details={
+                        <>
+                          <span>Recorded source: {entry.source}</span>
+                          <span>Tier: {formatTierLabel(entry.tier)}</span>
+                        </>
+                      }
+                    />
                   ))}
                 </div>
               )}
@@ -754,6 +944,14 @@ export default async function AccountPage() {
             </TabsContent>
 
             <TabsContent value="purchases" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-slate-600">
+                  Completed software purchases are listed here. Use the Stripe-hosted billing portal for invoices, receipts, payment methods, and subscription changes.
+                </p>
+                <Link href="/account/billing" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                  Open billing portal
+                </Link>
+              </div>
               {user.checkoutFulfillments.length === 0 ? (
                 <Card tone="muted" className="rounded-3xl p-5">
                   <CardContent>

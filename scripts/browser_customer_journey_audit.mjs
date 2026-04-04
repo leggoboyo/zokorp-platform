@@ -110,7 +110,7 @@ const launchProducts = [
     authenticatedMarker: "Run ZoKorpValidator",
   },
   {
-    name: "ZoKorp MLOps Foundation Platform",
+    name: "ZoKorp Forecasting Beta",
     href: "/software/mlops-foundation-platform",
     publicMarker: "Subscription required",
     authenticatedMarker: expectSubscription ? "Active subscription" : "Subscription required",

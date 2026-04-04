@@ -22,6 +22,8 @@ describe("AboutPage", () => {
     expect(html).toContain("Representative proof mode");
     expect(html).toContain("Current launch scope");
     expect(html).toContain("Public proof posture");
-    expect(html).toContain("Founder profile slot");
+    expect(html).toContain("Founder profile");
+    expect(html).toContain("Zohaib Khawaja");
+    expect(html).toContain("Operational proof verified March 30, 2026");
   });
 });

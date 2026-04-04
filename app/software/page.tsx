@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { isPublicSubscriptionPricingApproved } from "@/lib/billing-readiness";
 import { CatalogUnavailableError, getSoftwareCatalogCached } from "@/lib/catalog";
 import { buildPageMetadata } from "@/lib/site";
+import { getToolDefinitions } from "@/lib/tool-registry";
 import { cn } from "@/lib/utils";
 
 export const revalidate = 300;
@@ -17,32 +18,13 @@ export const metadata = buildPageMetadata({
   path: "/software",
 });
 
-const spotlightItems = [
-  {
-    title: "ZoKorp MLOps Foundation Platform",
-    status: "Forecasting beta",
-    summary:
-      "Upload spreadsheet data, run a narrow revenue-forecast workflow, and expand only if your team actually needs more modules.",
-    cta: "Open product",
-    href: "/software/mlops-foundation-platform",
-  },
-  {
-    title: "Architecture Diagram Reviewer",
-    status: "AWS-only review",
-    summary:
-      "Upload an AWS architecture PNG, JPG, PDF, or SVG and receive score-based findings, source-backed guidance, and an estimate-first next step.",
-    cta: "Open in catalog",
-    href: "/software/architecture-diagram-reviewer",
-  },
-  {
-    title: "ZoKorpValidator",
-    status: "FTR-first launch",
-    summary:
-      "Use credit-based validation for FTR evidence today, with polished on-screen output, email delivery, and actionable rewrite guidance.",
-    cta: "Open validator",
-    href: "/software/zokorp-validator",
-  },
-];
+const spotlightItems = getToolDefinitions().map((tool) => ({
+  title: tool.displayName,
+  status: tool.softwareHubStatus,
+  summary: tool.softwareHubSummary,
+  cta: tool.slug === "zokorp-validator" ? "Open validator" : "Open product",
+  href: `/software/${tool.slug}`,
+}));
 
 export default async function SoftwarePage() {
   let products: Awaited<ReturnType<typeof getSoftwareCatalogCached>> = [];

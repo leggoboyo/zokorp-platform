@@ -1,10 +1,11 @@
 import { ServiceRequestType } from "@prisma/client";
 import { z } from "zod";
 
-import { requireUser } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
 import { jsonNoStore } from "@/lib/internal-route";
+import { upsertLead } from "@/lib/privacy-leads";
 import { requireSameOrigin } from "@/lib/request-origin";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { createServiceRequest } from "@/lib/service-requests";
@@ -19,6 +20,9 @@ const requestSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
   budgetRange: z.string().trim().max(80).optional(),
+  requesterEmail: z.string().trim().email().optional(),
+  requesterName: z.string().trim().max(120).optional(),
+  requesterCompanyName: z.string().trim().max(120).optional(),
 });
 
 export async function POST(request: Request) {
@@ -28,10 +32,20 @@ export async function POST(request: Request) {
       return crossSiteResponse;
     }
 
-    const user = await requireUser();
+    const session = await auth();
+    const signedInUser = session?.user?.email
+      ? await db.user.findUnique({
+          where: { email: session.user.email },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        })
+      : null;
 
     const limiter = await consumeRateLimit({
-      key: `service-request:${user.id}:${getRequestFingerprint(request)}`,
+      key: `service-request:${signedInUser?.id ?? "public"}:${getRequestFingerprint(request)}`,
       limit: 6,
       windowMs: 10 * 60 * 1000,
     });
@@ -55,8 +69,20 @@ export async function POST(request: Request) {
       return jsonNoStore({ error: "Invalid service request input." }, { status: 400 });
     }
 
+    const requesterEmail = signedInUser?.email ?? parsed.data.requesterEmail?.trim().toLowerCase();
+    if (!requesterEmail) {
+      return jsonNoStore(
+        { error: "Email is required when submitting without an account." },
+        { status: 400 },
+      );
+    }
+
     const created = await createServiceRequest({
-      userId: user.id,
+      userId: signedInUser?.id ?? null,
+      requesterEmail,
+      requesterName: signedInUser?.name ?? parsed.data.requesterName ?? null,
+      requesterCompanyName: parsed.data.requesterCompanyName ?? null,
+      requesterSource: signedInUser ? "account" : "public_form",
       type: parsed.data.type,
       title: parsed.data.title,
       summary: parsed.data.summary,
@@ -66,15 +92,29 @@ export async function POST(request: Request) {
       budgetRange: parsed.data.budgetRange ?? undefined,
     });
 
+    if (!signedInUser) {
+      try {
+        await upsertLead({
+          email: requesterEmail,
+          name: parsed.data.requesterName ?? null,
+          companyName: parsed.data.requesterCompanyName ?? null,
+        });
+      } catch (leadError) {
+        console.error("Failed to upsert public service-request lead", leadError);
+      }
+    }
+
     try {
       await db.auditLog.create({
         data: {
-          userId: user.id,
+          userId: signedInUser?.id ?? null,
           action: "service.request_submitted",
           metadataJson: {
             trackingCode: created.trackingCode,
             type: created.type,
             title: created.title,
+            requesterEmail,
+            requesterSource: signedInUser ? "account" : "public_form",
           },
         },
       });
@@ -86,12 +126,9 @@ export async function POST(request: Request) {
       id: created.id,
       trackingCode: created.trackingCode,
       status: created.status,
+      linkedToAccount: Boolean(signedInUser),
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return jsonNoStore({ error: "Unauthorized" }, { status: 401 });
-    }
-
     if (isSchemaDriftError(error)) {
       return jsonNoStore(
         { error: "Service request tracking is being enabled. Please retry shortly." },

@@ -1,6 +1,7 @@
-import { AccessModel, CreditTier, EntitlementStatus, Prisma } from "@prisma/client";
+import { AccessModel, CreditLedgerReason, CreditTier, EntitlementStatus, Prisma } from "@prisma/client";
 
 import { hasAdminEntitlementBypass } from "@/lib/admin-access";
+import { recordCreditLedgerEntry } from "@/lib/credit-ledger";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
 
@@ -187,9 +188,11 @@ export async function decrementUsesAtomically(input: {
           });
 
         let updated = await consumeFromTier(input.creditTier);
+        let consumedTier = input.creditTier;
 
         if (updated.count === 0 && input.allowGeneralCreditFallback) {
           updated = await consumeFromTier(CreditTier.GENERAL);
+          consumedTier = CreditTier.GENERAL;
         }
 
         if (updated.count === 0) {
@@ -197,6 +200,33 @@ export async function decrementUsesAtomically(input: {
         }
 
         const remainingUses = await syncEntitlementRemainingUses(tx, input.userId, product.id);
+        const consumedWallet = await tx.creditBalance.findUnique({
+          where: {
+            userId_productId_tier: {
+              userId: input.userId,
+              productId: product.id,
+              tier: consumedTier,
+            },
+          },
+          select: {
+            remainingUses: true,
+          },
+        });
+
+        await recordCreditLedgerEntry({
+          client: tx,
+          userId: input.userId,
+          productId: product.id,
+          tier: consumedTier,
+          delta: -uses,
+          balanceAfter: consumedWallet?.remainingUses ?? Math.max(0, remainingUses),
+          reason: CreditLedgerReason.CONSUMPTION,
+          source: "tool-consumption",
+          metadata: {
+            productSlug: input.productSlug,
+          },
+        });
+
         return { remainingUses };
       } catch (error) {
         if (!isSchemaDriftError(error)) {

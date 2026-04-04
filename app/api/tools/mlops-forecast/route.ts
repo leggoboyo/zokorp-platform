@@ -13,6 +13,7 @@ import {
   buildRevenueForecastFromRows,
   parseRevenueCsvRows,
 } from "@/lib/mlops-forecast";
+import { recordMlopsForecastToolRun } from "@/lib/tool-runs";
 import { readXlsxWorkbookRows } from "@/lib/workbook";
 import { EntitlementStatus } from "@prisma/client";
 
@@ -145,6 +146,28 @@ export async function POST(request: Request) {
       auditId = audit.id;
     } catch (error) {
       console.error("Failed to write MLOps forecast audit log", error);
+    }
+
+    try {
+      await recordMlopsForecastToolRun({
+        userId: user.id,
+        summary: `${sourceName} · ${result.confidenceLabel} confidence`,
+        inputFileName: runMode === "demo" ? null : sourceName,
+        sourceType,
+        sourceName,
+        confidenceScore: result.confidenceScore,
+        confidenceLabel: result.confidenceLabel,
+        report: result,
+        metadata: {
+          observations: result.observations,
+          cadenceLabel: result.cadenceLabel,
+          trendPerPeriod: result.trendPerPeriod,
+          totalRevenue: result.totalRevenue,
+          demoRun: runMode === "demo",
+        },
+      });
+    } catch (toolRunError) {
+      console.error("Failed to persist MLOps forecast run", toolRunError);
     }
 
     return jsonNoStore({

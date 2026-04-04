@@ -13,6 +13,7 @@ import { parseValidatorInput } from "@/lib/validator";
 import { buildValidatorEmailContent, buildValidatorEstimate, sendValidatorResultsEmail } from "@/lib/validator-delivery";
 import { getValidatorTargetOptions, resolveValidatorTargetContext } from "@/lib/validator-library";
 import { VALIDATION_PROFILES } from "@/lib/zokorp-validator-engine";
+import { recordValidatorToolRun } from "@/lib/tool-runs";
 import { syncZohoInvoiceEstimate } from "@/lib/zoho-invoice";
 import { recordEstimateCompanion } from "@/lib/estimate-companions";
 import { buildEmailPreferenceLinks } from "@/lib/email-preferences";
@@ -332,6 +333,34 @@ export async function POST(request: Request) {
       });
     } catch (error) {
       console.error("Failed to write validator audit log", error);
+    }
+
+    try {
+      await recordValidatorToolRun({
+        userId: user.id,
+        summary: `${result.report.profileLabel} ${result.report.score}% · ${selectedTarget?.label ?? "Checklist target selected"}`,
+        fileName: file.name,
+        mimeType: file.type,
+        profile: parsedForm.data.validationProfile,
+        targetId: selectedTarget?.id ?? null,
+        targetLabel: selectedTarget?.label ?? null,
+        score: result.report.score,
+        deliveryStatus: emailDelivery.status,
+        estimateAmountUsd: estimate.quoteUsd,
+        estimateSla: estimate.slaLabel,
+        estimateReferenceCode,
+        remainingUses: remainingUsesForProfile,
+        report: result.report,
+        metadata: {
+          reviewedWorkbookFileName: result.reviewedWorkbookFileName ?? null,
+          quoteCompanionStatus: quoteCompanion.status,
+          quoteCompanionProvider: quoteCompanion.provider,
+          quoteCompanionReference: quoteCompanion.status === "created" ? quoteCompanion.estimateNumber : null,
+          adminBypass: entitlementAccess.adminBypass,
+        },
+      });
+    } catch (toolRunError) {
+      console.error("Failed to persist validator tool run", toolRunError);
     }
 
     return jsonNoStore({

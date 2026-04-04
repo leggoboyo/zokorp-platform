@@ -15,6 +15,7 @@ import {
   SERVICE_REQUEST_STATUS_LABEL,
   SERVICE_REQUEST_STATUS_STYLE,
   SERVICE_REQUEST_TYPE_LABEL,
+  resolveServiceRequestOwnerLabel,
 } from "@/lib/service-requests";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ async function getServiceRequests() {
     include: {
       user: {
         select: {
+          id: true,
           email: true,
         },
       },
@@ -56,7 +58,7 @@ export default async function AdminServiceRequestsPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Admin Workspace</p>
             <h1 className="font-display text-4xl font-semibold text-slate-900">Service Requests</h1>
             <p className="max-w-3xl text-sm leading-6 text-slate-600">
-              Review the delivery queue, update customer-visible status, and keep request notes current inside user accounts.
+              Review the delivery queue, update customer-visible status, and keep request notes current for both account-linked customers and public inbound leads.
             </p>
           </div>
           <AdminNav current="service-requests" />
@@ -66,7 +68,7 @@ export default async function AdminServiceRequestsPage() {
       <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5">
         <CardHeader>
           <h2 className="font-display text-2xl font-semibold text-slate-900">Request queue</h2>
-          <p className="text-sm text-slate-600">Update request status and latest note shown in user accounts.</p>
+          <p className="text-sm text-slate-600">Update request status and the latest note shown back to the customer in account history or matched public-email history.</p>
         </CardHeader>
         <CardContent className="space-y-4">
           {!requests ? (
@@ -86,7 +88,7 @@ export default async function AdminServiceRequestsPage() {
                 <TimelineCard
                   key={request.id}
                   title={request.title}
-                  meta={`${request.trackingCode} · ${SERVICE_REQUEST_TYPE_LABEL[request.type]} · ${request.user.email || "no-email"}`}
+                  meta={`${request.trackingCode} · ${SERVICE_REQUEST_TYPE_LABEL[request.type]} · ${resolveServiceRequestOwnerLabel(request)}`}
                   badge={
                     <span
                       className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${SERVICE_REQUEST_STATUS_STYLE[request.status]}`}
@@ -95,6 +97,14 @@ export default async function AdminServiceRequestsPage() {
                     </span>
                   }
                   summary={request.summary}
+                  details={
+                    <>
+                      <span>Linked account: {request.user?.id ? "Yes" : "Not yet"}</span>
+                      <span>Request source: {request.requesterSource === "account" ? "Account form" : "Public form"}</span>
+                      {request.requesterCompanyName ? <span>Company: {request.requesterCompanyName}</span> : null}
+                      <span>Reply target: {request.requesterEmail}</span>
+                    </>
+                  }
                   footer={
                     <form action={updateServiceRequestStatusAction} className="grid gap-2 md:grid-cols-[1fr_2fr_auto]">
                       <input type="hidden" name="requestId" value={request.id} />

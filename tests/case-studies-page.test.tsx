@@ -18,9 +18,10 @@ describe("CaseStudiesPage", () => {
   it("keeps representative proof messaging explicit", () => {
     const html = renderToStaticMarkup(<CaseStudiesPage />);
 
-    expect(html).toContain("Safe placeholder proof mode");
+    expect(html).toContain("Conservative proof mode");
     expect(html).toContain("not named client endorsements");
     expect(html).toContain("Representative delivery patterns");
-    expect(html).toContain("Broad-launch replacement slot");
+    expect(html).toContain("Verified proof asset");
+    expect(html).toContain("Operational proof verified March 30, 2026");
   });
 });

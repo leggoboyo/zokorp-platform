@@ -61,7 +61,7 @@ async function main() {
   const mlopsPlatform = await prisma.product.upsert({
     where: { slug: "mlops-foundation-platform" },
     update: {
-      name: "ZoKorp MLOps Foundation Platform",
+      name: "ZoKorp Forecasting Beta",
       description:
         "Forecasting workspace for SMB teams: upload spreadsheet data, run practical revenue forecasts, review outputs, and add only the modules you need.",
       accessModel: AccessModel.SUBSCRIPTION,
@@ -69,7 +69,7 @@ async function main() {
     },
     create: {
       slug: "mlops-foundation-platform",
-      name: "ZoKorp MLOps Foundation Platform",
+      name: "ZoKorp Forecasting Beta",
       description:
         "Forecasting workspace for SMB teams: upload spreadsheet data, run practical revenue forecasts, review outputs, and add only the modules you need.",
       accessModel: AccessModel.SUBSCRIPTION,

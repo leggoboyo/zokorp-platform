@@ -2,7 +2,7 @@ import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_POLICY_NOTES } from "@/lib/public-
 
 export const SOFT_LAUNCH_POSTURE = {
   label: "Founder-led soft launch",
-  proofModeLabel: "Safe placeholder proof mode",
+  proofModeLabel: "Conservative proof mode",
   supportResponseLabel: PUBLIC_LAUNCH_CONTACT.responseWindowLabel,
   urgentSecurityLabel: PUBLIC_LAUNCH_CONTACT.securityResponseLabel,
   pricingLabel: PUBLIC_LAUNCH_POLICY_NOTES.pricing,

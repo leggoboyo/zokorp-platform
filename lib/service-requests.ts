@@ -30,6 +30,20 @@ export const SERVICE_REQUEST_STATUS_STYLE: Record<ServiceRequestStatus, string> 
   CLOSED: "border-slate-300 bg-slate-100 text-slate-700",
 };
 
+export function resolveServiceRequestOwnerLabel(input: {
+  requesterEmail: string;
+  requesterName?: string | null;
+  requesterCompanyName?: string | null;
+}) {
+  const parts = [
+    input.requesterName?.trim() || null,
+    input.requesterCompanyName?.trim() || null,
+    input.requesterEmail.trim(),
+  ].filter((value): value is string => Boolean(value));
+
+  return parts.join(" · ");
+}
+
 function randomSuffix(length = 4) {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let value = "";
@@ -50,7 +64,11 @@ export function generateServiceTrackingCode(date = new Date()) {
 }
 
 export async function createServiceRequest(input: {
-  userId: string;
+  userId?: string | null;
+  requesterEmail: string;
+  requesterName?: string | null;
+  requesterCompanyName?: string | null;
+  requesterSource?: string | null;
   type: ServiceRequestType;
   title: string;
   summary: string;
@@ -63,7 +81,11 @@ export async function createServiceRequest(input: {
     try {
       return await db.serviceRequest.create({
         data: {
-          userId: input.userId,
+          userId: input.userId ?? null,
+          requesterEmail: input.requesterEmail.trim().toLowerCase(),
+          requesterName: input.requesterName?.trim() || null,
+          requesterCompanyName: input.requesterCompanyName?.trim() || null,
+          requesterSource: input.requesterSource?.trim() || "public_form",
           trackingCode,
           type: input.type,
           title: input.title,

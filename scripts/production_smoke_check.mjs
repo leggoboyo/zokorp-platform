@@ -39,7 +39,7 @@ const routeChecks = [
   },
   {
     path: "/software/mlops-foundation-platform",
-    marker: "ZoKorp MLOps Foundation Platform",
+    marker: "ZoKorp Forecasting Beta",
     owner: "software-tools",
     criticality: "medium",
   },

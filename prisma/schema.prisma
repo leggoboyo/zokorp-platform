@@ -55,6 +55,19 @@ enum ServiceRequestStatus {
   CLOSED
 }
 
+enum ToolRunStatus {
+  COMPLETED
+  FAILED
+}
+
+enum CreditLedgerReason {
+  PURCHASE
+  CONSUMPTION
+  MANUAL_ADJUSTMENT
+  REFUND
+  REVERSAL
+}
+
 enum ArchitectureRuleCatalogPricingMode {
   DERIVED
   OVERRIDE
@@ -96,6 +109,8 @@ model User {
   serviceRequests ServiceRequest[]
   estimateCompanions EstimateCompanion[]
   emailPreference UserEmailPreference?
+  toolRuns       ToolRun[]
+  creditLedgerEntries CreditLedgerEntry[]
 }
 
 model Product {
@@ -113,6 +128,7 @@ model Product {
   creditBalances CreditBalance[]
   checkoutFulfillments CheckoutFulfillment[]
   usageEvents  UsageEvent[]
+  creditLedgerEntries CreditLedgerEntry[]
 }
 
 model Price {
@@ -198,7 +214,11 @@ model UsageEvent {
 
 model ServiceRequest {
   id             String               @id @default(cuid())
-  userId         String
+  userId         String?
+  requesterEmail String
+  requesterName  String?
+  requesterCompanyName String?
+  requesterSource String              @default("public_form")
   trackingCode   String               @unique
   type           ServiceRequestType
   title          String
@@ -210,11 +230,67 @@ model ServiceRequest {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   leadInteractions LeadInteraction[]
 
   @@index([userId, status])
+  @@index([requesterEmail, status])
   @@index([createdAt])
+}
+
+model ToolRun {
+  id                   String        @id @default(cuid())
+  userId               String
+  toolSlug             String
+  toolLabel            String
+  status               ToolRunStatus @default(COMPLETED)
+  summary              String
+  inputFileName        String?
+  sourceType           String?
+  sourceName           String?
+  profile              String?
+  targetId             String?
+  targetLabel          String?
+  score                Int?
+  confidenceScore      Int?
+  confidenceLabel      String?
+  deliveryStatus       String?
+  estimateAmountUsd    Int?
+  estimateSla          String?
+  estimateReferenceCode String?
+  remainingUses        Int?
+  reportJson           Json?
+  metadataJson         Json?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([toolSlug, createdAt])
+  @@index([status, createdAt])
+}
+
+model CreditLedgerEntry {
+  id             String             @id @default(cuid())
+  userId         String
+  productId      String
+  tier           CreditTier
+  delta          Int
+  balanceAfter   Int
+  reason         CreditLedgerReason
+  source         String
+  sourceRecordKey String?
+  metadataJson   Json?
+  createdAt      DateTime           @default(now())
+
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product        Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([productId, createdAt])
+  @@index([source, createdAt])
+  @@index([sourceRecordKey])
 }
 
 model AuditLog {

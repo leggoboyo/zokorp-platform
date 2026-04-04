@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { getToolDefinition } from "@/lib/tool-registry";
 import { cn } from "@/lib/utils";
 
 type CatalogPrice = {
@@ -75,6 +76,15 @@ function getPriceSummary(product: CatalogProduct) {
   return `${amounts[0]} to ${amounts[amounts.length - 1]}`;
 }
 
+function getCatalogPresentation(product: CatalogProduct) {
+  const toolDefinition = getToolDefinition(product.slug);
+
+  return {
+    name: toolDefinition?.displayName ?? product.name,
+    description: toolDefinition?.productDescription ?? product.description,
+  };
+}
+
 export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
   const [query, setQuery] = useState("");
   const [accessFilter, setAccessFilter] = useState<AccessFilter>("ALL");
@@ -84,6 +94,7 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
     const normalizedQuery = deferredQuery.trim().toLowerCase();
 
     return products.filter((product) => {
+      const presentation = getCatalogPresentation(product);
       const matchesAccess = accessFilter === "ALL" || product.accessModel === accessFilter;
       if (!matchesAccess) {
         return false;
@@ -93,7 +104,7 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
         return true;
       }
 
-      const haystack = `${product.name} ${product.description}`.toLowerCase();
+      const haystack = `${presentation.name} ${presentation.description}`.toLowerCase();
       return haystack.includes(normalizedQuery);
     });
   }, [accessFilter, deferredQuery, products]);
@@ -158,13 +169,15 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Software Product</p>
-                    <h3 className="font-display text-2xl font-semibold text-slate-900">{product.name}</h3>
+                    <h3 className="font-display text-2xl font-semibold text-slate-900">
+                      {getCatalogPresentation(product).name}
+                    </h3>
                   </div>
                   <Badge variant={accessBadgeVariant[product.accessModel]}>{accessLabel[product.accessModel]}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-5">
-                <p className="text-sm leading-6 text-slate-600">{product.description}</p>
+                <p className="text-sm leading-6 text-slate-600">{getCatalogPresentation(product).description}</p>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/85 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pricing Snapshot</p>

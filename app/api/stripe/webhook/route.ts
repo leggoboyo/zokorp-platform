@@ -1,6 +1,7 @@
-import { EntitlementStatus, PriceKind, Prisma } from "@prisma/client";
+import { CreditLedgerReason, EntitlementStatus, PriceKind, Prisma } from "@prisma/client";
 import Stripe from "stripe";
 
+import { recordCreditLedgerEntry } from "@/lib/credit-ledger";
 import { effectiveCreditTierForPrice } from "@/lib/credit-tiers";
 import { db } from "@/lib/db";
 import { createInternalAuditLog, methodNotAllowedJson, NO_STORE_HEADERS } from "@/lib/internal-route";
@@ -202,7 +203,7 @@ export async function POST(request: Request) {
                 product: { slug: price.product.slug },
               });
 
-              await tx.creditBalance.upsert({
+              const wallet = await tx.creditBalance.upsert({
                 where: {
                   userId_productId_tier: {
                     userId,
@@ -222,6 +223,9 @@ export async function POST(request: Request) {
                   remainingUses: {
                     increment: price.creditsGranted,
                   },
+                },
+                select: {
+                  remainingUses: true,
                 },
               });
 
@@ -252,6 +256,22 @@ export async function POST(request: Request) {
                 update: {
                   status: EntitlementStatus.ACTIVE,
                   remainingUses: aggregate._sum.remainingUses ?? 0,
+                },
+              });
+
+              await recordCreditLedgerEntry({
+                client: tx,
+                userId,
+                productId,
+                tier: creditTier,
+                delta: price.creditsGranted,
+                balanceAfter: wallet.remainingUses,
+                reason: CreditLedgerReason.PURCHASE,
+                source: "stripe-checkout",
+                sourceRecordKey: checkoutSessionId,
+                metadata: {
+                  stripeEventId: event.id,
+                  stripePriceId: price.stripePriceId,
                 },
               });
             }
@@ -308,6 +328,57 @@ export async function POST(request: Request) {
           stripeSubscriptionId: subscription.id,
           status: subscription.status,
           validUntil: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+        });
+
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice & {
+          subscription?: string | Stripe.Subscription | null;
+        };
+        const invoiceSubscription = invoice.subscription;
+
+        await createInternalAuditLog("billing.invoice_payment_failed", {
+          stripeEventId: event.id,
+          eventType: event.type,
+          stripeInvoiceId: invoice.id,
+          stripeCustomerId: typeof invoice.customer === "string" ? invoice.customer : null,
+          stripeSubscriptionId: typeof invoiceSubscription === "string" ? invoiceSubscription : null,
+          amountDue: invoice.amount_due,
+          currency: invoice.currency,
+          attemptCount: invoice.attempt_count,
+        });
+
+        break;
+      }
+
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+
+        await createInternalAuditLog("billing.charge_refunded", {
+          stripeEventId: event.id,
+          eventType: event.type,
+          stripeChargeId: charge.id,
+          stripeCustomerId: typeof charge.customer === "string" ? charge.customer : null,
+          amountRefunded: charge.amount_refunded,
+          currency: charge.currency,
+        });
+
+        break;
+      }
+
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+
+        await createInternalAuditLog("billing.dispute_created", {
+          stripeEventId: event.id,
+          eventType: event.type,
+          stripeDisputeId: dispute.id,
+          amount: dispute.amount,
+          currency: dispute.currency,
+          reason: dispute.reason ?? null,
+          status: dispute.status,
         });
 
         break;

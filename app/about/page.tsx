@@ -3,7 +3,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SOFT_LAUNCH_POSTURE, SOFT_LAUNCH_PUBLIC_PROOF_NOTES } from "@/lib/launch-posture";
-import { PUBLIC_LAUNCH_PLACEHOLDER_NOTES } from "@/lib/public-launch-contract";
+import { PUBLIC_LAUNCH_FOUNDER_PROFILE, PUBLIC_LAUNCH_PROOF_ASSET } from "@/lib/public-launch-contract";
 import { buildPageMetadata } from "@/lib/site";
 
 export const metadata = buildPageMetadata({
@@ -91,12 +91,38 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <Card tone="muted" className="rounded-2xl p-6">
-        <h2 className="font-display text-2xl font-semibold text-slate-900">Founder profile slot</h2>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          {PUBLIC_LAUNCH_PLACEHOLDER_NOTES.founder}
-        </p>
-      </Card>
+      <section className="grid gap-4 md:grid-cols-2">
+        <Card tone="muted" className="rounded-2xl p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Founder profile</p>
+          <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">
+            {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+          </h2>
+          <p className="mt-1 text-sm font-medium text-slate-700">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
+          <ul className="mt-4 space-y-2 text-sm text-slate-700">
+            {PUBLIC_LAUNCH_FOUNDER_PROFILE.highlights.map((item) => (
+              <li key={item} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <Card tone="glass" className="rounded-2xl p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Verified proof asset</p>
+          <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">
+            {PUBLIC_LAUNCH_PROOF_ASSET.title}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{PUBLIC_LAUNCH_PROOF_ASSET.summary}</p>
+          <ul className="mt-4 space-y-2 text-sm text-slate-700">
+            {PUBLIC_LAUNCH_PROOF_ASSET.highlights.map((item) => (
+              <li key={item} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </section>
 
       <section className="surface soft-grid rounded-2xl p-6 md:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">What the platform does</p>
