@@ -5,17 +5,19 @@ import { AccessModel } from "@prisma/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { shouldHidePublicProductPricing } from "@/lib/billing-readiness";
 import { CatalogUnavailableError, getSoftwareCatalogCached } from "@/lib/catalog";
-import { SOFT_LAUNCH_POSTURE } from "@/lib/launch-posture";
+import { CONSULTING_OFFERS, CONSULTING_PRICE_OPTIONS } from "@/lib/marketing-content";
 import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_POLICY_NOTES } from "@/lib/public-launch-contract";
-import { buildPageMetadata } from "@/lib/site";
+import { buildMarketingPageMetadata, getAppSiteUrl } from "@/lib/site";
 
 export const revalidate = 300;
 
-export const metadata = buildPageMetadata({
+export const metadata = buildMarketingPageMetadata({
   title: "Pricing",
-  description: "Pricing overview for ZoKorp software access models and service engagement paths.",
+  description:
+    "Public consulting price anchors and software pricing for ZoKorp services, tools, and account-linked access.",
   path: "/pricing",
 });
 
@@ -33,22 +35,14 @@ const accessLabels: Record<AccessModel, string> = {
   METERED: "Metered",
 };
 
-const serviceOffers = [
-  {
-    title: "Architecture and readiness consultation",
-    detail: "Best for planning, review, and milestone preparation before implementation work starts.",
-  },
-  {
-    title: "Scoped delivery support",
-    detail: "Best for teams that need execution help, validation packaging, or structured implementation follow-through.",
-  },
-  {
-    title: "Software-backed engagement",
-    detail: "Best for repeatable workflows that should transition from manual review to platform-supported execution.",
-  },
-];
+const pricingNotes = [
+  "No login is required to browse consulting or software pricing.",
+  "Consulting anchors reduce ambiguity, but broader work is still scoped before acceptance.",
+  "Forecasting remains a narrow beta inside the wider AI/ML advisory story.",
+] as const;
 
 export default async function PricingPage() {
+  const appSiteUrl = getAppSiteUrl();
   let products: Awaited<ReturnType<typeof getSoftwareCatalogCached>> = [];
   let catalogUnavailable = false;
 
@@ -63,97 +57,173 @@ export default async function PricingPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <section className="hero-surface animate-fade-up px-6 py-9 text-white md:px-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-200">Pricing</p>
-        <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Clear access models for software and services</h1>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-100 md:text-base">
-          ZoKorp uses a mix of free tools, credit-based software, and pilot subscription surfaces. Architecture Diagram Reviewer stays free, ZoKorpValidator is publicly calibrated for FTR first, and MLOps remains a forecasting beta while subscription posture is finalized.
-        </p>
-      </section>
-
-      <Alert tone="info" className="rounded-2xl border-sky-200 bg-sky-50/70">
-        <AlertTitle>{SOFT_LAUNCH_POSTURE.label}</AlertTitle>
-        <AlertDescription>
-          Public software pricing is shown only where the billing posture is approved. Services remain estimate-first so scope, refund posture, and delivery assumptions are explicit before money changes hands.
-        </AlertDescription>
-      </Alert>
-
-      {catalogUnavailable ? (
-        <Alert tone="warning" className="rounded-2xl border-amber-200 bg-amber-50/70">
-          <AlertTitle>Pricing catalog temporarily unavailable</AlertTitle>
-          <AlertDescription>
-            Product pricing could not be loaded from the account catalog right now. Please retry shortly.
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <section className="grid gap-4 lg:grid-cols-2">
-          {products.map((product) => (
-            <article key={product.slug} className="surface lift-card rounded-2xl p-6">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-display text-2xl font-semibold text-slate-900">{product.name}</h2>
-                <Badge variant="secondary">
-                  {accessLabels[product.accessModel]}
-                </Badge>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{product.description}</p>
-              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                {shouldHidePublicProductPricing(product.accessModel) ? (
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-slate-900">Subscription pricing pending approval</p>
-                    <p className="text-sm text-slate-700">
-                      This product is still in pilot positioning. Public subscription pricing and checkout stay hidden until pricing, refund posture, and tax setup are approved.
-                    </p>
-                  </div>
-                ) : product.prices.length > 0 ? (
-                  <ul className="space-y-2 text-sm text-slate-700">
-                    {product.prices.map((price) => (
-                      <li key={price.id} className="flex items-center justify-between gap-4">
-                        <span>{price.kind.replaceAll("_", " ")}</span>
-                        <span className="font-semibold">{formatAmount(price.amount, price.currency)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-slate-700">
-                    {product.accessModel === AccessModel.FREE
-                      ? "No purchase required. Sign in to run the tool and keep account-linked history."
-                      : "Pricing is configured per product and appears when billing is active for that item."}
-                  </p>
-                )}
-              </div>
-              <Link href={`/software/${product.slug}`} className={`${buttonVariants()} mt-5`}>
-                Open product
+    <div className="space-y-10 md:space-y-12">
+      <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f7f5f1_100%)] px-6 py-8 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:px-8 md:py-10">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pricing</p>
+            <h1 className="font-display mt-4 max-w-4xl text-balance text-4xl font-semibold leading-tight text-slate-950 md:text-6xl">
+              Public price anchors for consulting, and straightforward pricing for the software that is ready.
+            </h1>
+            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
+              ZoKorp shows enough pricing to help buyers make a decision without pretending every engagement is fixed,
+              or every product is already mature enough for public subscription packaging.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/services#service-request" className={buttonVariants({ size: "lg" })}>
+                Get a quote
               </Link>
-            </article>
-          ))}
-        </section>
-      )}
+              <Link href="/software" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+                Explore software
+              </Link>
+              <Link href={`${appSiteUrl}/register`} className={buttonVariants({ variant: "ghost", size: "lg" })}>
+                Create account
+              </Link>
+            </div>
+          </div>
 
-      <section className="surface soft-grid rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Services</p>
-        <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">Service work is scoped to the problem</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-          {SOFT_LAUNCH_POSTURE.pricingLabel}
-        </p>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-          {PUBLIC_LAUNCH_POLICY_NOTES.services} Human follow-up stays routed through{" "}
-          <span className="font-medium text-slate-900">{PUBLIC_LAUNCH_CONTACT.primaryEmail}</span> or a tagged booking CTA, with an initial response target within one business day.
-        </p>
-        <div className="mt-5 grid gap-4 md:grid-cols-3">
-          {serviceOffers.map((offer) => (
-            <article key={offer.title} className="rounded-xl border border-slate-200 bg-white p-5">
-              <h3 className="font-display text-2xl font-semibold text-slate-900">{offer.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{offer.detail}</p>
-            </article>
-          ))}
-        </div>
-        <div className="mt-5">
-          <Link href="/services#service-request" className={buttonVariants()}>
-            Request a scoped conversation
-          </Link>
+          <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+            <CardHeader className="gap-2 px-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pricing posture</p>
+              <h2 className="font-display text-3xl font-semibold text-slate-950">Visible enough to be useful, bounded enough to stay honest.</h2>
+            </CardHeader>
+            <CardContent className="space-y-3 px-0">
+              {pricingNotes.map((note) => (
+                <div key={note} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
+                  {note}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       </section>
+
+      <section className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Consulting</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">Public consulting pricing</h2>
+          </div>
+          <p className="max-w-xl text-sm leading-6 text-slate-600">
+            {PUBLIC_LAUNCH_POLICY_NOTES.services} Contact{" "}
+            <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className="font-medium text-slate-900">
+              {PUBLIC_LAUNCH_CONTACT.primaryEmail}
+            </a>
+            {" "}for anything that needs custom scoping.
+          </p>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-5">
+          {CONSULTING_PRICE_OPTIONS.map((item) => (
+            <Card key={item.title} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-none">
+              <CardHeader className="gap-2 px-0">
+                <h3 className="text-lg font-semibold text-slate-950">{item.title}</h3>
+                <p className="text-sm font-semibold text-slate-700">{item.price}</p>
+              </CardHeader>
+              <CardContent className="px-0">
+                <p className="text-sm leading-7 text-slate-600">{item.summary}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-4">
+          {CONSULTING_OFFERS.map((offer) => (
+            <div key={offer.slug} className="rounded-2xl border border-slate-200 bg-white px-5 py-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{offer.eyebrow}</p>
+              <h3 className="mt-2 text-xl font-semibold text-slate-950">{offer.title}</h3>
+              <p className="mt-2 text-sm font-medium text-slate-700">{offer.priceAnchor}</p>
+              <p className="mt-3 text-sm leading-7 text-slate-600">{offer.summary}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Software</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">Software pricing and access</h2>
+          </div>
+          <p className="max-w-xl text-sm leading-6 text-slate-600">
+            Products stay public. Account creation becomes useful when you want usage history, billing, or protected access inside the app.
+          </p>
+        </div>
+
+        {catalogUnavailable ? (
+          <Alert tone="warning" className="rounded-2xl border-amber-200 bg-amber-50/70">
+            <AlertTitle>Software catalog temporarily unavailable</AlertTitle>
+            <AlertDescription>
+              Product pricing could not be loaded right now. Please retry shortly.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <section className="grid gap-4 lg:grid-cols-2">
+            {products.map((product) => (
+              <Card key={product.slug} className="rounded-[1.6rem] border border-slate-200 bg-white p-6 shadow-none">
+                <CardHeader className="gap-3 px-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-display text-2xl font-semibold text-slate-950">{product.name}</h3>
+                    <Badge variant="secondary">{accessLabels[product.accessModel]}</Badge>
+                  </div>
+                  <p className="text-sm leading-7 text-slate-600">{product.description}</p>
+                </CardHeader>
+                <CardContent className="px-0">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    {shouldHidePublicProductPricing(product.accessModel) ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-slate-900">Public subscription pricing is still gated</p>
+                        <p className="text-sm leading-6 text-slate-700">
+                          This product is live enough to explain publicly, but subscription packaging remains private until the billing posture is approved.
+                        </p>
+                      </div>
+                    ) : product.prices.length > 0 ? (
+                      <ul className="space-y-2 text-sm text-slate-700">
+                        {product.prices.map((price) => (
+                          <li key={price.id} className="flex items-center justify-between gap-4">
+                            <span>{price.kind.replaceAll("_", " ")}</span>
+                            <span className="font-semibold">{formatAmount(price.amount, price.currency)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm leading-6 text-slate-700">
+                        {product.accessModel === AccessModel.FREE
+                          ? "No purchase required. Create an account only if you want app-linked history."
+                          : "Pricing becomes visible when billing is active for this product."}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+                <CardFooter className="px-0">
+                  <Link href={`/software/${product.slug}`} className={buttonVariants()}>
+                    Open product
+                  </Link>
+                </CardFooter>
+              </Card>
+            ))}
+          </section>
+        )}
+      </section>
+
+      <Card className="rounded-[1.8rem] border border-slate-200 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
+        <CardHeader className="gap-2 px-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Need help deciding?</p>
+          <h2 className="font-display text-3xl font-semibold">Use the pricing page to orient yourself, not to skip the scoping conversation.</h2>
+        </CardHeader>
+        <CardContent className="space-y-3 px-0">
+          <p className="text-sm leading-7 text-slate-200">
+            Architecture advisory, remediation, and readiness work all benefit from a quick review of the real context.
+            That is why ZoKorp shows enough pricing to be useful while still routing broader work through quotes and calls.
+          </p>
+        </CardContent>
+        <CardFooter className="px-0">
+          <Link href="/services#service-request" className={buttonVariants({ variant: "secondary" })}>
+            Request services
+          </Link>
+          <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className={buttonVariants({ variant: "ghost" })}>
+            Email ZoKorp
+          </a>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

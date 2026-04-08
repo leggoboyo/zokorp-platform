@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
 import { type BenchmarkProvider, getBenchmarkProvider } from "@/lib/architecture-benchmarks";
-import { buildPageMetadata } from "@/lib/site";
+import { buildMarketingPageMetadata } from "@/lib/site";
 
 type PageParams = {
   provider: BenchmarkProvider;
@@ -19,14 +19,14 @@ export async function generateMetadata({
   const providerLibrary = getBenchmarkProvider(provider);
 
   if (!providerLibrary) {
-    return buildPageMetadata({
+    return buildMarketingPageMetadata({
       title: "Architecture Benchmarks",
       description: "Provider-level architecture benchmark summaries.",
       path: "/software/architecture-diagram-reviewer/benchmarks",
     });
   }
 
-  return buildPageMetadata({
+  return buildMarketingPageMetadata({
     title: `${providerLibrary.providerLabel} Architecture Benchmarks`,
     description: providerLibrary.description,
     path: `/software/architecture-diagram-reviewer/benchmarks/${providerLibrary.provider}`,
@@ -53,6 +53,9 @@ export default async function ProviderBenchmarkPage({
           {providerLibrary.providerLabel} benchmark patterns
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{providerLibrary.description}</p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+          Benchmark pages are directional. They do not override the current launch scope of the live reviewer, which remains AWS-only.
+        </p>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">

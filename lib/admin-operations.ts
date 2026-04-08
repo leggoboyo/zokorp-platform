@@ -4,6 +4,88 @@ import { resolveServiceRequestOwnerLabel } from "@/lib/service-requests";
 
 const FOLLOW_UP_ATTENTION_WINDOW_MS = 48 * 60 * 60 * 1000;
 
+const AUTOMATION_HEALTH_CONFIGS = [
+  {
+    key: "architecture-worker",
+    title: "Architecture queue worker",
+    cadenceLabel: "Expected every 5 minutes",
+    staleAfterMs: 20 * 60 * 1000,
+    successActions: ["internal.architecture_review_worker.run"],
+    warningActions: ["internal.architecture_review_worker.schema_unavailable"],
+    failureActions: [
+      "internal.architecture_review_worker.failed",
+      "internal.architecture_review_worker.not_configured",
+      "internal.cron_architecture_review_worker.not_configured",
+    ],
+    href: "/admin/readiness",
+  },
+  {
+    key: "architecture-followups",
+    title: "Architecture follow-ups",
+    cadenceLabel: "Expected daily",
+    staleAfterMs: 36 * 60 * 60 * 1000,
+    successActions: ["internal.architecture_review_followups.run"],
+    warningActions: [
+      "internal.architecture_review_followups.secret_fallback",
+      "internal.architecture_review_followups.schema_unavailable",
+    ],
+    failureActions: [
+      "internal.architecture_review_followups.failed",
+      "internal.architecture_review_followups.not_configured",
+    ],
+    href: "/admin/readiness",
+  },
+  {
+    key: "retention-sweep",
+    title: "Retention sweep",
+    cadenceLabel: "Expected daily",
+    staleAfterMs: 36 * 60 * 60 * 1000,
+    successActions: ["internal.retention_sweep.completed"],
+    warningActions: [],
+    failureActions: ["internal.retention_sweep.failed", "internal.retention_sweep.not_configured"],
+    href: "/admin/readiness",
+  },
+  {
+    key: "zoho-lead-sync",
+    title: "Zoho lead sync",
+    cadenceLabel: "Expected weekly or on demand",
+    staleAfterMs: 10 * 24 * 60 * 60 * 1000,
+    successActions: ["internal.zoho_sync_leads.run"],
+    warningActions: [
+      "internal.zoho_sync_leads.timeout",
+      "internal.zoho_sync_leads.request_failed",
+      "internal.zoho_sync_leads.upstream_failed",
+      "internal.zoho_sync_leads.schema_unavailable",
+      "internal.zoho_sync_leads.not_ready",
+    ],
+    failureActions: ["internal.zoho_sync_leads.failed", "internal.cron_zoho_sync_leads.not_configured", "internal.zoho_sync_leads.not_configured"],
+    href: "/admin/readiness",
+  },
+  {
+    key: "estimate-companion-sync",
+    title: "Estimate companion sync",
+    cadenceLabel: "Expected hourly",
+    staleAfterMs: 3 * 60 * 60 * 1000,
+    successActions: ["internal.zoho_sync_estimate_companions.run"],
+    warningActions: [],
+    failureActions: [
+      "internal.zoho_sync_estimate_companions.failed",
+      "internal.cron_zoho_sync_estimate_companions.not_configured",
+    ],
+    href: "/admin/billing",
+  },
+] as const;
+
+const AUTOMATION_HEALTH_ACTIONS = [
+  ...new Set(
+    AUTOMATION_HEALTH_CONFIGS.flatMap((item) => [
+      ...item.successActions,
+      ...item.warningActions,
+      ...item.failureActions,
+    ]),
+  ),
+];
+
 type OperationsIssue = {
   id: string;
   createdAt: Date;
@@ -25,11 +107,13 @@ export type AdminOperationsSnapshot = {
     recentMlopsRuns: number;
     recentBookedCalls: number;
     followUpAttention: number;
+    automationAttention: number;
   };
   architectureEmailIssues: OperationsIssue[];
   crmSyncIssues: OperationsIssue[];
   estimateCompanionIssues: OperationsIssue[];
   bookedCallSignals: OperationsIssue[];
+  automationHealthSignals: OperationsIssue[];
   followUpAttentionIssues: OperationsIssue[];
   toolRunSignals: OperationsIssue[];
 };
@@ -52,10 +136,31 @@ function readNumber(record: Record<string, unknown> | null, key: string) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function actionMatches(actions: readonly string[], action: string) {
+  return actions.includes(action);
+}
+
+function formatRelativeAge(date: Date) {
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.max(1, Math.round(diffMs / (60 * 1000)));
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes} minute(s) ago`;
+  }
+
+  const diffHours = Math.max(1, Math.round(diffMinutes / 60));
+  if (diffHours < 48) {
+    return `${diffHours} hour(s) ago`;
+  }
+
+  const diffDays = Math.max(1, Math.round(diffHours / 24));
+  return `${diffDays} day(s) ago`;
+}
+
 export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnapshot> {
   const staleThreshold = new Date(Date.now() - FOLLOW_UP_ATTENTION_WINDOW_MS);
 
-  const [emailOutboxes, crmLeads, estimateCompanions, toolRuns, legacyToolRunLogs, bookedCalls, staleServiceRequests] = await Promise.all([
+  const [emailOutboxes, crmLeads, estimateCompanions, toolRuns, legacyToolRunLogs, bookedCalls, flaggedBookedCallLogs, automationHealthLogs, staleServiceRequests] = await Promise.all([
     db.architectureReviewEmailOutbox.findMany({
       where: {
         status: {
@@ -155,6 +260,31 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
         },
       },
     }),
+    db.auditLog.findMany({
+      where: {
+        action: {
+          in: [
+            "integration.calendly_non_business_email_flagged",
+            "internal.calendly_booked_call.not_configured",
+          ],
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 20,
+    }),
+    db.auditLog.findMany({
+      where: {
+        action: {
+          in: AUTOMATION_HEALTH_ACTIONS,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 100,
+    }),
     db.serviceRequest.findMany({
       where: {
         status: {
@@ -218,6 +348,95 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
   );
 
   const hasPersistedToolRuns = toolRuns.length > 0;
+  const automationHealthSignals = AUTOMATION_HEALTH_CONFIGS.map((automation) => {
+    const latest = automationHealthLogs.find((item) =>
+      actionMatches(automation.successActions, item.action) ||
+      actionMatches(automation.warningActions, item.action) ||
+      actionMatches(automation.failureActions, item.action),
+    );
+
+    if (!latest) {
+      return {
+        id: `${automation.key}:missing`,
+        createdAt: new Date(0),
+        title: automation.title,
+        statusLabel: "no recent signal",
+        statusTone: "warning" as const,
+        summary: automation.cadenceLabel,
+        details: [
+          "No recent automation audit record was found for this job in the current environment.",
+        ],
+        href: automation.href,
+      } satisfies OperationsIssue;
+    }
+
+    const metadata = asRecord(latest.metadataJson);
+    const isFailure = actionMatches(automation.failureActions, latest.action);
+    const isWarning = actionMatches(automation.warningActions, latest.action);
+    const isStale = !isFailure && !isWarning && Date.now() - latest.createdAt.getTime() > automation.staleAfterMs;
+
+    return {
+      id: `${automation.key}:${latest.id}`,
+      createdAt: latest.createdAt,
+      title: automation.title,
+      statusLabel: isFailure ? "failed" : isWarning ? "warning" : isStale ? "stale" : "healthy",
+      statusTone: isFailure ? "danger" : isWarning || isStale ? "warning" : "success",
+      summary: `${automation.cadenceLabel} · Last signal ${formatRelativeAge(latest.createdAt)}`,
+      details: [
+        `Latest action ${latest.action}`,
+        readString(metadata, "error"),
+        readNumber(metadata, "processed") !== null ? `Processed ${readNumber(metadata, "processed")}` : null,
+        readNumber(metadata, "scanned") !== null ? `Scanned ${readNumber(metadata, "scanned")}` : null,
+        readNumber(metadata, "updated") !== null ? `Updated ${readNumber(metadata, "updated")}` : null,
+        readNumber(metadata, "failed") !== null ? `Failed ${readNumber(metadata, "failed")}` : null,
+      ].filter((value): value is string => Boolean(value)),
+      href: automation.href,
+    } satisfies OperationsIssue;
+  }).sort((left, right) => {
+    const tonePriority = { danger: 0, warning: 1, info: 2, secondary: 3, success: 4 } as const;
+    const byTone = tonePriority[left.statusTone] - tonePriority[right.statusTone];
+    if (byTone !== 0) {
+      return byTone;
+    }
+
+    return right.createdAt.getTime() - left.createdAt.getTime();
+  });
+
+  const flaggedBookedCallSignals = flaggedBookedCallLogs.map((item) => {
+    const metadata = asRecord(item.metadataJson);
+
+    if (item.action === "internal.calendly_booked_call.not_configured") {
+      return {
+        id: item.id,
+        createdAt: item.createdAt,
+        title: "Booked-call ingest not configured",
+        statusLabel: "not configured",
+        statusTone: "danger" as const,
+        summary: "Internal booked-call ingest route rejected a sync attempt because the shared secret is missing.",
+        details: [
+          "Set CALENDLY_SYNC_SECRET and confirm the internal ingest route is reachable from the scheduled sync job.",
+        ],
+        href: "/admin/readiness",
+      } satisfies OperationsIssue;
+    }
+
+    return {
+      id: item.id,
+      createdAt: item.createdAt,
+      title: "Booked follow-up flagged",
+      statusLabel: "business email required",
+      statusTone: "warning" as const,
+      summary: `${readString(metadata, "email") ?? "unknown email"} · ${readString(metadata, "provider") ?? "provider unknown"}`,
+      details: [
+        readString(metadata, "externalEventId"),
+        readString(metadata, "estimateReferenceCode")
+          ? `Estimate ${readString(metadata, "estimateReferenceCode")}`
+          : null,
+        metadata?.matchedAccount === true ? "Matched an existing account and still flagged for review" : null,
+      ].filter((value): value is string => Boolean(value)),
+      href: "/admin/leads",
+    } satisfies OperationsIssue;
+  });
   const toolRunSignals = hasPersistedToolRuns
     ? toolRuns.map((item) => {
         if (item.toolSlug === "zokorp-validator") {
@@ -347,8 +566,9 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
       failedQuoteCompanions: estimateCompanions.length,
       recentValidatorRuns: toolRunSignals.filter((item) => item.href === "/software/zokorp-validator").length,
       recentMlopsRuns: toolRunSignals.filter((item) => item.href === "/software/mlops-foundation-platform").length,
-      recentBookedCalls: bookedCalls.length,
+      recentBookedCalls: bookedCalls.length + flaggedBookedCallSignals.length,
       followUpAttention: staleServiceRequests.length + staleEstimatesWithoutFollowUp.length,
+      automationAttention: automationHealthSignals.filter((item) => item.statusTone === "danger" || item.statusTone === "warning").length,
     },
     architectureEmailIssues: emailOutboxes.map((item) => ({
       id: item.id,
@@ -390,20 +610,24 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
       details: [item.referenceCode, item.externalNumber, item.provider].filter((value): value is string => Boolean(value)),
       href: "/account",
     })),
-    bookedCallSignals: bookedCalls.map((item) => ({
-      id: item.id,
-      createdAt: item.createdAt,
-      title: "Booked follow-up synced",
-      statusLabel: item.serviceRequest ? "linked" : "lead only",
-      statusTone: item.serviceRequest ? "success" : "info",
-      summary: `${item.lead.email} · ${item.provider ?? "provider unknown"} · ${item.source}`,
-      details: [
-        item.estimateReferenceCode ? `Estimate ${item.estimateReferenceCode}` : null,
-        item.serviceRequest?.trackingCode ? `Service request ${item.serviceRequest.trackingCode}` : null,
-        item.serviceRequest?.status ? `Status ${item.serviceRequest.status}` : null,
-      ].filter((value): value is string => Boolean(value)),
-      href: item.serviceRequest ? "/admin/service-requests" : "/admin/leads",
-    })),
+    bookedCallSignals: [
+      ...bookedCalls.map((item) => ({
+        id: item.id,
+        createdAt: item.createdAt,
+        title: "Booked follow-up synced",
+        statusLabel: item.serviceRequest ? "linked" : "lead only",
+        statusTone: item.serviceRequest ? "success" : "info",
+        summary: `${item.lead.email} · ${item.provider ?? "provider unknown"} · ${item.source}`,
+        details: [
+          item.estimateReferenceCode ? `Estimate ${item.estimateReferenceCode}` : null,
+          item.serviceRequest?.trackingCode ? `Service request ${item.serviceRequest.trackingCode}` : null,
+          item.serviceRequest?.status ? `Status ${item.serviceRequest.status}` : null,
+        ].filter((value): value is string => Boolean(value)),
+        href: item.serviceRequest ? "/admin/service-requests" : "/admin/leads",
+      } satisfies OperationsIssue)),
+      ...flaggedBookedCallSignals,
+    ].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime()),
+    automationHealthSignals,
     followUpAttentionIssues: [
       ...staleEstimatesWithoutFollowUp.map((item) => ({
         id: item.id,

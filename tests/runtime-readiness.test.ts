@@ -21,7 +21,8 @@ describe("runtime readiness report", () => {
     const report = buildRuntimeReadinessReport({
       NEXTAUTH_SECRET: "nextauth-secret",
       NEXTAUTH_URL: "https://app.zokorp.com",
-      NEXT_PUBLIC_SITE_URL: "https://app.zokorp.com",
+      APP_SITE_URL: "https://app.zokorp.com",
+      MARKETING_SITE_URL: "https://www.zokorp.com",
       AUTH_PASSWORD_ENABLED: "false",
       ARCH_REVIEW_FOLLOWUP_SECRET: "shared-secret",
       ZOHO_SYNC_SECRET: "shared-secret",
@@ -36,7 +37,8 @@ describe("runtime readiness report", () => {
     const report = buildRuntimeReadinessReport({
       AUTH_SECRET: "legacy-secret",
       NEXTAUTH_URL: "https://app.zokorp.com",
-      NEXT_PUBLIC_SITE_URL: "https://app.zokorp.com",
+      APP_SITE_URL: "https://app.zokorp.com",
+      MARKETING_SITE_URL: "https://www.zokorp.com",
       AUTH_PASSWORD_ENABLED: "true",
     });
 
@@ -52,7 +54,8 @@ describe("runtime readiness report", () => {
     const report = buildRuntimeReadinessReport({
       NEXTAUTH_SECRET: "nextauth-secret",
       NEXTAUTH_URL: "https://app.zokorp.com",
-      NEXT_PUBLIC_SITE_URL: "https://app.zokorp.com",
+      APP_SITE_URL: "https://app.zokorp.com",
+      MARKETING_SITE_URL: "https://www.zokorp.com",
       AUTH_PASSWORD_ENABLED: "false",
     });
 
@@ -71,7 +74,8 @@ describe("runtime readiness report", () => {
     const report = buildRuntimeReadinessReport({
       NEXTAUTH_SECRET: "nextauth-secret",
       NEXTAUTH_URL: "https://app.zokorp.com",
-      NEXT_PUBLIC_SITE_URL: "https://app.zokorp.com",
+      APP_SITE_URL: "https://app.zokorp.com",
+      MARKETING_SITE_URL: "https://www.zokorp.com",
       AUTH_PASSWORD_ENABLED: "false",
       ARCH_REVIEW_WORKER_SECRET: "worker-secret",
     });
@@ -84,11 +88,12 @@ describe("runtime readiness report", () => {
     });
   });
 
-  it("fails when NEXTAUTH_URL and NEXT_PUBLIC_SITE_URL do not align", () => {
+  it("fails when NEXTAUTH_URL and APP_SITE_URL do not align", () => {
     const report = buildRuntimeReadinessReport({
       NEXTAUTH_SECRET: "nextauth-secret",
       NEXTAUTH_URL: "https://auth.zokorp.com",
-      NEXT_PUBLIC_SITE_URL: "https://app.zokorp.com",
+      APP_SITE_URL: "https://app.zokorp.com",
+      MARKETING_SITE_URL: "https://www.zokorp.com",
       AUTH_PASSWORD_ENABLED: "false",
     });
 
@@ -96,7 +101,7 @@ describe("runtime readiness report", () => {
       level: "fail",
       details: [
         "NEXTAUTH_URL origin: https://auth.zokorp.com",
-        "NEXT_PUBLIC_SITE_URL origin: https://app.zokorp.com",
+        "App origin: https://app.zokorp.com",
       ],
     });
   });
@@ -105,7 +110,8 @@ describe("runtime readiness report", () => {
     const report = buildRuntimeReadinessReport({
       NEXTAUTH_SECRET: "nextauth-secret",
       NEXTAUTH_URL: "https://app.zokorp.com",
-      NEXT_PUBLIC_SITE_URL: "https://app.zokorp.com",
+      APP_SITE_URL: "https://app.zokorp.com",
+      MARKETING_SITE_URL: "https://www.zokorp.com",
       AUTH_PASSWORD_ENABLED: "false",
       STRIPE_SECRET_KEY: "sk_live_123",
     });
@@ -119,7 +125,8 @@ describe("runtime readiness report", () => {
     const report = buildRuntimeReadinessReport({
       NEXTAUTH_SECRET: "nextauth-secret",
       NEXTAUTH_URL: "https://app.zokorp.com",
-      NEXT_PUBLIC_SITE_URL: "https://app.zokorp.com",
+      APP_SITE_URL: "https://app.zokorp.com",
+      MARKETING_SITE_URL: "https://www.zokorp.com",
       AUTH_PASSWORD_ENABLED: "false",
       ZOHO_INVOICE_ORGANIZATION_ID: "org_123",
     });
@@ -136,7 +143,8 @@ describe("runtime readiness report", () => {
     const report = buildRuntimeReadinessReport({
       NEXTAUTH_SECRET: "nextauth-secret",
       NEXTAUTH_URL: "https://app.zokorp.com",
-      NEXT_PUBLIC_SITE_URL: "https://app.zokorp.com",
+      APP_SITE_URL: "https://app.zokorp.com",
+      MARKETING_SITE_URL: "https://www.zokorp.com",
       AUTH_PASSWORD_ENABLED: "false",
       ZOHO_INVOICE_ORGANIZATION_ID: "org_123",
       ZOHO_CRM_ACCESS_TOKEN: "crm-token",
@@ -151,7 +159,8 @@ describe("runtime readiness report", () => {
     const report = buildRuntimeReadinessReport({
       NEXTAUTH_SECRET: "nextauth-secret",
       NEXTAUTH_URL: "https://app.zokorp.com",
-      NEXT_PUBLIC_SITE_URL: "https://app.zokorp.com",
+      APP_SITE_URL: "https://app.zokorp.com",
+      MARKETING_SITE_URL: "https://www.zokorp.com",
       AUTH_PASSWORD_ENABLED: "true",
       EMAIL_SERVER_HOST: "smtp.example.com",
       EMAIL_SERVER_PORT: "587",
@@ -185,6 +194,7 @@ describe("runtime readiness report", () => {
     });
 
     expect(findCheck(report, "auth-secret")).toMatchObject({ level: "pass" });
+    expect(findCheck(report, "marketing-origin")).toMatchObject({ level: "pass" });
     expect(findCheck(report, "stripe-core")).toMatchObject({ level: "pass" });
     expect(findCheck(report, "subscription-pricing-approval")).toMatchObject({ level: "pass" });
     expect(findCheck(report, "cron-secret")).toMatchObject({ level: "pass" });

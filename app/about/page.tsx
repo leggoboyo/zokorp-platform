@@ -1,163 +1,239 @@
+import Image from "next/image";
 import Link from "next/link";
 
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { SOFT_LAUNCH_POSTURE, SOFT_LAUNCH_PUBLIC_PROOF_NOTES } from "@/lib/launch-posture";
-import { PUBLIC_LAUNCH_FOUNDER_PROFILE, PUBLIC_LAUNCH_PROOF_ASSET } from "@/lib/public-launch-contract";
-import { buildPageMetadata } from "@/lib/site";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { buildCalendlyBookingUrl } from "@/lib/calendly";
+import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_FOUNDER_PROFILE, PUBLIC_LAUNCH_PROOF_ASSET } from "@/lib/public-launch-contract";
+import { buildMarketingPageMetadata, getMarketingSiteUrl } from "@/lib/site";
 
-export const metadata = buildPageMetadata({
-  title: "About",
-  description: "Learn how ZoKorp combines software, delivery, and billing into one operating platform.",
+export const metadata = buildMarketingPageMetadata({
+  title: "About ZoKorp",
+  description:
+    "Founder-led AWS architecture, AI/ML advisory, and software built by Zohaib Khawaja for teams that need a credible next step.",
   path: "/about",
 });
 
-const principles = [
+const backgroundChapters = [
   {
-    title: "Software should remove repetitive review work",
+    company: "Amazon Web Services",
+    role: "Partner Solutions Architect",
     detail:
-      "ZoKorp turns repeatable delivery tasks into productized workflows instead of treating every engagement as custom forever.",
+      "Worked with AWS partners on AI/ML architecture, readiness, and validated delivery patterns across GPU-heavy workloads and production planning.",
   },
   {
-    title: "Customer context should not get lost between products and services",
+    company: "Microsoft",
+    role: "AI Solutions Engineer",
     detail:
-      "The platform links software access, service requests, and billing history under the same account so follow-up work is cleaner.",
+      "Designed AI infrastructure and architecture guidance for enterprise teams that needed clear decisions around training, inference, and adoption tradeoffs.",
   },
   {
-    title: "Operational trust matters as much as visual design",
+    company: "Nordic Global",
+    role: "Senior AI Solutions Architect",
     detail:
-      "Clear support paths, security expectations, and billing behavior are part of the product, not post-purchase cleanup.",
+      "Delivered applied AI architecture in healthcare environments where technical choices had to respect operational constraints, compatibility, and real-world implementation pressure.",
   },
-];
+] as const;
 
-const launchNotes = [
+const operatingPrinciples = [
   {
-    title: "Founder-led by design",
+    title: "Founder-led by default",
     detail:
-      "The public launch is intentionally narrow so software, delivery, and follow-up stay aligned. The goal is a trustworthy operating system for AWS-focused work, not a bloated consulting brochure.",
+      "ZoKorp is intentionally built around direct technical judgment, not a handoff chain that turns the first conversation into a sales script.",
   },
   {
-    title: "Representative proof mode",
+    title: "Specific claims only",
     detail:
-      "ZoKorp does not publish named client claims or inflated delivery proof until approvals exist. Public proof stays conservative on purpose.",
+      "If proof is not approved for public use, it does not get published. The site is meant to earn trust through clarity, not borrowed credibility.",
   },
   {
-    title: "Current launch scope",
+    title: "Software and services stay connected",
     detail:
-      "Architecture Diagram Reviewer, FTR-first Validator, and a forecasting beta are live today. Broader MLOps positioning is intentionally deferred.",
+      "The software exists to reduce repetitive review work and make follow-through cleaner, not to hide the human operating model behind a fake self-serve story.",
   },
-];
+] as const;
+
+const fitSignals = [
+  "Teams that need AWS architecture review before building further.",
+  "Founders and operators who want direct AI/ML infrastructure advice without enterprise theater.",
+  "Organizations preparing for readiness, validation, or delivery checkpoints that need stronger structure.",
+] as const;
 
 export default function AboutPage() {
+  const bookingUrl = buildCalendlyBookingUrl({
+    baseUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getMarketingSiteUrl()}/services#service-request`,
+    utmMedium: "about-page",
+  });
+
   return (
-    <div className="space-y-8">
-      <section className="hero-surface animate-fade-up px-6 py-9 text-white md:px-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-200">About</p>
-        <h1 className="font-display mt-2 text-balance text-4xl font-semibold">ZoKorp is built for practical delivery work</h1>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-100 md:text-base">
-          ZoKorp combines AWS-focused advisory work, productized validation tooling, and account-linked
-          software delivery so customers can move from discovery to execution without changing systems. The current public launch stays intentionally narrow: Architecture Diagram Reviewer, FTR-first Validator, and a forecasting beta.
-        </p>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        {launchNotes.map((item) => (
-          <article key={item.title} className="surface lift-card rounded-2xl p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{SOFT_LAUNCH_POSTURE.label}</p>
-            <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">{item.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{item.detail}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        {principles.map((principle) => (
-          <article key={principle.title} className="surface lift-card rounded-2xl p-6">
-            <h2 className="font-display text-2xl font-semibold text-slate-900">{principle.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{principle.detail}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="surface soft-grid rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Public proof posture</p>
-        <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">What ZoKorp will and will not claim publicly</h2>
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {SOFT_LAUNCH_PUBLIC_PROOF_NOTES.map((note) => (
-            <div key={note} className="rounded-xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
-              {note}
+    <div className="space-y-10 md:space-y-12">
+      <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f7f5f1_100%)] px-6 py-8 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:px-8 md:py-10">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start">
+          <div>
+            <Badge variant="secondary" className="border-slate-200 bg-white text-slate-700">
+              About ZoKorp
+            </Badge>
+            <h1 className="font-display mt-5 max-w-4xl text-balance text-4xl font-semibold leading-tight text-slate-950 md:text-6xl">
+              Built by a technical founder who has spent time inside AWS, Microsoft, and real delivery work.
+            </h1>
+            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
+              ZoKorp exists for teams that need serious technical judgment, a bounded path from review to execution,
+              and software that supports the work instead of dressing it up. The company is founder-led on purpose:
+              direct conversations, clear scope, and no fake proof wall.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a href={bookingUrl} className={buttonVariants({ size: "lg" })}>
+                Book a call
+              </a>
+              <Link href="/services" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+                View services
+              </Link>
+              <a href={PUBLIC_LAUNCH_CONTACT.linkedInUrl} className={buttonVariants({ variant: "ghost", size: "lg" })}>
+                LinkedIn
+              </a>
             </div>
-          ))}
+          </div>
+
+          <Card className="overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+            <div className="grid gap-0 md:grid-cols-[0.95fr_1.05fr]">
+              <div className="relative min-h-[280px] bg-[linear-gradient(180deg,#e7ebf4_0%,#cfd7e7_100%)]">
+                <Image
+                  src={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
+                  alt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 360px"
+                />
+              </div>
+              <div className="p-6">
+                <div className="flex items-center gap-3">
+                  <Image
+                    src={PUBLIC_LAUNCH_FOUNDER_PROFILE.logoPath}
+                    alt="ZoKorp"
+                    width={983}
+                    height={316}
+                    className="h-12 w-auto"
+                    sizes="148px"
+                  />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Founder</p>
+                    <h2 className="font-display text-3xl font-semibold text-slate-950">
+                      {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+                    </h2>
+                  </div>
+                </div>
+                <p className="mt-3 text-sm font-medium text-slate-700">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
+                <p className="mt-4 text-sm leading-7 text-slate-600">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials.map((credential) => (
+                    <Badge key={credential} variant="secondary" className="bg-slate-100 text-slate-700">
+                      {credential}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="mt-5 space-y-2 text-sm text-slate-600">
+                  <p>{PUBLIC_LAUNCH_CONTACT.location}</p>
+                  <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className="font-medium text-slate-900">
+                    {PUBLIC_LAUNCH_CONTACT.primaryEmail}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <Card tone="muted" className="rounded-2xl p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Founder profile</p>
-          <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">
-            {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
-          </h2>
-          <p className="mt-1 text-sm font-medium text-slate-700">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
-          <p className="mt-3 text-sm leading-6 text-slate-600">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
-          <ul className="mt-4 space-y-2 text-sm text-slate-700">
-            {PUBLIC_LAUNCH_FOUNDER_PROFILE.highlights.map((item) => (
-              <li key={item} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                {item}
-              </li>
+      <section className="grid gap-4 lg:grid-cols-3">
+        {backgroundChapters.map((chapter) => (
+          <Card key={chapter.company} className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-none">
+            <CardHeader className="gap-2 px-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{chapter.company}</p>
+              <h2 className="font-display text-2xl font-semibold text-slate-950">{chapter.role}</h2>
+            </CardHeader>
+            <CardContent className="px-0">
+              <p className="text-sm leading-7 text-slate-600">{chapter.detail}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+        <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+          <CardHeader className="gap-2 px-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">How ZoKorp operates</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">Clear trust posture instead of inflated positioning.</h2>
+          </CardHeader>
+          <CardContent className="grid gap-4 px-0 md:grid-cols-3">
+            {operatingPrinciples.map((item) => (
+              <div key={item.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="text-lg font-semibold text-slate-950">{item.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-slate-600">{item.detail}</p>
+              </div>
             ))}
-          </ul>
+          </CardContent>
         </Card>
 
-        <Card tone="glass" className="rounded-2xl p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Verified proof asset</p>
-          <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">
-            {PUBLIC_LAUNCH_PROOF_ASSET.title}
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">{PUBLIC_LAUNCH_PROOF_ASSET.summary}</p>
-          <ul className="mt-4 space-y-2 text-sm text-slate-700">
-            {PUBLIC_LAUNCH_PROOF_ASSET.highlights.map((item) => (
-              <li key={item} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                {item}
-              </li>
+        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
+          <CardHeader className="gap-2 px-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Public proof posture</p>
+            <h2 className="font-display text-3xl font-semibold">{PUBLIC_LAUNCH_PROOF_ASSET.title}</h2>
+          </CardHeader>
+          <CardContent className="space-y-3 px-0">
+            <p className="text-sm leading-7 text-slate-200">{PUBLIC_LAUNCH_PROOF_ASSET.summary}</p>
+            {PUBLIC_LAUNCH_PROOF_ASSET.highlights.map((highlight) => (
+              <div key={highlight} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100">
+                {highlight}
+              </div>
             ))}
-          </ul>
+          </CardContent>
         </Card>
       </section>
 
-      <section className="surface soft-grid rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">What the platform does</p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <article className="rounded-xl border border-slate-200 bg-white p-5">
-            <h2 className="font-display text-2xl font-semibold text-slate-900">Software</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              Self-serve tools for validation, architecture review, and future delivery workflows with
-              account-linked access and billing controls.
-            </p>
-          </article>
-          <article className="rounded-xl border border-slate-200 bg-white p-5">
-            <h2 className="font-display text-2xl font-semibold text-slate-900">Services</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              Consultation and delivery support for teams that need architecture depth, readiness structure,
-              or implementation guidance beyond what self-serve tooling can handle.
-            </p>
-          </article>
-        </div>
-      </section>
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
+          <CardHeader className="gap-2 px-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Who this is for</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">Buyers who want real technical judgment before they buy more work.</h2>
+          </CardHeader>
+          <CardContent className="space-y-3 px-0">
+            {fitSignals.map((signal) => (
+              <div key={signal} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-700">
+                {signal}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
-      <Card tone="glass" className="rounded-2xl p-6">
-        <h2 className="font-display text-2xl font-semibold text-slate-900">Where to go next</h2>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          Pricing stays conservative, proof stays safe, and delivery posture stays explicit until the broader launch bar is met.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <Link href="/pricing" className={buttonVariants()}>
-            View pricing
-          </Link>
-          <Link href="/case-studies" className={buttonVariants({ variant: "secondary" })}>
-            View case studies
-          </Link>
-        </div>
-      </Card>
+        <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+          <CardHeader className="gap-2 px-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Background summary</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">The company is small on purpose, not vague by accident.</h2>
+          </CardHeader>
+          <CardContent className="space-y-4 px-0">
+            <p className="text-sm leading-7 text-slate-600 md:text-base">
+              ZoKorp is not trying to imitate a large consultancy. It is a focused company built around one founder,
+              one clear consulting catalog, and software that supports the same operating model.
+            </p>
+            <p className="text-sm leading-7 text-slate-600 md:text-base">
+              That means direct access, tighter scope control, clearer accountability, and a lower tolerance for vague
+              positioning. If a service or product is still maturing, the site says so plainly.
+            </p>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
+              Current public background signals: AWS professional and specialty certifications, prior roles across AWS,
+              Microsoft, and Nordic Global, a real founder identity, and public software that explains exactly what it does.
+            </div>
+          </CardContent>
+          <CardFooter className="px-0">
+            <Link href="/software" className={buttonVariants()}>
+              Explore software
+            </Link>
+            <Link href="/contact" className={buttonVariants({ variant: "secondary" })}>
+              Contact ZoKorp
+            </Link>
+          </CardFooter>
+        </Card>
+      </section>
     </div>
   );
 }

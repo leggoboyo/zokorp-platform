@@ -31,8 +31,19 @@ async function handleCronEstimateSync(request: Request) {
 
   const result = await runEstimateCompanionSync();
   if (result.status === "ok") {
+    await createInternalAuditLog("internal.zoho_sync_estimate_companions.run", {
+      scanned: result.scanned,
+      updated: result.updated,
+      unchanged: result.unchanged,
+      failed: result.failed,
+    });
     return jsonNoStore(result);
   }
+
+  await createInternalAuditLog("internal.zoho_sync_estimate_companions.failed", {
+    status: result.status,
+    error: result.error,
+  });
 
   if (result.status === "not_configured" || result.status === "schema_unavailable") {
     return jsonNoStore({ error: result.error }, { status: 503 });

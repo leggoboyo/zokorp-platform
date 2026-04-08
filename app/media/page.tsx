@@ -3,11 +3,11 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { getMediaArticles } from "@/data/media-articles";
 import { cn } from "@/lib/utils";
-import { buildPageMetadata } from "@/lib/site";
+import { buildMarketingPageMetadata } from "@/lib/site";
 
-export const metadata = buildPageMetadata({
-  title: "Media",
-  description: "Guides, operating notes, and platform perspectives from ZoKorp.",
+export const metadata = buildMarketingPageMetadata({
+  title: "Insights",
+  description: "Guides and operating notes from ZoKorp on AWS architecture, readiness work, and software-backed delivery.",
   path: "/media",
 });
 
@@ -17,13 +17,13 @@ export default function MediaPage() {
   return (
     <div className="space-y-8">
       <section className="glass-surface animate-fade-up rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Media</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Insights</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold text-slate-900">
-          Guides, notes, and platform thinking
+          Guides, notes, and operating perspectives
         </h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-          ZoKorp publishes practical guidance around architecture reviews, AWS delivery readiness, and
-          account-linked software operations.
+          ZoKorp publishes practical guidance around architecture reviews, AWS readiness, and the operating decisions
+          behind a small consulting-and-software company.
         </p>
       </section>
 

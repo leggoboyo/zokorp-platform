@@ -18,6 +18,9 @@ type SiteHeaderShellProps = {
   isAdmin: boolean;
   userEmail: string | null;
   authRuntimeReady: boolean;
+  loginHref: string;
+  registerHref: string;
+  signOutHref: string;
 };
 
 export function SiteHeaderShell({
@@ -26,6 +29,9 @@ export function SiteHeaderShell({
   isAdmin,
   userEmail,
   authRuntimeReady,
+  loginHref,
+  registerHref,
+  signOutHref,
 }: SiteHeaderShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -157,7 +163,7 @@ export function SiteHeaderShell({
 
   const navLinkClass = cn(
     buttonVariants({ variant: "ghost", size: "sm" }),
-    "rounded-full border-transparent px-3.5 text-foreground-muted hover:bg-white hover:text-foreground",
+    "rounded-full border-transparent px-3.5 text-slate-600 hover:bg-slate-100 hover:text-slate-950",
   );
 
   const authActions = !authRuntimeReady ? (
@@ -173,16 +179,16 @@ export function SiteHeaderShell({
       <Badge variant="secondary" className="max-w-full normal-case tracking-normal">
         <span className="truncate">{resolvedUserEmail}</span>
       </Badge>
-      <Link href="/api/auth/signout?callbackUrl=/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+      <Link href={signOutHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
         Sign out
       </Link>
     </>
   ) : (
     <>
-      <Link href="/login" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+      <Link href={loginHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
         Sign in
       </Link>
-      <Link href="/register" className={buttonVariants({ variant: "primary", size: "sm" })}>
+      <Link href={registerHref} className={buttonVariants({ variant: "primary", size: "sm" })}>
         Create account
       </Link>
     </>
@@ -190,7 +196,7 @@ export function SiteHeaderShell({
 
   return (
     <div className="flex flex-1 items-center justify-end gap-3">
-      <nav className="glass-surface hidden items-center gap-1.5 px-2 py-1.5 text-sm md:flex">
+      <nav className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1.5 text-sm shadow-[0_1px_0_rgba(255,255,255,0.84)_inset] md:flex">
         {primaryLinks.map((link) => (
           <Link
             key={link.href}
@@ -218,7 +224,7 @@ export function SiteHeaderShell({
               id="desktop-more-menu"
               ref={moreMenuRef}
               aria-label="More pages"
-              className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-white p-2 shadow-[var(--shadow-card-hover)]"
+              className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_20px_40px_rgba(15,23,42,0.12)]"
             >
               <div className="space-y-1">
                 {secondaryLinks.map((link) => (
@@ -280,7 +286,7 @@ export function SiteHeaderShell({
           id="mobile-nav-panel"
           ref={mobilePanelRef}
           aria-label="Mobile navigation"
-          className="absolute inset-x-4 top-[calc(100%-0.25rem)] z-40 rounded-[1.4rem] border border-border bg-white/95 p-4 shadow-[var(--shadow-card-hover)] backdrop-blur md:hidden"
+          className="absolute inset-x-4 top-[calc(100%-0.25rem)] z-40 rounded-[1.4rem] border border-slate-200 bg-white p-4 shadow-[0_20px_40px_rgba(15,23,42,0.12)] md:hidden"
         >
           <div className="space-y-2">
             {[...primaryLinks, ...secondaryLinks].map((link) => (

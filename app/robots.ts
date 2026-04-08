@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { getSiteUrl } from "@/lib/site";
+import { getMarketingSiteUrl } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -8,10 +8,19 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/account", "/admin", "/login", "/register"],
+        disallow: [
+          "/api/",
+          "/account",
+          "/admin",
+          "/login",
+          "/register",
+          "/email-preferences",
+          "/access-denied",
+          "/forbidden",
+        ],
       },
     ],
-    sitemap: `${getSiteUrl()}/sitemap.xml`,
-    host: getSiteUrl(),
+    sitemap: `${getMarketingSiteUrl()}/sitemap.xml`,
+    host: getMarketingSiteUrl(),
   };
 }

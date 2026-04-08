@@ -175,6 +175,31 @@ describe("Calendly webhook route", () => {
     });
   });
 
+  it("flags booked calls that use a personal email domain", async () => {
+    const body = JSON.stringify({
+      event: "invitee.created",
+      payload: {
+        email: "founder@gmail.com",
+        uri: "https://api.calendly.com/invitees/nonbiz999",
+        scheduled_event: {
+          start_time: "2026-03-25T16:00:00.000Z",
+        },
+      },
+    });
+    mocks.userFindUnique.mockResolvedValue(null);
+
+    const response = await POST(signedWebhookRequest(body, "calendly-signing-key"));
+
+    expect(response.status).toBe(200);
+    expect(mocks.leadInteractionCreate).not.toHaveBeenCalled();
+    expect(mocks.serviceRequestCreate).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      status: "flagged",
+      serviceRequestId: null,
+      reason: "business_email_required",
+    });
+  });
+
   it("ignores unsupported events", async () => {
     const body = JSON.stringify({
       event: "invitee.canceled",

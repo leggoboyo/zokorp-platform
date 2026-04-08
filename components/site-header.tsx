@@ -1,41 +1,52 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { SiteHeaderShell } from "@/components/site-header-shell";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
+import { PUBLIC_LAUNCH_FOUNDER_PROFILE } from "@/lib/public-launch-contract";
+import { getAppSiteUrl, getMarketingSiteUrl } from "@/lib/site";
 
 const primaryLinks = [
-  { href: "/software", label: "Software" },
   { href: "/services", label: "Services" },
-  { href: "/case-studies", label: "Case Studies" },
-  { href: "/contact", label: "Contact Us" },
+  { href: "/software", label: "Software" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ];
 
 const secondaryLinks = [
-  { href: "/pricing", label: "Pricing" },
-  { href: "/account", label: "Account" },
-  { href: "/media", label: "Media" },
+  { href: "/media", label: "Insights" },
   { href: "/support", label: "Support" },
+  { href: `${getAppSiteUrl()}/account`, label: "Account" },
 ];
 
 export function SiteHeader() {
   const authRuntimeReady = isPasswordAuthEnabled() && Boolean(process.env.NEXTAUTH_SECRET);
+  const appSiteUrl = getAppSiteUrl();
+  const marketingSiteUrl = getMarketingSiteUrl();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/80 bg-white/84 backdrop-blur-xl">
-      <div className="border-b border-white/10 bg-gradient-to-r from-brand-strong via-brand to-brand-accent px-4 py-1.5 text-center text-xs text-slate-100">
-        Server-validated tools, account-linked billing, and AWS delivery workflows in one platform.
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-[rgba(247,245,241,0.92)] backdrop-blur-xl">
+      <div className="border-b border-slate-200 bg-slate-950 px-4 py-2 text-center text-xs tracking-[0.12em] text-slate-100">
+        Founder-led AWS architecture, AI/ML advisory, and software delivery.
       </div>
 
       <div className="mx-auto w-full max-w-7xl px-4 py-4 md:px-6">
         <div className="relative flex items-center justify-between gap-4">
-          <Link href="/" className="font-display inline-flex min-w-0 items-center gap-3 text-slate-900">
-            <span className="inline-flex size-10 items-center justify-center rounded-xl border border-brand/15 bg-brand-soft shadow-[var(--shadow-soft)]">
-              <span className="size-2.5 rounded-full bg-brand-accent shadow-[0_0_0_6px_rgba(15,142,169,0.14)]" />
+          <Link href="/" className="font-display inline-flex min-w-0 items-center gap-3 text-slate-950">
+            <span className="flex items-center">
+              <Image
+                src={PUBLIC_LAUNCH_FOUNDER_PROFILE.logoPath}
+                alt="ZoKorp"
+                width={983}
+                height={316}
+                className="h-12 w-auto"
+                sizes="(max-width: 768px) 128px, 160px"
+                priority
+              />
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-lg font-semibold tracking-tight sm:text-xl">ZoKorp Platform</span>
-              <span className="hidden text-xs uppercase tracking-[0.16em] text-slate-500 sm:block">AWS delivery and validation workspace</span>
+              <span className="hidden text-xs uppercase tracking-[0.18em] text-slate-500 lg:block">Architecture-first consulting and software</span>
             </span>
           </Link>
 
@@ -45,6 +56,9 @@ export function SiteHeader() {
             isAdmin={false}
             userEmail={null}
             authRuntimeReady={authRuntimeReady}
+            loginHref={`${appSiteUrl}/login?callbackUrl=/software`}
+            registerHref={`${appSiteUrl}/register`}
+            signOutHref={`${appSiteUrl}/api/auth/signout?callbackUrl=${encodeURIComponent(marketingSiteUrl)}`}
           />
         </div>
       </div>

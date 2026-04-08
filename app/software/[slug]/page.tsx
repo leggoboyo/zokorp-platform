@@ -21,7 +21,7 @@ import { shouldHidePublicProductPricing } from "@/lib/billing-readiness";
 import { CatalogUnavailableError, getProductBySlugCached } from "@/lib/catalog";
 import { validatorPriceTierFromAmount, validatorProfileCreditsFromTiers, validatorTierLabel } from "@/lib/credit-tiers";
 import { db } from "@/lib/db";
-import { buildPageMetadata } from "@/lib/site";
+import { buildMarketingPageMetadata } from "@/lib/site";
 import { isCheckoutEnabledStripePriceId } from "@/lib/stripe-price-id";
 import { getToolDefinition } from "@/lib/tool-registry";
 import { cn } from "@/lib/utils";
@@ -248,7 +248,7 @@ export async function generateMetadata({
   }
 
   if (!product) {
-    return buildPageMetadata({
+    return buildMarketingPageMetadata({
       title: "Software",
       description: "Browse ZoKorp software products, pricing models, and account-linked access paths.",
       path: "/software",
@@ -257,7 +257,7 @@ export async function generateMetadata({
 
   const toolDefinition = getToolDefinition(product.slug);
 
-  return buildPageMetadata({
+  return buildMarketingPageMetadata({
     title: toolDefinition?.displayName ?? product.name,
     description: toolDefinition?.productDescription ?? product.description,
     path: `/software/${product.slug}`,

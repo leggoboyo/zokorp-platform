@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
 import { type BenchmarkPattern, type BenchmarkProvider, getBenchmarkPattern, getBenchmarkProvider } from "@/lib/architecture-benchmarks";
-import { buildPageMetadata } from "@/lib/site";
+import { buildMarketingPageMetadata } from "@/lib/site";
 
 type PageParams = {
   provider: BenchmarkProvider;
@@ -21,14 +21,14 @@ export async function generateMetadata({
   const patternBenchmark = getBenchmarkPattern(provider, pattern);
 
   if (!providerLibrary || !patternBenchmark) {
-    return buildPageMetadata({
+    return buildMarketingPageMetadata({
       title: "Architecture Pattern Benchmarks",
       description: "Deterministic architecture benchmark pattern summary.",
       path: "/software/architecture-diagram-reviewer/benchmarks",
     });
   }
 
-  return buildPageMetadata({
+  return buildMarketingPageMetadata({
     title: `${providerLibrary.providerLabel} ${patternBenchmark.title} benchmark`,
     description: `${patternBenchmark.title} benchmark range and common deductions for ${providerLibrary.providerLabel} diagrams.`,
     path: `/software/architecture-diagram-reviewer/benchmarks/${provider}/${pattern}`,
@@ -58,6 +58,9 @@ export default async function PatternBenchmarkPage({
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{patternBenchmark.summary}</p>
         <p className="mt-4 text-sm font-semibold text-slate-900">
           Benchmark score range: {patternBenchmark.scoreRange[0]} to {patternBenchmark.scoreRange[1]}
+        </p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+          This benchmark page is directional reference material. The live Architecture Diagram Reviewer remains AWS-only until additional providers are fully released.
         </p>
       </section>
 

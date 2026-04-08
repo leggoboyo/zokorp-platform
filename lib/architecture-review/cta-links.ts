@@ -1,5 +1,5 @@
 import { createArchitectureReviewCtaToken } from "@/lib/architecture-review/cta-token";
-import { getSiteUrl } from "@/lib/site";
+import { getAppSiteUrl, getMarketingSiteUrl } from "@/lib/site";
 
 function ctaSecret() {
   return process.env.ARCH_REVIEW_CTA_SECRET ?? process.env.ARCH_REVIEW_EML_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
@@ -7,15 +7,14 @@ function ctaSecret() {
 
 export async function buildArchitectureReviewCtaLinks(leadId: string) {
   const secret = ctaSecret();
-  const siteUrl = getSiteUrl();
+  const appSiteUrl = getAppSiteUrl();
+  const marketingSiteUrl = getMarketingSiteUrl();
 
   if (!secret) {
     return {
-      bookArchitectureCallUrl:
-        process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${process.env.NEXT_PUBLIC_SITE_URL ?? siteUrl}/services#service-request`,
+      bookArchitectureCallUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${marketingSiteUrl}/services#service-request`,
       requestRemediationPlanUrl:
-        process.env.ARCH_REVIEW_REMEDIATION_PLAN_URL ??
-        `${process.env.NEXT_PUBLIC_SITE_URL ?? siteUrl}/services#service-request`,
+        process.env.ARCH_REVIEW_REMEDIATION_PLAN_URL ?? `${marketingSiteUrl}/services#service-request`,
     };
   }
 
@@ -23,7 +22,7 @@ export async function buildArchitectureReviewCtaLinks(leadId: string) {
   const remediationToken = createArchitectureReviewCtaToken({ leadId, ctaType: "remediation-plan" }, secret);
 
   return {
-    bookArchitectureCallUrl: `${siteUrl}/api/architecture-review/cta?token=${encodeURIComponent(bookToken)}`,
-    requestRemediationPlanUrl: `${siteUrl}/api/architecture-review/cta?token=${encodeURIComponent(remediationToken)}`,
+    bookArchitectureCallUrl: `${appSiteUrl}/api/architecture-review/cta?token=${encodeURIComponent(bookToken)}`,
+    requestRemediationPlanUrl: `${appSiteUrl}/api/architecture-review/cta?token=${encodeURIComponent(remediationToken)}`,
   };
 }

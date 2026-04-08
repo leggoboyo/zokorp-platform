@@ -6,6 +6,7 @@ import { effectiveCreditTierForPrice } from "@/lib/credit-tiers";
 import { db } from "@/lib/db";
 import { createInternalAuditLog, methodNotAllowedJson, NO_STORE_HEADERS } from "@/lib/internal-route";
 import { getStripeClient } from "@/lib/stripe";
+import { recordStripeWebhookEvent } from "@/lib/stripe-webhook-events";
 
 function activeFromSubscriptionStatus(status: Stripe.Subscription.Status): EntitlementStatus {
   if (status === "active" || status === "trialing" || status === "past_due") {
@@ -87,6 +88,17 @@ export async function POST(request: Request) {
   }
 
   try {
+    await recordStripeWebhookEvent({
+      event,
+      processingStatus: "received",
+      metadata: {
+        eventCreatedAt:
+          typeof event.created === "number" && Number.isFinite(event.created)
+            ? new Date(event.created * 1000).toISOString()
+            : null,
+      },
+    });
+
     switch (event.type) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded": {
@@ -102,6 +114,14 @@ export async function POST(request: Request) {
             eventType: event.type,
             reason: "missing_checkout_metadata",
             stripeCheckoutSessionId: session.id,
+          });
+          await recordStripeWebhookEvent({
+            event,
+            processingStatus: "ignored",
+            metadata: {
+              reason: "missing_checkout_metadata",
+              paymentStatus: session.payment_status ?? null,
+            },
           });
           break;
         }
@@ -121,6 +141,14 @@ export async function POST(request: Request) {
             reason: "missing_db_record",
             stripeCheckoutSessionId: session.id,
           });
+          await recordStripeWebhookEvent({
+            event,
+            processingStatus: "ignored",
+            metadata: {
+              reason: "missing_db_record",
+              paymentStatus: session.payment_status ?? null,
+            },
+          });
           break;
         }
 
@@ -137,6 +165,14 @@ export async function POST(request: Request) {
             reason: "payment_not_ready",
             stripeCheckoutSessionId: session.id,
             paymentStatus: session.payment_status ?? "unknown",
+          });
+          await recordStripeWebhookEvent({
+            event,
+            processingStatus: "ignored",
+            metadata: {
+              reason: "payment_not_ready",
+              paymentStatus: session.payment_status ?? null,
+            },
           });
           break;
         }
@@ -297,11 +333,31 @@ export async function POST(request: Request) {
               eventType: event.type,
               stripeCheckoutSessionId: session.id,
             });
+            await recordStripeWebhookEvent({
+              event,
+              processingStatus: "ignored",
+              metadata: {
+                reason: "duplicate_checkout_fulfillment",
+                paymentStatus: session.payment_status ?? null,
+              },
+            });
             return textNoStore("ok", { status: 200 });
           }
 
           throw error;
         }
+
+        await recordStripeWebhookEvent({
+          event,
+          processingStatus: "processed",
+          metadata: {
+            fulfillment: "checkout_completed",
+            paymentStatus: session.payment_status ?? null,
+            userId,
+            productId,
+            priceId,
+          },
+        });
 
         break;
       }
@@ -329,6 +385,14 @@ export async function POST(request: Request) {
           status: subscription.status,
           validUntil: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
         });
+        await recordStripeWebhookEvent({
+          event,
+          processingStatus: "processed",
+          metadata: {
+            subscriptionStatus: subscription.status,
+            validUntil: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+          },
+        });
 
         break;
       }
@@ -349,6 +413,16 @@ export async function POST(request: Request) {
           currency: invoice.currency,
           attemptCount: invoice.attempt_count,
         });
+        await recordStripeWebhookEvent({
+          event,
+          processingStatus: "processed",
+          metadata: {
+            invoiceStatus: invoice.status ?? null,
+            attemptCount: invoice.attempt_count,
+            amountDue: invoice.amount_due,
+            currency: invoice.currency,
+          },
+        });
 
         break;
       }
@@ -363,6 +437,15 @@ export async function POST(request: Request) {
           stripeCustomerId: typeof charge.customer === "string" ? charge.customer : null,
           amountRefunded: charge.amount_refunded,
           currency: charge.currency,
+        });
+        await recordStripeWebhookEvent({
+          event,
+          processingStatus: "processed",
+          metadata: {
+            refundStatus: "refunded",
+            amountRefunded: charge.amount_refunded,
+            currency: charge.currency,
+          },
         });
 
         break;
@@ -380,16 +463,41 @@ export async function POST(request: Request) {
           reason: dispute.reason ?? null,
           status: dispute.status,
         });
+        await recordStripeWebhookEvent({
+          event,
+          processingStatus: "processed",
+          metadata: {
+            disputeStatus: dispute.status,
+            disputeReason: dispute.reason ?? null,
+            amount: dispute.amount,
+            currency: dispute.currency,
+          },
+        });
 
         break;
       }
 
       default:
+        await recordStripeWebhookEvent({
+          event,
+          processingStatus: "ignored",
+          metadata: {
+            reason: "unsupported_event",
+          },
+        });
         break;
     }
 
     return textNoStore("ok", { status: 200 });
   } catch (error) {
+    await recordStripeWebhookEvent({
+      event,
+      processingStatus: "failed",
+      errorMessage: error instanceof Error ? error.message : "Unknown webhook failure",
+      metadata: {
+        failedAt: new Date().toISOString(),
+      },
+    });
     await createInternalAuditLog("billing.webhook_failed", {
       stripeEventId: event.id,
       eventType: event.type,

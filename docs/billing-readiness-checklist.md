@@ -19,9 +19,11 @@
 ## Operational readiness
 
 - [x] Checkout, webhook, entitlement, and portal code paths exist in the app.
-- [ ] Failed webhook reconciliation runbook written and reviewed.
-- [ ] Admin surfacing for webhook fulfillment failures exists.
-- [ ] Admin surfacing for subscription state mismatches exists.
+- [x] Failed webhook reconciliation runbook written and reviewed.
+- [x] Admin surfacing for webhook fulfillment failures exists.
+- [x] Admin surfacing for subscription state mismatches exists.
+- [x] Persisted Stripe webhook history is visible in the admin billing workspace.
+- [x] Credit-balance and entitlement integrity signals are visible in the admin billing workspace.
 
 ## Current default guardrails
 

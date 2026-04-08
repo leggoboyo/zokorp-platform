@@ -2,6 +2,7 @@ import { Prisma, ServiceRequestStatus, ServiceRequestType } from "@prisma/client
 
 import { db } from "@/lib/db";
 import { recordLeadInteraction, upsertLead } from "@/lib/privacy-leads";
+import { isBusinessEmail } from "@/lib/security";
 import { createServiceRequest } from "@/lib/service-requests";
 
 async function ensureServiceRequestForBookedCall(input: {
@@ -68,6 +69,35 @@ export async function ingestArchitectureBookedCall(input: {
       name: true,
     },
   });
+
+  if (!isBusinessEmail(email)) {
+    await upsertLead({
+      email,
+      name: input.name ?? user?.name ?? null,
+    });
+
+    await db.auditLog.create({
+      data: {
+        userId: user?.id ?? null,
+        action: "integration.calendly_non_business_email_flagged",
+        metadataJson: {
+          email,
+          source: "architecture-review",
+          provider,
+          externalEventId: input.externalEventId,
+          bookedAtIso,
+          estimateReferenceCode,
+          matchedAccount: Boolean(user?.id),
+        },
+      },
+    });
+
+    return {
+      status: "flagged" as const,
+      serviceRequestId: null,
+      reason: "business_email_required" as const,
+    };
+  }
 
   const lead = await upsertLead({
     userId: user?.id ?? null,

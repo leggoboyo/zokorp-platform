@@ -1,40 +1,53 @@
 export const PUBLIC_LAUNCH_CONTACT = {
   primaryEmail: "consulting@zokorp.com",
-  location: "Houston, Texas, United States",
+  location: "Houston, Texas",
+  linkedInUrl: "https://www.linkedin.com/in/zohaib-khawaja/",
   responseWindowLabel: "Initial response within one business day",
   securityResponseLabel: "Urgent security issues are prioritized the same business day when possible",
-  bookingLabel: "Book architecture follow-up",
-  primaryHumanPathLabel: "Primary human path is direct email plus a tagged booking link. Forms stay secondary during the founder-led soft launch.",
+  bookingLabel: "Book a call",
+  primaryHumanPathLabel: "Primary human paths are a direct founder call, a scoped quote request, or software exploration without forced signup.",
 } as const;
 
 export const PUBLIC_LAUNCH_FOUNDER_PROFILE = {
   name: "Zohaib Khawaja",
   role: "Founder, ZoKorp",
+  headshotPath: "/founder/zohaib-khawaja.jpg",
+  logoPath: "/brand/zokorp-logo.png",
   summary:
-    "ZoKorp is currently a founder-led operating platform focused on practical AWS architecture review, FTR-first validation workflows, and scoped follow-up work that stays tied to the same customer account and billing surface.",
+    "Former AWS Partner Solutions Architect and AI solutions engineer building ZoKorp to help teams move from architecture decisions to scoped implementation, readiness work, and software-backed delivery.",
+  credentials: [
+    "AWS Certified Solutions Architect - Professional",
+    "AWS Certified Machine Learning - Specialty",
+    "AWS Certified Security - Specialty",
+  ],
+  backgroundCompanies: [
+    "Amazon Web Services",
+    "Microsoft",
+    "Nordic Global",
+  ],
   highlights: [
-    "Founder-led soft launch on purpose so software, delivery, and support quality stay aligned.",
-    "Public scope today is narrow: Architecture Diagram Reviewer, FTR-first Validator, and a forecasting beta.",
-    "The commercial posture stays estimate-first for consulting and remediation work instead of pretending every service is fixed-scope on day one.",
+    "Former AWS Partner Solutions Architect focused on AI/ML, GPU infrastructure, and partner-aligned delivery.",
+    "Background across AWS, Microsoft, Nordic Global, and higher education technical instruction.",
+    "ZoKorp keeps software, consulting, and follow-up workflows connected without forcing buyers into signup too early.",
   ],
 } as const;
 
 export const PUBLIC_LAUNCH_PROOF_ASSET = {
-  title: "Operational proof verified March 30, 2026",
+  title: "Concrete founder credibility without fake proof",
   summary:
-    "ZoKorp has real operating proof beyond design polish: repeatable production audits pass, monitored result-email delivery is confirmed, and one real founder-controlled Calendly booking was matched back into production records.",
+    "ZoKorp does not publish unapproved client logos, testimonials, or inflated outcome claims. Public trust is built through clear founder background, certifications, practical delivery scope, and software that explains exactly what it does.",
   highlights: [
-    "Production validator run, credit decrement, and account-linked history were verified end to end.",
-    "Customer-facing result email delivery and password reset delivery were confirmed in the monitored inbox at consulting@zokorp.com.",
-    "A real `/services` booking created a matching LeadInteraction, ServiceRequest, and ingest audit record in production.",
+    "Founder-first positioning with a real headshot, LinkedIn profile, and named prior employers.",
+    "AWS professional and specialty certifications are stated directly instead of implied through vague copy.",
+    "Consulting, software, and pricing are explained with bounded claims and visible next steps.",
   ],
 } as const;
 
 export const PUBLIC_LAUNCH_POLICY_NOTES = {
   pricing:
-    "Published software pricing stays conservative until final pricing, refund posture, and tax handling are formally approved.",
+    "Published software pricing stays conservative until subscription pricing, refund posture, and tax handling are formally approved.",
   services:
-    "Service work remains estimate-first. Scope is confirmed before paid consulting, remediation, or implementation is accepted.",
+    "Service work stays estimate-first beyond the visible price anchors. Scope is confirmed before paid consulting, remediation, or implementation is accepted.",
   proof:
-    "Public proof stays conservative: named client endorsements still require approval, but verified operational evidence can be shown today.",
+    "Public proof stays conservative: no client logos, testimonials, or case-study claims are published without approval.",
 } as const;

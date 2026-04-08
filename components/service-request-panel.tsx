@@ -36,9 +36,18 @@ type SubmissionResponse = {
 type ServiceRequestPanelProps = {
   signedIn?: boolean;
   currentEmail?: string | null;
+  loginHref?: string;
+  registerHref?: string;
+  accountHref?: string;
 };
 
-export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: ServiceRequestPanelProps) {
+export function ServiceRequestPanel({
+  signedIn = false,
+  currentEmail = null,
+  loginHref = "/login?callbackUrl=/services",
+  registerHref = "/register",
+  accountHref = "/account",
+}: ServiceRequestPanelProps) {
   const [isSignedIn, setIsSignedIn] = useState(signedIn);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(currentEmail);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,18 +179,19 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
       ) : (
         <Alert tone="info" className="mt-5">
           <p>
-            No account is required for the first contact. Use your work email so the request can be linked into an
-            account later if you move into software, billing, or tracked delivery.
+            No account is required for the first contact. Use your business email. Personal email domains are not
+            accepted for ZoKorp service requests, and matching that business email later lets the request show up in
+            your account timeline.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
-              href="/login?callbackUrl=/services"
+              href={loginHref}
               className={buttonVariants({ size: "sm" })}
             >
               Sign in instead
             </Link>
             <Link
-              href="/register"
+              href={registerHref}
               className={buttonVariants({ variant: "secondary", size: "sm" })}
             >
               Create account
@@ -204,11 +214,11 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {submittedRequest.linkedToAccount ? (
-              <Link href="/account" className={buttonVariants({ size: "sm" })}>
+              <Link href={accountHref} className={buttonVariants({ size: "sm" })}>
                 Open account timeline
               </Link>
             ) : (
-              <Link href="/register" className={buttonVariants({ size: "sm" })}>
+              <Link href={registerHref} className={buttonVariants({ size: "sm" })}>
                 Create account later
               </Link>
             )}
@@ -252,6 +262,9 @@ export function ServiceRequestPanel({ signedIn = false, currentEmail = null }: S
                   required
                   placeholder="you@company.com"
                 />
+                <span className="block text-xs leading-5 text-slate-500">
+                  Business email only. Personal inbox domains are rejected automatically.
+                </span>
               </label>
 
               <label className="space-y-1">

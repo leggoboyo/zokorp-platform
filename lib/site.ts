@@ -2,43 +2,67 @@ import type { Metadata } from "next";
 
 import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
 
+const DEFAULT_MARKETING_SITE_URL = "https://www.zokorp.com";
+const DEFAULT_APP_SITE_URL = "https://app.zokorp.com";
+
 export const siteConfig = {
   name: "ZoKorp",
   platformName: "ZoKorp Platform",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://app.zokorp.com",
+  marketingUrl: process.env.MARKETING_SITE_URL ?? DEFAULT_MARKETING_SITE_URL,
+  appUrl: process.env.APP_SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_APP_SITE_URL,
   description:
+    "Founder-led AWS architecture, AI/ML advisory, and software for teams that need practical delivery.",
+  platformDescription:
     "ZoKorp combines AWS AI delivery, account-linked software, and practical validation workflows in one customer platform.",
   supportEmail: PUBLIC_LAUNCH_CONTACT.primaryEmail,
   location: PUBLIC_LAUNCH_CONTACT.location,
+  linkedInUrl: PUBLIC_LAUNCH_CONTACT.linkedInUrl,
 };
 
-export function getSiteUrl() {
+function normalizeOrigin(value: string, fallback: string) {
   try {
-    return new URL(siteConfig.url).origin;
+    return new URL(value).origin;
   } catch {
-    return "https://app.zokorp.com";
+    return fallback;
   }
 }
 
-export function buildPageMetadata(input: {
+export function getMarketingSiteUrl() {
+  return normalizeOrigin(siteConfig.marketingUrl, DEFAULT_MARKETING_SITE_URL);
+}
+
+export function getAppSiteUrl() {
+  return normalizeOrigin(siteConfig.appUrl, DEFAULT_APP_SITE_URL);
+}
+
+// Compatibility helper for existing app-oriented code paths.
+export function getSiteUrl() {
+  return getAppSiteUrl();
+}
+
+type MetadataInput = {
   title: string;
   description: string;
   path: string;
   type?: "website" | "article";
-}): Metadata {
-  const url = new URL(input.path, getSiteUrl());
+  robots?: Metadata["robots"];
+  siteName?: string;
+};
+
+export function buildMarketingPageMetadata(input: MetadataInput): Metadata {
+  const url = new URL(input.path, getMarketingSiteUrl());
 
   return {
     title: input.title,
     description: input.description,
     alternates: {
-      canonical: url.pathname,
+      canonical: url.toString(),
     },
     openGraph: {
       title: input.title,
       description: input.description,
       url: url.toString(),
-      siteName: siteConfig.platformName,
+      siteName: input.siteName ?? siteConfig.name,
       type: input.type ?? "website",
       images: ["/opengraph-image"],
     },
@@ -48,5 +72,37 @@ export function buildPageMetadata(input: {
       description: input.description,
       images: ["/twitter-image"],
     },
+    robots: input.robots,
   };
+}
+
+export function buildAppPageMetadata(input: MetadataInput): Metadata {
+  const url = new URL(input.path, getAppSiteUrl());
+
+  return {
+    title: input.title,
+    description: input.description,
+    alternates: {
+      canonical: url.toString(),
+    },
+    openGraph: {
+      title: input.title,
+      description: input.description,
+      url: url.toString(),
+      siteName: input.siteName ?? siteConfig.platformName,
+      type: input.type ?? "website",
+      images: ["/opengraph-image"],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: input.title,
+      description: input.description,
+      images: ["/twitter-image"],
+    },
+    robots: input.robots,
+  };
+}
+
+export function buildPageMetadata(input: MetadataInput): Metadata {
+  return buildAppPageMetadata(input);
 }

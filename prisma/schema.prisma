@@ -198,6 +198,29 @@ model CheckoutFulfillment {
   @@index([productId])
 }
 
+model StripeWebhookEvent {
+  id                      String   @id @default(cuid())
+  stripeEventId           String   @unique
+  eventType               String
+  processingStatus        String
+  livemode                Boolean  @default(false)
+  stripeCustomerId        String?
+  stripeSubscriptionId    String?
+  stripeCheckoutSessionId String?
+  stripeInvoiceId         String?
+  stripeChargeId          String?
+  stripeDisputeId         String?
+  metadataJson            Json?
+  errorMessage            String?
+  receivedAt              DateTime @default(now())
+  processedAt             DateTime?
+  updatedAt               DateTime @updatedAt
+
+  @@index([receivedAt])
+  @@index([processingStatus, receivedAt])
+  @@index([eventType, receivedAt])
+}
+
 model UsageEvent {
   id                  String   @id @default(cuid())
   userId              String

@@ -40,8 +40,14 @@ export default async function AdminOperationsPage() {
     {
       key: "booked-calls",
       title: "Booked-call signals",
-      description: "Recent booked follow-ups that were matched back into account and service-request state.",
+      description: "Recent booked follow-ups, including bookings linked back into customer records, bookings flagged for qualification review, and sync configuration problems that need operator action.",
       entries: snapshot.bookedCallSignals,
+    },
+    {
+      key: "automation-health",
+      title: "Automation health",
+      description: "Freshness and failure signals for the queue worker, follow-ups, retention sweep, and scheduled sync jobs.",
+      entries: snapshot.automationHealthSignals,
     },
     {
       key: "follow-up",
@@ -79,6 +85,7 @@ export default async function AdminOperationsPage() {
           { label: "CRM attention", value: snapshot.stats.crmNeedsAttention },
           { label: "Quote issues", value: snapshot.stats.failedQuoteCompanions },
           { label: "Booked calls", value: snapshot.stats.recentBookedCalls },
+          { label: "Automation attention", value: snapshot.stats.automationAttention },
           { label: "Follow-up attention", value: snapshot.stats.followUpAttention },
           { label: "Validator runs", value: snapshot.stats.recentValidatorRuns },
           { label: "MLOps runs", value: snapshot.stats.recentMlopsRuns },
@@ -126,6 +133,11 @@ export default async function AdminOperationsPage() {
                   {section.key === "booked-calls" ? (
                     <Link href="/admin/service-requests" className={buttonVariants({ variant: "secondary", size: "sm" })}>
                       Review booked-call state
+                    </Link>
+                  ) : null}
+                  {section.key === "automation-health" ? (
+                    <Link href="/admin/readiness" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                      Open readiness
                     </Link>
                   ) : null}
                   {section.key === "follow-up" ? (

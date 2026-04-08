@@ -209,4 +209,35 @@ describe("service requests route", () => {
       error: "Invalid service request input.",
     });
   });
+
+  it("rejects public requests that use a personal email domain", async () => {
+    authMock.mockResolvedValue(null);
+    userFindUniqueMock.mockResolvedValue(null);
+
+    const response = await POST(
+      new Request("https://app.zokorp.com/api/services/requests", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://app.zokorp.com",
+        },
+        body: JSON.stringify({
+          type: "CONSULTATION",
+          title: "Need architecture remediation help",
+          summary: "Need follow-up help translating a scored architecture review into a short remediation plan.",
+          requesterEmail: "founder@gmail.com",
+          requesterName: "Customer Founder",
+          requesterCompanyName: "CustomerCo",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toEqual({
+      error: "Personal email domains are not allowed. Use a business email.",
+    });
+    expect(createServiceRequestMock).not.toHaveBeenCalled();
+    expect(upsertLeadMock).not.toHaveBeenCalled();
+  });
 });

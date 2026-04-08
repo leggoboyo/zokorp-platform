@@ -1,7 +1,7 @@
 import { Role } from "@prisma/client";
 
 import { db } from "@/lib/db";
-import { getEmailDomain } from "@/lib/security";
+import { getEmailDomain, isBusinessEmail } from "@/lib/security";
 
 export const LEAD_SOURCES = ["account", "architecture-review"] as const;
 export type LeadSource = (typeof LEAD_SOURCES)[number];
@@ -36,6 +36,7 @@ export type LeadDirectoryFilters = {
 };
 
 type LeadSignal =
+  | "non-business-email"
   | "test-email"
   | "test-domain"
   | "test-name"
@@ -92,6 +93,7 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
 };
 
 export const LEAD_SIGNAL_LABELS: Record<LeadSignal, string> = {
+  "non-business-email": "Personal/free-mail domain",
   "test-email": "Test email pattern",
   "test-domain": "Test/placeholder domain",
   "test-name": "Test/QA contact name",
@@ -151,6 +153,10 @@ function deriveLeadSignals(entry: {
   const localPart = email.split("@")[0] ?? "";
   const name = normalizeString(entry.name);
   const company = normalizeString(entry.companyName);
+
+  if (!isBusinessEmail(email)) {
+    signals.add("non-business-email");
+  }
 
   if (tokenMatch(localPart, TEST_TOKENS)) {
     signals.add("test-email");
@@ -269,6 +275,10 @@ function nextActionForEntry(
     "signals" | "emailVerified" | "emailDeliveryState" | "crmSyncState" | "workdriveUploadStatus" | "hasAccount" | "recommendedEngagement"
   >,
 ) {
+  if (entry.signals.has("non-business-email")) {
+    return "Business-email policy flagged this contact. Qualify manually only if you intentionally want to handle a personal inbox lead.";
+  }
+
   if (entry.signals.has("test-domain") || entry.signals.has("test-email") || entry.signals.has("automation-token")) {
     return "Ignore by default unless you are reviewing QA traffic.";
   }
@@ -305,7 +315,14 @@ function nextActionForEntry(
 }
 
 function isLikelyHuman(signals: Set<LeadSignal>) {
-  return !signals.has("test-domain") && !signals.has("test-email") && !signals.has("test-name") && !signals.has("test-company") && !signals.has("automation-token");
+  return (
+    !signals.has("non-business-email") &&
+    !signals.has("test-domain") &&
+    !signals.has("test-email") &&
+    !signals.has("test-name") &&
+    !signals.has("test-company") &&
+    !signals.has("automation-token")
+  );
 }
 
 function upsertLeadEntry(

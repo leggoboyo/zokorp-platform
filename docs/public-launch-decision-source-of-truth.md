@@ -17,6 +17,7 @@ Date: 2026-03-30
   - tagged Calendly CTA
 - Form posture:
   - forms remain available, but direct email and tagged booking are the primary human paths
+  - public forms now require a business email; free-mail domains are rejected politely
 - Initial response target:
   - within one business day
 - Security concern handling:

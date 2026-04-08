@@ -18,7 +18,7 @@ import {
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
 import { buildEstimateReferenceCode } from "@/lib/privacy-leads";
-import { getSiteUrl } from "@/lib/site";
+import { getMarketingSiteUrl } from "@/lib/site";
 
 export const ARCHITECTURE_RULE_CATALOG_FILTERS = [
   "all",
@@ -221,7 +221,7 @@ function normalizeCategory(value: string, fallback: ArchitectureCategory): Archi
 }
 
 function defaultBookingUrl() {
-  return process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${process.env.NEXT_PUBLIC_SITE_URL ?? getSiteUrl()}/services#service-request`;
+  return process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getMarketingSiteUrl()}/services#service-request`;
 }
 
 function roundToNearest(value: number, step: number) {

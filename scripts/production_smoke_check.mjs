@@ -1,49 +1,24 @@
 #!/usr/bin/env node
 
-import { fileURLToPath } from "node:url";
-
-const defaultBaseUrl = process.env.SMOKE_BASE_URL ?? "https://app.zokorp.com";
-const defaultTimeoutMs = Number(process.env.SMOKE_TIMEOUT_MS ?? 15000);
-
-const routeChecks = [
-  {
-    path: "/",
-    marker:
-      "Practical AI delivery software, AWS guidance, and billing in one customer platform.",
-    owner: "marketing-site",
-    criticality: "high",
-  },
-  {
-    path: "/login",
-    marker: "Sign in",
-    owner: "auth",
-    criticality: "high",
-  },
-  {
-    path: "/register",
-    marker: "Create account",
-    owner: "auth",
-    criticality: "high",
-  },
-  {
-    path: "/software/architecture-diagram-reviewer",
-    marker: "Architecture Diagram Reviewer",
-    owner: "software-tools",
-    criticality: "medium",
-  },
-  {
-    path: "/software/zokorp-validator",
-    marker: "ZoKorpValidator",
-    owner: "software-tools",
-    criticality: "medium",
-  },
-  {
-    path: "/software/mlops-foundation-platform",
-    marker: "ZoKorp Forecasting Beta",
-    owner: "software-tools",
-    criticality: "medium",
-  },
-];
+import {
+  APP_PRODUCT_EXPECTATIONS,
+  APP_ROUTE_EXPECTATIONS,
+  LEGACY_REDIRECT_EXPECTATIONS,
+  MARKETING_ROUTE_EXPECTATIONS,
+} from "./playwright_audit_contract.mjs";
+import {
+  buildStep,
+  buildTotals,
+  createSettingsReader,
+  followFetch,
+  loadAuditEnv,
+  manualRedirectCheck,
+  outcomeFromSteps,
+  parseArgs,
+  shouldUseCompatibilityBaseUrl,
+  toAbsoluteUrl,
+} from "./playwright_audit_support.mjs";
+import { pathToFileURL } from "node:url";
 
 const controlHosts = ["http://example.com", "https://vercel.com"];
 const networkErrorCodes = new Set([
@@ -60,139 +35,250 @@ const networkErrorCodes = new Set([
   "UND_ERR_CONNECT_TIMEOUT",
   "UND_ERR_SOCKET",
 ]);
+const smokeUserAgent = "zokorp-production-smoke-check/2.0";
 
-function withTimeoutFetch(url, timeoutMs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url, {
-    redirect: "follow",
-    signal: controller.signal,
-    headers: { "user-agent": "zokorp-production-smoke-check/1.0" },
-  }).finally(() => clearTimeout(timer));
+function getErrorCode(error) {
+  return (
+    error?.cause?.code ??
+    error?.code ??
+    (error?.name === "AbortError" ? "ABORT_ERR" : "UNKNOWN_ERROR")
+  );
 }
 
-function classifySeverity(check, reason) {
-  if (reason === "network_error") {
-    return "P1";
-  }
-  if (reason === "http_status" && check.criticality === "high") {
-    return "P1";
-  }
-  if (reason === "marker_missing" && check.criticality === "high") {
-    return "P2";
-  }
-  return "P2";
-}
-
-async function probeRoute(check, baseUrl, timeoutMs) {
-  const url = new URL(check.path, baseUrl).toString();
+function sameOrigin(left, right) {
   try {
-    const response = await withTimeoutFetch(url, timeoutMs);
-    const body = await response.text();
-    const markerFound = body.includes(check.marker);
-    return {
-      path: check.path,
-      status: response.status,
-      markerFound,
-      owner: check.owner,
-      expectedMarker: check.marker,
-      failureCode: null,
-    };
-  } catch (error) {
-    const failureCode =
-      error?.cause?.code ??
-      error?.code ??
-      (error?.name === "AbortError" ? "ABORT_ERR" : "UNKNOWN_ERROR");
-    return {
-      path: check.path,
-      status: null,
-      markerFound: false,
-      owner: check.owner,
-      expectedMarker: check.marker,
-      failureCode: String(failureCode),
-    };
+    return new URL(left).origin === new URL(right).origin;
+  } catch {
+    return false;
+  }
+}
+
+function expectedProductionMarketingBlock(marketingBaseUrl, appBaseUrl) {
+  try {
+    return (
+      new URL(marketingBaseUrl).host === "www.zokorp.com" &&
+      new URL(appBaseUrl).host === "app.zokorp.com"
+    );
+  } catch {
+    return false;
   }
 }
 
 async function probeControlHost(url, timeoutMs) {
   try {
-    const response = await withTimeoutFetch(url, timeoutMs);
+    const response = await followFetch(url, timeoutMs, smokeUserAgent);
     return { url, ok: true, status: response.status, failureCode: null };
   } catch (error) {
-    const failureCode =
-      error?.cause?.code ??
-      error?.code ??
-      (error?.name === "AbortError" ? "ABORT_ERR" : "UNKNOWN_ERROR");
-    return { url, ok: false, status: null, failureCode: String(failureCode) };
+    return {
+      url,
+      ok: false,
+      status: null,
+      failureCode: String(getErrorCode(error)),
+    };
   }
 }
 
-function buildRegressions(results) {
-  const regressions = [];
-  for (const check of routeChecks) {
-    const result = results.find((candidate) => candidate.path === check.path);
-    if (!result) {
-      continue;
-    }
-    if (result.status === null) {
-      regressions.push({
-        path: result.path,
-        severity: classifySeverity(check, "network_error"),
-        owner: check.owner,
-        reason: "network_error",
-        detail: result.failureCode ?? "UNKNOWN_ERROR",
-      });
-      continue;
-    }
-    if (result.status !== 200) {
-      regressions.push({
-        path: result.path,
-        severity: classifySeverity(check, "http_status"),
-        owner: check.owner,
-        reason: "http_status",
-        detail: `Expected 200, got ${result.status}`,
-      });
-      continue;
-    }
-    if (!result.markerFound) {
-      regressions.push({
-        path: result.path,
-        severity: classifySeverity(check, "marker_missing"),
-        owner: check.owner,
-        reason: "marker_missing",
-        detail: "Expected content marker missing",
+async function runRedirectCheck({ id, label, sourceUrl, expectedLocation, timeoutMs, blockedWhenLocationMatches }) {
+  try {
+    const result = await manualRedirectCheck(sourceUrl, timeoutMs, smokeUserAgent);
+    if (result.status === null || result.status < 300 || result.status > 399) {
+      return buildStep(id, label, "fail", {
+        url: sourceUrl,
+        statusCode: result.status,
+        detail: `Expected redirect to ${expectedLocation}, got HTTP ${result.status ?? "000"}.`,
       });
     }
+
+    if (result.location === expectedLocation) {
+      return buildStep(id, label, "pass", {
+        url: sourceUrl,
+        statusCode: result.status,
+        location: result.location,
+      });
+    }
+
+    if (blockedWhenLocationMatches && result.location === blockedWhenLocationMatches) {
+      return buildStep(id, label, "blocked", {
+        url: sourceUrl,
+        statusCode: result.status,
+        location: result.location,
+        detail: `Redirect target is still ${blockedWhenLocationMatches} instead of ${expectedLocation}.`,
+      });
+    }
+
+    return buildStep(id, label, "fail", {
+      url: sourceUrl,
+      statusCode: result.status,
+      location: result.location,
+      detail: `Expected redirect to ${expectedLocation}, got ${result.location ?? "no Location header"}.`,
+    });
+  } catch (error) {
+    return buildStep(id, label, "fail", {
+      url: sourceUrl,
+      failureCode: String(getErrorCode(error)),
+      detail: "Redirect check failed because the destination could not be reached.",
+    });
   }
-  return regressions;
 }
 
-function isEnvironmentNetworkFailure(controlResults, regressions) {
-  if (controlResults.length === 0 || regressions.length === 0) {
+async function runPageCheck({
+  id,
+  label,
+  baseUrl,
+  path,
+  marker,
+  timeoutMs,
+  expectedHost,
+  blockedHost,
+}) {
+  const url = toAbsoluteUrl(path, baseUrl);
+
+  try {
+    const response = await followFetch(url, timeoutMs, smokeUserAgent);
+    const finalHost = new URL(response.finalUrl).host;
+
+    if (expectedHost && finalHost !== expectedHost) {
+      const status = blockedHost && finalHost === blockedHost ? "blocked" : "fail";
+      return buildStep(id, label, status, {
+        url,
+        statusCode: response.status,
+        finalUrl: response.finalUrl,
+        detail: `Expected host ${expectedHost}, got ${finalHost}.`,
+      });
+    }
+
+    if (response.status !== 200) {
+      return buildStep(id, label, "fail", {
+        url,
+        statusCode: response.status,
+        finalUrl: response.finalUrl,
+        detail: `Expected HTTP 200, got ${response.status}.`,
+      });
+    }
+
+    if (!response.body.includes(marker)) {
+      return buildStep(id, label, "fail", {
+        url,
+        statusCode: response.status,
+        finalUrl: response.finalUrl,
+        expectedMarker: marker,
+        detail: "Expected page marker missing from response body.",
+      });
+    }
+
+    return buildStep(id, label, "pass", {
+      url,
+      statusCode: response.status,
+      finalUrl: response.finalUrl,
+    });
+  } catch (error) {
+    return buildStep(id, label, "fail", {
+      url,
+      failureCode: String(getErrorCode(error)),
+      detail: "Page check failed because the destination could not be reached.",
+    });
+  }
+}
+
+async function runHeaderCheck({ id, label, url, timeoutMs, expectedHeader, expectedValue }) {
+  try {
+    const response = await followFetch(url, timeoutMs, smokeUserAgent);
+    const actualValue = response.headers[expectedHeader.toLowerCase()] ?? null;
+    if (actualValue !== expectedValue) {
+      return buildStep(id, label, "fail", {
+        url,
+        statusCode: response.status,
+        finalUrl: response.finalUrl,
+        detail: `Expected header ${expectedHeader}=${expectedValue}, got ${actualValue ?? "missing"}.`,
+      });
+    }
+
+    return buildStep(id, label, "pass", {
+      url,
+      statusCode: response.status,
+      finalUrl: response.finalUrl,
+    });
+  } catch (error) {
+    return buildStep(id, label, "fail", {
+      url,
+      failureCode: String(getErrorCode(error)),
+      detail: "Header check failed because the destination could not be reached.",
+    });
+  }
+}
+
+async function runSeoCheck({ marketingBaseUrl, timeoutMs }) {
+  const robotsUrl = toAbsoluteUrl("/robots.txt", marketingBaseUrl);
+  const sitemapUrl = toAbsoluteUrl("/sitemap.xml", marketingBaseUrl);
+
+  try {
+    const [robotsResponse, sitemapResponse] = await Promise.all([
+      followFetch(robotsUrl, timeoutMs, smokeUserAgent),
+      followFetch(sitemapUrl, timeoutMs, smokeUserAgent),
+    ]);
+
+    const issues = [];
+    if (robotsResponse.status !== 200) {
+      issues.push(`robots.txt returned ${robotsResponse.status}`);
+    }
+    if (!robotsResponse.body.includes("Sitemap: https://www.zokorp.com/sitemap.xml")) {
+      issues.push("robots.txt missing canonical sitemap URL");
+    }
+    if (sitemapResponse.status !== 200) {
+      issues.push(`sitemap.xml returned ${sitemapResponse.status}`);
+    }
+    if (!sitemapResponse.body.includes("<loc>https://www.zokorp.com/</loc>")) {
+      issues.push("sitemap.xml missing canonical homepage URL");
+    }
+    if (sitemapResponse.body.includes("https://app.zokorp.com")) {
+      issues.push("sitemap.xml should not include app-host URLs");
+    }
+
+    if (issues.length > 0) {
+      return buildStep("marketing_seo", "Marketing robots and sitemap", "fail", {
+        url: robotsUrl,
+        detail: issues.join("; "),
+      });
+    }
+
+    return buildStep("marketing_seo", "Marketing robots and sitemap", "pass", {
+      url: robotsUrl,
+    });
+  } catch (error) {
+    return buildStep("marketing_seo", "Marketing robots and sitemap", "fail", {
+      url: robotsUrl,
+      failureCode: String(getErrorCode(error)),
+      detail: "Unable to fetch robots.txt or sitemap.xml.",
+    });
+  }
+}
+
+function isEnvironmentNetworkFailure(controlResults, steps) {
+  if (controlResults.length === 0 || steps.length === 0) {
     return false;
   }
+
   const allControlFailed = controlResults.every((result) => !result.ok);
   const allControlNetworkCodes = controlResults.every((result) =>
     networkErrorCodes.has(result.failureCode ?? ""),
   );
-  const allRouteFailuresNetwork = regressions.every(
-    (regression) => regression.reason === "network_error",
+  const failingSteps = steps.filter((step) => step.status === "fail");
+  const everyFailureIsNetwork = failingSteps.every((step) =>
+    networkErrorCodes.has(step.failureCode ?? ""),
   );
-  return allControlFailed && allControlNetworkCodes && allRouteFailuresNetwork;
+
+  return failingSteps.length > 0 && allControlFailed && allControlNetworkCodes && everyFailureIsNetwork;
 }
 
 function printHumanReport(summary) {
-  console.log(`Base URL: ${summary.baseUrl}`);
+  console.log(`Marketing base URL: ${summary.baseUrls.marketing}`);
+  console.log(`App base URL: ${summary.baseUrls.app}`);
   console.log(`Checked at: ${summary.checkedAt}`);
   console.log("");
-  console.log("Route results:");
-  for (const route of summary.routes) {
-    const status = route.status ?? "000";
-    const markerStatus = route.markerFound ? "marker_yes" : "marker_no";
-    const failureSuffix = route.failureCode ? ` (${route.failureCode})` : "";
-    console.log(
-      `- ${route.path} -> HTTP ${status}, ${markerStatus}, owner=${route.owner}${failureSuffix}`,
-    );
+  console.log("Smoke checks:");
+  for (const step of summary.steps) {
+    const suffix = step.detail ? ` (${step.detail})` : "";
+    console.log(`- ${step.status.toUpperCase()} ${step.label}${suffix}`);
   }
   console.log("");
   console.log("Control host diagnostics:");
@@ -203,54 +289,190 @@ function printHumanReport(summary) {
   }
   console.log("");
   if (summary.outcome === "pass") {
-    console.log("Outcome: PASS (no regressions detected)");
+    console.log("Outcome: PASS");
     return;
   }
   if (summary.outcome === "blocked") {
-    console.log(
-      "Outcome: BLOCKED (automation runtime networking issue, production status unconfirmed)",
-    );
-    console.log("Severity: P1");
-    console.log("Likely ownership: platform/automation-runtime networking");
+    console.log("Outcome: BLOCKED");
     return;
   }
-  console.log("Outcome: FAIL (regressions detected)");
-  console.log("Regressions:");
-  for (const regression of summary.regressions) {
-    console.log(
-      `- ${regression.severity} ${regression.path} owner=${regression.owner} reason=${regression.reason} detail=${regression.detail}`,
-    );
-  }
+  console.log("Outcome: FAIL");
 }
 
-export async function runProductionSmokeCheck({
-  baseUrl = defaultBaseUrl,
-  timeoutMs = defaultTimeoutMs,
-} = {}) {
-  const routeResults = [];
-  for (const check of routeChecks) {
-    routeResults.push(await probeRoute(check, baseUrl, timeoutMs));
+export async function runProductionSmokeCheck(options = {}) {
+  const args = parseArgs(process.argv.slice(2));
+  const envFile = loadAuditEnv(args["journey-env-file"] ?? process.env.JOURNEY_ENV_FILE);
+  const readSetting = createSettingsReader({ args, envFile });
+  const fallbackBaseUrl = args.SMOKE_BASE_URL ?? process.env.SMOKE_BASE_URL ?? "";
+  const compatibilityBaseUrl = shouldUseCompatibilityBaseUrl(fallbackBaseUrl) ? fallbackBaseUrl : "";
+  const explicitMarketingBaseUrl = readSetting("SMOKE_MARKETING_BASE_URL", "");
+  const explicitAppBaseUrl = readSetting("SMOKE_APP_BASE_URL", "");
+  const marketingBaseUrl =
+    options.marketingBaseUrl ??
+    (explicitMarketingBaseUrl || (!explicitAppBaseUrl && compatibilityBaseUrl) || "https://www.zokorp.com");
+  const appBaseUrl =
+    options.appBaseUrl ??
+    (explicitAppBaseUrl || (!explicitMarketingBaseUrl && compatibilityBaseUrl) || "https://app.zokorp.com");
+  const apexBaseUrl =
+    options.apexBaseUrl ??
+    readSetting(
+      ["SMOKE_APEX_BASE_URL"],
+      new URL(marketingBaseUrl).host === "www.zokorp.com" ? "https://zokorp.com" : "",
+    );
+  const timeoutMs = options.timeoutMs ?? Number(readSetting("SMOKE_TIMEOUT_MS", "15000"));
+  const steps = [];
+  const marketingHost = new URL(marketingBaseUrl).host;
+  const appHost = new URL(appBaseUrl).host;
+  const productionMarketingBlockAllowed = expectedProductionMarketingBlock(marketingBaseUrl, appBaseUrl);
+  const hostSplitSkipped = sameOrigin(marketingBaseUrl, appBaseUrl);
+
+  if (apexBaseUrl) {
+    const apexExpectedLocation = toAbsoluteUrl("/", marketingBaseUrl);
+    steps.push(
+      await runRedirectCheck({
+        id: "apex_redirect",
+        label: "Apex redirects to canonical marketing host",
+        sourceUrl: apexBaseUrl,
+        expectedLocation: apexExpectedLocation,
+        timeoutMs,
+        blockedWhenLocationMatches:
+          productionMarketingBlockAllowed && toAbsoluteUrl("/", appBaseUrl) !== apexExpectedLocation
+            ? toAbsoluteUrl("/", appBaseUrl)
+            : null,
+      }),
+    );
+  } else {
+    steps.push(
+      buildStep("apex_redirect", "Apex redirects to canonical marketing host", "skipped", {
+        detail: "Skipped because SMOKE_APEX_BASE_URL is not configured for this target.",
+      }),
+    );
   }
+
+  if (hostSplitSkipped) {
+    steps.push(
+      buildStep("app_root_redirect", "App root redirects to /software", "skipped", {
+        detail: "Skipped because marketing and app are using the same origin for this run.",
+      }),
+    );
+  } else {
+    steps.push(
+      await runRedirectCheck({
+        id: "app_root_redirect",
+        label: "App root redirects to /software",
+        sourceUrl: appBaseUrl,
+        expectedLocation: toAbsoluteUrl("/software", appBaseUrl),
+        timeoutMs,
+      }),
+    );
+  }
+
+  for (const route of MARKETING_ROUTE_EXPECTATIONS) {
+    steps.push(
+      await runPageCheck({
+        id: `marketing_${route.label.toLowerCase().replaceAll(/\s+/g, "_")}`,
+        label: `Marketing page: ${route.label}`,
+        baseUrl: marketingBaseUrl,
+        path: route.path,
+        marker: route.marker,
+        timeoutMs,
+        expectedHost: marketingHost,
+        blockedHost: productionMarketingBlockAllowed ? appHost : null,
+      }),
+    );
+  }
+
+  for (const route of APP_ROUTE_EXPECTATIONS) {
+    steps.push(
+      await runPageCheck({
+        id: `app_${route.label.toLowerCase().replaceAll(/\s+/g, "_")}`,
+        label: `App route: ${route.label}`,
+        baseUrl: appBaseUrl,
+        path: route.path,
+        marker: route.marker,
+        timeoutMs,
+        expectedHost: appHost,
+      }),
+    );
+  }
+
+  for (const product of APP_PRODUCT_EXPECTATIONS) {
+    steps.push(
+      await runPageCheck({
+        id: `product_${product.slug}`,
+        label: `App product page: ${product.label}`,
+        baseUrl: appBaseUrl,
+        path: product.path,
+        marker: product.titleMarker,
+        timeoutMs,
+        expectedHost: appHost,
+      }),
+    );
+  }
+
+  for (const redirectExpectation of LEGACY_REDIRECT_EXPECTATIONS) {
+    steps.push(
+      await runRedirectCheck({
+        id: `legacy_${redirectExpectation.from.replaceAll("/", "_") || "root"}`,
+        label: `Legacy redirect: ${redirectExpectation.from}`,
+        sourceUrl: toAbsoluteUrl(redirectExpectation.from, marketingBaseUrl),
+        expectedLocation: toAbsoluteUrl(redirectExpectation.to, marketingBaseUrl),
+        timeoutMs,
+        blockedWhenLocationMatches:
+          productionMarketingBlockAllowed &&
+          marketingHost !== appHost &&
+          toAbsoluteUrl(redirectExpectation.to, appBaseUrl),
+      }),
+    );
+  }
+
+  if (hostSplitSkipped) {
+    steps.push(
+      buildStep("app_noindex", "App-host marketing pages emit noindex", "skipped", {
+        detail: "Skipped because marketing and app are using the same origin for this run.",
+      }),
+    );
+  } else {
+    steps.push(
+      await runHeaderCheck({
+        id: "app_noindex",
+        label: "App-host marketing pages emit noindex",
+        url: toAbsoluteUrl("/contact", appBaseUrl),
+        timeoutMs,
+        expectedHeader: "x-robots-tag",
+        expectedValue: "noindex, follow",
+      }),
+    );
+  }
+
+  steps.push(
+    await runSeoCheck({
+      marketingBaseUrl,
+      timeoutMs,
+    }),
+  );
 
   const controlResults = [];
   for (const host of controlHosts) {
     controlResults.push(await probeControlHost(host, timeoutMs));
   }
 
-  const regressions = buildRegressions(routeResults);
-  const blocked = isEnvironmentNetworkFailure(controlResults, regressions);
-  const outcome = regressions.length === 0 ? "pass" : blocked ? "blocked" : "fail";
+  const outcome = isEnvironmentNetworkFailure(controlResults, steps)
+    ? "blocked"
+    : outcomeFromSteps(steps);
 
-  const summary = {
-    baseUrl,
+  return {
     checkedAt: new Date().toISOString(),
-    routes: routeResults,
+    baseUrls: {
+      apex: apexBaseUrl || null,
+      marketing: marketingBaseUrl,
+      app: appBaseUrl,
+    },
+    totals: buildTotals(steps),
+    steps,
     controlHosts: controlResults,
-    regressions,
     outcome,
   };
-
-  return summary;
 }
 
 async function main() {
@@ -263,15 +485,19 @@ async function main() {
   if (summary.outcome === "pass") {
     process.exit(0);
   }
-  if (summary.outcome === "blocked") {
-    process.exit(2);
-  }
-  process.exit(1);
+
+  process.exit(summary.outcome === "blocked" ? 2 : 1);
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+const isDirectExecution =
+  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isDirectExecution) {
   main().catch((error) => {
-    console.error("Smoke check runner crashed:", error);
+    console.error(
+      "Production smoke check crashed:",
+      error instanceof Error ? error.message : error,
+    );
     process.exit(3);
   });
 }

@@ -5,7 +5,7 @@ import { buildCalendlyBookingUrl } from "@/lib/calendly";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
 import { buildEstimateReferenceCode, recordLeadInteraction, upsertLead } from "@/lib/privacy-leads";
-import { getSiteUrl } from "@/lib/site";
+import { getMarketingSiteUrl } from "@/lib/site";
 
 export const runtime = "nodejs";
 
@@ -18,9 +18,7 @@ function destinationForType(
   estimateReferenceCode?: string | null,
 ) {
   if (ctaType === "book-call") {
-    const destination =
-      process.env.ARCH_REVIEW_BOOK_CALL_URL ??
-      `${process.env.NEXT_PUBLIC_SITE_URL ?? getSiteUrl()}/services#service-request`;
+    const destination = process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getMarketingSiteUrl()}/services#service-request`;
 
     return buildCalendlyBookingUrl({
       baseUrl: destination,
@@ -29,8 +27,7 @@ function destinationForType(
   }
 
   return (
-    process.env.ARCH_REVIEW_REMEDIATION_PLAN_URL ??
-    `${process.env.NEXT_PUBLIC_SITE_URL ?? getSiteUrl()}/services#service-request`
+    process.env.ARCH_REVIEW_REMEDIATION_PLAN_URL ?? `${getMarketingSiteUrl()}/services#service-request`
   );
 }
 

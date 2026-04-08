@@ -4,9 +4,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { buildArchitectureReviewReport } from "@/lib/architecture-review/report";
-import { buildPageMetadata } from "@/lib/site";
+import { buildMarketingPageMetadata } from "@/lib/site";
 
-export const metadata = buildPageMetadata({
+export const metadata = buildMarketingPageMetadata({
   title: "Architecture Diagram Reviewer Sample Report",
   description:
     "Synthetic sample output for the ZoKorp Architecture Diagram Reviewer. Review the format before submitting your own diagram.",

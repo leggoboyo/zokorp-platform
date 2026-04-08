@@ -1,10 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
-import { buildPageMetadata } from "@/lib/site";
+import { buildMarketingPageMetadata } from "@/lib/site";
 
-export const metadata = buildPageMetadata({
+export const metadata = buildMarketingPageMetadata({
   title: "Security",
-  description: "Current security posture and operational controls for ZoKorp Platform.",
+  description: "Current security posture and operational controls for ZoKorp.",
   path: "/security",
 });
 

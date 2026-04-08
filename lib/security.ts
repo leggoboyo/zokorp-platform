@@ -1,5 +1,8 @@
 const MAX_UPLOAD_MB_FALLBACK = 10;
 
+export const BUSINESS_EMAIL_REQUIRED_MESSAGE =
+  "Personal email domains are not allowed. Use a business email.";
+
 const FREE_EMAIL_DOMAINS = new Set([
   "gmail.com",
   "googlemail.com",

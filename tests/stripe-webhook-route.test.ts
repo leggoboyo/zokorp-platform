@@ -8,6 +8,7 @@ const {
   priceFindUniqueMock,
   transactionMock,
   auditCreateMock,
+  recordStripeWebhookEventMock,
 } = vi.hoisted(() => ({
   constructEventMock: vi.fn(),
   subscriptionRetrieveMock: vi.fn(),
@@ -16,6 +17,7 @@ const {
   priceFindUniqueMock: vi.fn(),
   transactionMock: vi.fn(),
   auditCreateMock: vi.fn(),
+  recordStripeWebhookEventMock: vi.fn(),
 }));
 
 vi.mock("@/lib/stripe", () => ({
@@ -47,6 +49,10 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("@/lib/stripe-webhook-events", () => ({
+  recordStripeWebhookEvent: recordStripeWebhookEventMock,
+}));
+
 import { GET, POST } from "@/app/api/stripe/webhook/route";
 
 describe("stripe webhook route", () => {
@@ -57,6 +63,7 @@ describe("stripe webhook route", () => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_123";
     entitlementUpdateManyMock.mockResolvedValue({ count: 1 });
     auditCreateMock.mockResolvedValue({});
+    recordStripeWebhookEventMock.mockResolvedValue(undefined);
     transactionMock.mockImplementation(async (callback) =>
       callback({
         checkoutFulfillment: { create: vi.fn() },
@@ -128,6 +135,24 @@ describe("stripe webhook route", () => {
         }),
       }),
     );
+    expect(recordStripeWebhookEventMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        event: expect.objectContaining({
+          id: "evt_sub_updated",
+        }),
+        processingStatus: "received",
+      }),
+    );
+    expect(recordStripeWebhookEventMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        event: expect.objectContaining({
+          id: "evt_sub_updated",
+        }),
+        processingStatus: "processed",
+      }),
+    );
   });
 
   it("audits signed checkout events that cannot be fulfilled because required metadata is missing", async () => {
@@ -164,6 +189,15 @@ describe("stripe webhook route", () => {
             reason: "missing_checkout_metadata",
           }),
         }),
+      }),
+    );
+    expect(recordStripeWebhookEventMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        event: expect.objectContaining({
+          id: "evt_checkout_missing_metadata",
+        }),
+        processingStatus: "ignored",
       }),
     );
   });
@@ -206,6 +240,15 @@ describe("stripe webhook route", () => {
             error: "database unavailable",
           }),
         }),
+      }),
+    );
+    expect(recordStripeWebhookEventMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        event: expect.objectContaining({
+          id: "evt_sub_failure",
+        }),
+        processingStatus: "failed",
       }),
     );
 

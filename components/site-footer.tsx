@@ -1,18 +1,18 @@
+import Image from "next/image";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
+import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_FOUNDER_PROFILE } from "@/lib/public-launch-contract";
+import { getAppSiteUrl } from "@/lib/site";
 
 const platformLinks = [
   { href: "/software", label: "Software" },
   { href: "/services", label: "Services" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/account", label: "Account" },
+  { href: `${getAppSiteUrl()}/account`, label: "Account" },
 ];
 
 const resourceLinks = [
-  { href: "/case-studies", label: "Case Studies" },
   { href: "/media", label: "Media" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
@@ -28,25 +28,32 @@ const legalLinks = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-14 border-t border-border/80 bg-white/72 backdrop-blur">
-      <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 md:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))] md:px-6">
-        <Card tone="glass" className="rounded-[1.4rem] p-6">
-          <p className="font-display text-2xl font-semibold text-slate-900">ZoKorp</p>
-          <p className="mt-3 max-w-sm text-sm leading-7 text-slate-600">
-            AWS-focused AI delivery, validation software, and account-linked billing workflows for teams that need measurable execution.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Badge variant="brand" className="normal-case tracking-normal">
-              Houston-based
-            </Badge>
-            <Badge variant="secondary" className="normal-case tracking-normal">
-              Serving U.S. teams
-            </Badge>
+    <footer className="mt-16 border-t border-slate-200 bg-[#f7f5f1]">
+      <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 md:grid-cols-2 md:px-6 xl:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))]">
+        <Card className="rounded-[1.4rem] border border-slate-200 bg-white p-6 shadow-none md:col-span-2 xl:col-span-1">
+          <div>
+            <Image
+              src={PUBLIC_LAUNCH_FOUNDER_PROFILE.logoPath}
+              alt="ZoKorp"
+              width={983}
+              height={316}
+              className="h-10 w-auto"
+              sizes="128px"
+            />
           </div>
+          <p className="mt-4 max-w-sm text-sm leading-7 text-slate-600">
+            Founder-led AWS architecture, AI/ML advisory, readiness support, and software for teams that need clear next steps.
+          </p>
+          <p className="mt-4 text-sm font-medium text-slate-900">{PUBLIC_LAUNCH_CONTACT.location}</p>
+          <p className="mt-2 text-sm text-slate-600">
+            <a href={PUBLIC_LAUNCH_CONTACT.linkedInUrl} className="underline decoration-slate-300 underline-offset-4">
+              LinkedIn
+            </a>
+          </p>
         </Card>
 
-        <section className="space-y-3 rounded-[1.4rem] border border-border/80 bg-white/80 p-5 shadow-[var(--shadow-soft)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Platform</p>
+        <section className="space-y-3 rounded-[1.4rem] border border-slate-200 bg-white p-5 shadow-none">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Offerings</p>
           <ul className="space-y-2 text-sm text-slate-600">
             {platformLinks.map((link) => (
               <li key={link.href}>
@@ -58,8 +65,8 @@ export function SiteFooter() {
           </ul>
         </section>
 
-        <section className="space-y-3 rounded-[1.4rem] border border-border/80 bg-white/80 p-5 shadow-[var(--shadow-soft)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Resources</p>
+        <section className="space-y-3 rounded-[1.4rem] border border-slate-200 bg-white p-5 shadow-none">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Company</p>
           <ul className="space-y-2 text-sm text-slate-600">
             {resourceLinks.map((link) => (
               <li key={link.href}>
@@ -71,7 +78,7 @@ export function SiteFooter() {
           </ul>
         </section>
 
-        <section className="space-y-3 rounded-[1.4rem] border border-border/80 bg-white/80 p-5 shadow-[var(--shadow-soft)]">
+        <section className="space-y-3 rounded-[1.4rem] border border-slate-200 bg-white p-5 shadow-none">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Trust and Support</p>
           <ul className="space-y-2 text-sm text-slate-600">
             {legalLinks.map((link) => (
@@ -88,7 +95,7 @@ export function SiteFooter() {
       </div>
       <div className="section-divider mx-auto w-full max-w-7xl" />
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-4 text-xs text-slate-500 md:flex-row md:items-center md:justify-between md:px-6">
-        <p>ZoKorp Platform</p>
+        <p>ZoKorp</p>
         <p>(C) {new Date().getFullYear()} ZoKorp. All rights reserved.</p>
       </div>
     </footer>

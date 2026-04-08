@@ -1,246 +1,295 @@
 import Link from "next/link";
 
 import { ServiceRequestPanel } from "@/components/service-request-panel";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { buildCalendlyBookingUrl } from "@/lib/calendly";
 import { auth } from "@/lib/auth";
-import { SOFT_LAUNCH_POSTURE, SOFT_LAUNCH_RESPONSE_WINDOWS } from "@/lib/launch-posture";
-import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_FOUNDER_PROFILE } from "@/lib/public-launch-contract";
-import { buildPageMetadata, getSiteUrl } from "@/lib/site";
-import { cn } from "@/lib/utils";
+import { CONSULTING_OFFERS, CONSULTING_PRICE_OPTIONS, DELIVERY_PROCESS_STEPS } from "@/lib/marketing-content";
+import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_FOUNDER_PROFILE, PUBLIC_LAUNCH_POLICY_NOTES } from "@/lib/public-launch-contract";
+import { buildMarketingPageMetadata, getAppSiteUrl, getMarketingSiteUrl } from "@/lib/site";
 
-export const metadata = buildPageMetadata({
+export const metadata = buildMarketingPageMetadata({
   title: "Services",
-  description: "Request AWS consultation, readiness support, or software-backed delivery work from ZoKorp.",
+  description:
+    "Founder-led AWS architecture review, remediation, readiness support, AI/ML advisory, and implementation services from ZoKorp.",
   path: "/services",
 });
 
 export const dynamic = "force-dynamic";
 
-const serviceTracks = [
+const fitScenarios = [
   {
-    title: "Architecture Implementation",
-    summary:
-      "Free architecture reviews turn into an implementation estimate by email, then a booked follow-up if the work is a fit.",
-    points: [
-      "Itemized implementation estimate tied to detected architecture issues",
-      "Booking-first follow-up instead of a blind pay-now flow",
-      "Focused solo execution for bounded architecture remediation work",
-    ],
+    title: "You need a serious architecture review",
+    detail:
+      "Use ZoKorp when the current design needs technical scrutiny, prioritization, and a next-step recommendation that can survive real implementation work.",
   },
   {
-    title: "APN Consulting",
-    summary:
-      "Support for AWS partner readiness, validation evidence, and execution workflows.",
-    points: [
-      "Partner program readiness and planning",
-      "Validation evidence preparation and review workflows",
-      "Operational support for AWS engagement milestones",
-    ],
+    title: "You are preparing for readiness or validation work",
+    detail:
+      "Use ZoKorp when AWS-related readiness, partner evidence, or technical packaging work needs more structure and less last-minute scrambling.",
   },
   {
-    title: "Productized Delivery",
-    summary:
-      "Reusable software components to reduce repetitive manual validation and reporting work.",
-    points: [
-      "Checklist validation tooling for standardized review",
-      "Delivery accelerators and implementation templates",
-      "Product catalog expansion aligned with platform roadmap",
-    ],
+    title: "You want AI/ML guidance without vague positioning",
+    detail:
+      "Use ZoKorp when you need practical advice on infrastructure, forecasting workflows, MLOps direction, or delivery choices without buying into inflated platform claims.",
   },
-];
-
-const engagementSteps = [
-  {
-    title: "Assess",
-    detail: "Map your delivery goals, constraints, and required validation outcomes.",
-  },
-  {
-    title: "Design",
-    detail: "Define architecture, operating model, and accountability paths.",
-  },
-  {
-    title: "Implement",
-    detail: "Execute with measurable milestones and reusable tooling.",
-  },
-  {
-    title: "Track",
-    detail: "Follow request status and delivery updates from your account timeline.",
-  },
-];
+] as const;
 
 const serviceFaq = [
   {
-    question: "How does the free architecture review connect to paid work?",
+    question: "Do I need an account to request services?",
     answer:
-      "The review stays free. If the diagram points to work worth doing, the result email includes an itemized implementation estimate and a booking link to discuss scope before any payment happens.",
+      "No. You can browse the service catalog and submit a quote request without an account. Account creation becomes useful when you want software access, billing history, or tracked follow-up inside the app.",
   },
   {
-    question: "How are engagements tracked?",
+    question: "Is the $249 architecture advisory review the same as implementation?",
     answer:
-      "Service requests are created with a tracking code and lifecycle status as soon as you submit the form. Booked calls are synced into the account and ops timeline after Calendly confirms the booking and the same email matches an account.",
+      "No. The advisory review is the narrow first step. Remediation, readiness packages, and broader implementation are only scoped once the underlying work is actually clear.",
   },
   {
-    question: "Can service work connect to software products?",
+    question: "Are these fixed prices for every engagement?",
     answer:
-      "Yes. Delivery engagements can include setup for ZoKorp software tools and subscription handoff workflows.",
+      "No. The visible anchors are meant to reduce ambiguity, not pretend that every delivery need is fixed-scope. Broader work remains estimate-first.",
   },
   {
-    question: "Do consultations require a subscription?",
+    question: "How do software and consulting connect?",
     answer:
-      "No. Consultations are handled as service requests and can be scoped independently from SaaS subscriptions.",
+      "The software creates a public, self-serve path where that makes sense. Consulting exists for the work that still benefits from direct technical judgment, implementation help, or readiness packaging.",
   },
-  {
-    question: "What happens after I submit a request?",
-    answer:
-      "ZoKorp triages the request first, then either replies with a scoped next step, a booking follow-up, or a recommendation to use software first. The soft-launch posture stays estimate-first instead of forcing immediate consulting checkout.",
-  },
-];
-
-const launchPackaging = [
-  {
-    title: "Architecture remediation sprint",
-    detail:
-      "Best when an architecture review already identified bounded fixes, tradeoffs, or diagram cleanup that can be turned around quickly.",
-  },
-  {
-    title: "AWS readiness package",
-    detail:
-      "Best when you need structured evidence, review discipline, or milestone preparation before a partner or delivery checkpoint.",
-  },
-  {
-    title: "Software-backed advisory",
-    detail:
-      "Best when you want self-serve review first, then a scoped expert follow-up rather than open-ended consulting from day one.",
-  },
-];
+] as const;
 
 export default async function ServicesPage() {
   const session = await auth();
-  const architectureBookingUrl = buildCalendlyBookingUrl({
-    baseUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getSiteUrl()}/services#service-request`,
+  const appSiteUrl = getAppSiteUrl();
+  const marketingSiteUrl = getMarketingSiteUrl();
+  const bookingUrl = buildCalendlyBookingUrl({
+    baseUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${marketingSiteUrl}/services#service-request`,
     utmMedium: "services-page",
   });
 
   return (
-    <div className="space-y-10">
-      <section className="hero-surface animate-fade-up px-6 py-8 text-white md:px-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Services</p>
-        <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Build with confidence, not guesswork</h1>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200 md:text-base">
-          ZoKorp combines deterministic architecture review, itemized implementation estimating, and hands-on delivery for teams that need a practical next step instead of another vague advisory deck. The current posture is intentionally narrow: software-backed AWS advisory, bounded remediation, and estimate-first scoped delivery.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-2">
-          <a href={architectureBookingUrl} className={buttonVariants({ variant: "secondary" })}>
-            Book architecture follow-up
-          </a>
-          <Link href="#service-request" className={buttonVariants({ variant: "ghost" })}>
-            Request service
-          </Link>
-          <Link
-            href="/account"
-            className={cn(buttonVariants({ variant: "ghost" }), "border border-white/30 text-white hover:bg-white/10")}
-          >
-            Track in account
-          </Link>
-        </div>
-        <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-200">
-          Primary human paths are{" "}
-          <a className="font-semibold text-white underline decoration-white/40 underline-offset-4" href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`}>
-            {PUBLIC_LAUNCH_CONTACT.primaryEmail}
-          </a>{" "}
-          and the tagged booking link above. {PUBLIC_LAUNCH_CONTACT.responseWindowLabel}. Forms remain available, but they are secondary during the soft launch.
-        </p>
-        <div className="mt-6 grid gap-3 md:grid-cols-3">
-          {SOFT_LAUNCH_RESPONSE_WINDOWS.map((item) => (
-            <div key={item.title} className="rounded-2xl border border-white/15 bg-white/8 px-4 py-3 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">{item.title}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-100">{item.detail}</p>
+    <div className="space-y-10 md:space-y-12">
+      <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f7f5f1_100%)] px-6 py-8 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:px-8 md:py-10">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start">
+          <div>
+            <Badge variant="secondary" className="border-slate-200 bg-white text-slate-700">
+              ZoKorp services
+            </Badge>
+            <h1 className="font-display mt-5 max-w-4xl text-balance text-4xl font-semibold leading-tight text-slate-950 md:text-6xl">
+              Architecture review first. Remediation, readiness, and implementation when the next step is real.
+            </h1>
+            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
+              ZoKorp is a founder-led consultancy for teams that want clear AWS architecture judgment, AI/ML advisory,
+              readiness support, and software-backed follow-through. You do not need an account to understand the
+              offers or request a quote.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a href={bookingUrl} className={buttonVariants({ size: "lg" })}>
+                Book a call
+              </a>
+              <Link href="#service-request" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+                Get a quote
+              </Link>
+              <Link href="/software" className={buttonVariants({ variant: "ghost", size: "lg" })}>
+                Explore software
+              </Link>
             </div>
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                {PUBLIC_LAUNCH_CONTACT.primaryHumanPathLabel}
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                {PUBLIC_LAUNCH_POLICY_NOTES.services}
+              </div>
+            </div>
+          </div>
+
+          <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+            <CardHeader className="gap-2 px-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Founder-led scope</p>
+              <h2 className="font-display text-3xl font-semibold text-slate-950">
+                Direct technical work, not generic “transformation” consulting.
+              </h2>
+            </CardHeader>
+            <CardContent className="space-y-4 px-0">
+              <p className="text-sm leading-7 text-slate-600">
+                {PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials.map((credential) => (
+                  <Badge key={credential} variant="secondary" className="bg-slate-100 text-slate-700">
+                    {credential}
+                  </Badge>
+                ))}
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
+                Contact:{" "}
+                <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className="font-medium text-slate-950">
+                  {PUBLIC_LAUNCH_CONTACT.primaryEmail}
+                </a>
+                {" · "}
+                {PUBLIC_LAUNCH_CONTACT.location}
+              </div>
+            </CardContent>
+            <CardFooter className="px-0">
+              <Link href={`${appSiteUrl}/register`} className={buttonVariants({ variant: "secondary" })}>
+                Create account
+              </Link>
+              <Link href={`${appSiteUrl}/account`} className={buttonVariants({ variant: "ghost" })}>
+                Account
+              </Link>
+            </CardFooter>
+          </Card>
+        </div>
+      </section>
+
+      <section className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pricing anchors</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">Visible consulting pricing without pretending every job is identical.</h2>
+          </div>
+          <p className="max-w-xl text-sm leading-6 text-slate-600">
+            The anchors below are public on purpose. Anything broader still gets scoped before paid work begins.
+          </p>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-5">
+          {CONSULTING_PRICE_OPTIONS.map((item) => (
+            <Card key={item.title} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-none">
+              <CardHeader className="gap-2 px-0">
+                <h3 className="text-lg font-semibold text-slate-950">{item.title}</h3>
+                <p className="text-sm font-semibold text-slate-700">{item.price}</p>
+              </CardHeader>
+              <CardContent className="px-0">
+                <p className="text-sm leading-7 text-slate-600">{item.summary}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
 
-      <section className="grid gap-5 md:grid-cols-3">
-        {serviceTracks.map((service) => (
-          <article key={service.title} className="surface lift-card rounded-2xl p-6">
-            <h2 className="font-display text-2xl font-semibold text-slate-900">{service.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{service.summary}</p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-700">
-              {service.points.map((point) => (
-                <li key={point} className="rounded-md bg-slate-50 px-3 py-2">
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </article>
+      <section className="grid gap-4 lg:grid-cols-4">
+        {CONSULTING_OFFERS.map((offer) => (
+          <Card
+            key={offer.slug}
+            className={`rounded-[1.6rem] border border-slate-200 p-6 shadow-none ${offer.slug === "architecture-review-remediation" ? "bg-[#111827] text-slate-50 lg:col-span-2" : "bg-white"}`}
+          >
+            <CardHeader className="gap-2 px-0">
+              <p
+                className={`text-xs font-semibold uppercase tracking-[0.16em] ${offer.slug === "architecture-review-remediation" ? "text-slate-300" : "text-slate-500"}`}
+              >
+                {offer.eyebrow}
+              </p>
+              <h2 className={`font-display text-3xl font-semibold ${offer.slug === "architecture-review-remediation" ? "text-white" : "text-slate-950"}`}>
+                {offer.title}
+              </h2>
+              <p className={`text-sm font-medium ${offer.slug === "architecture-review-remediation" ? "text-slate-200" : "text-slate-700"}`}>
+                {offer.priceAnchor}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4 px-0">
+              <p className={`text-sm leading-7 ${offer.slug === "architecture-review-remediation" ? "text-slate-200" : "text-slate-600"}`}>
+                {offer.summary}
+              </p>
+              <ul className="space-y-2">
+                {offer.bullets.map((bullet) => (
+                  <li
+                    key={bullet}
+                    className={`rounded-2xl border px-4 py-3 text-sm ${offer.slug === "architecture-review-remediation" ? "border-white/10 bg-white/5 text-slate-100" : "border-slate-200 bg-slate-50 text-slate-700"}`}
+                  >
+                    {bullet}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
         ))}
       </section>
 
-      <section className="surface soft-grid rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Packaging</p>
-        <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">How service work is packaged right now</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-          {SOFT_LAUNCH_POSTURE.label} means no overstated enterprise bench, no fake delivery volume claims, and no forced pay-now consulting flow. The site stays explicit about what is productized today versus what still needs a scoped conversation.
-        </p>
-        <div className="mt-5 grid gap-4 md:grid-cols-3">
-          {launchPackaging.map((item) => (
-            <article key={item.title} className="rounded-xl border border-slate-200 bg-white p-5">
-              <h3 className="font-display text-2xl font-semibold text-slate-900">{item.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{item.detail}</p>
-            </article>
-          ))}
-        </div>
-        <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
-          <span className="font-semibold text-slate-900">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}:</span>{" "}
-          {PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}
-        </div>
-      </section>
-
-      <section className="surface soft-grid rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Engagement Flow</p>
-        <h2 className="font-display mt-2 text-3xl font-semibold text-slate-900">How engagements run</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-4">
-          {engagementSteps.map((step, index) => (
-            <article key={step.title} className="lift-card rounded-xl border border-slate-200 bg-white p-4">
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-teal-700">
-                <span>Step</span>
-                <span className="rounded-full bg-teal-50 px-2 py-1 font-mono tracking-[0.18em] text-teal-800">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-              </p>
-              <h3 className="font-display mt-1 text-xl font-semibold text-slate-900">{step.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{step.detail}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <ServiceRequestPanel signedIn={Boolean(session?.user?.email)} currentEmail={session?.user?.email ?? null} />
-
-      <section className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
-        <article className="surface lift-card rounded-2xl p-6">
-          <h2 className="font-display text-2xl font-semibold text-slate-900">Need software-backed delivery?</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            ZoKorp software tools support the same delivery patterns used in consulting engagements,
-            starting with validation workflows and account-based usage tracking. If the software already identifies the fix, the next step is usually a scoped remediation estimate rather than another discovery loop.
-          </p>
-          <Link href="/software" className={`${buttonVariants()} mt-5`}>
-            Explore software catalog
-          </Link>
-        </article>
-
-        <article className="glass-surface lift-card rounded-2xl p-6">
-          <h3 className="font-display text-xl font-semibold text-slate-900">Service FAQ</h3>
-          <ul className="mt-3 space-y-3 text-sm text-slate-700">
-            {serviceFaq.map((item) => (
-              <li key={item.question}>
-                <p className="font-semibold text-slate-900">{item.question}</p>
-                <p className="mt-1 text-slate-600">{item.answer}</p>
-              </li>
+      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
+          <CardHeader className="gap-2 px-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Good fit</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">When to use ZoKorp services</h2>
+          </CardHeader>
+          <CardContent className="space-y-3 px-0">
+            {fitScenarios.map((scenario) => (
+              <div key={scenario.title} className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                <h3 className="text-lg font-semibold text-slate-950">{scenario.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-slate-600">{scenario.detail}</p>
+              </div>
             ))}
-          </ul>
-        </article>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+          <CardHeader className="gap-2 px-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Engagement flow</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">A clear process from review to follow-through.</h2>
+          </CardHeader>
+          <CardContent className="grid gap-4 px-0 md:grid-cols-2">
+            {DELIVERY_PROCESS_STEPS.map((step, index) => (
+              <div key={step.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Step {String(index + 1).padStart(2, "0")}
+                </p>
+                <h3 className="mt-2 text-xl font-semibold text-slate-950">{step.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-slate-600">{step.detail}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
+
+      <ServiceRequestPanel
+        signedIn={Boolean(session?.user?.email)}
+        currentEmail={session?.user?.email ?? null}
+        loginHref={`${appSiteUrl}/login?callbackUrl=/services`}
+        registerHref={`${appSiteUrl}/register`}
+        accountHref={`${appSiteUrl}/account`}
+      />
+
+      <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+        <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+          <CardHeader className="gap-2 px-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">FAQ</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">What buyers usually need clarified</h2>
+          </CardHeader>
+          <CardContent className="space-y-4 px-0">
+            {serviceFaq.map((item) => (
+              <div key={item.question} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <h3 className="text-lg font-semibold text-slate-950">{item.question}</h3>
+                <p className="mt-2 text-sm leading-7 text-slate-600">{item.answer}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
+          <CardHeader className="gap-2 px-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Next step</p>
+            <h2 className="font-display text-3xl font-semibold">Start publicly, create an account only when it actually helps.</h2>
+          </CardHeader>
+          <CardContent className="space-y-3 px-0">
+            <p className="text-sm leading-7 text-slate-200">
+              ZoKorp is designed so that browsing the company, understanding the services, and requesting a quote do
+              not require login. Account creation remains available for software access, tracked history, and billing.
+            </p>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-100">
+              {PUBLIC_LAUNCH_CONTACT.responseWindowLabel}. If a call is the better path, use the booking CTA above.
+            </div>
+          </CardContent>
+          <CardFooter className="px-0">
+            <Link href={`${appSiteUrl}/register`} className={buttonVariants({ variant: "secondary" })}>
+              Create account
+            </Link>
+            <Link href="/contact" className={buttonVariants({ variant: "ghost" })}>
+              Contact ZoKorp
+            </Link>
+          </CardFooter>
+        </Card>
       </section>
     </div>
   );

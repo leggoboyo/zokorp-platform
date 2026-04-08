@@ -139,4 +139,32 @@ describe("internal Calendly booked-call ingest route", () => {
       serviceRequestId: "request_123",
     });
   });
+
+  it("flags a booked call that uses a personal email domain", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/internal/calendly/booked-call", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-calendly-sync-secret": "calendly-sync-secret",
+        },
+        body: JSON.stringify({
+          email: "founder@gmail.com",
+          name: "Jordan Rivera",
+          externalEventId: "https://api.calendly.com/invitees/nonbiz123",
+          bookedAtIso: "2026-03-25T16:00:00.000Z",
+          provider: "calendly",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.leadInteractionCreate).not.toHaveBeenCalled();
+    expect(mocks.serviceRequestCreate).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      status: "flagged",
+      serviceRequestId: null,
+      reason: "business_email_required",
+    });
+  });
 });

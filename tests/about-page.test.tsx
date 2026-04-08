@@ -15,15 +15,17 @@ vi.mock("next/link", () => ({
 import AboutPage from "@/app/about/page";
 
 describe("AboutPage", () => {
-  it("keeps the founder-led soft-launch and proof posture explicit", () => {
+  it("keeps the founder-led positioning and proof posture explicit", () => {
     const html = renderToStaticMarkup(<AboutPage />);
 
-    expect(html).toContain("Founder-led by design");
-    expect(html).toContain("Representative proof mode");
-    expect(html).toContain("Current launch scope");
+    expect(html).toContain("Built by a technical founder");
+    expect(html).toContain("Founder-led by default");
+    expect(html).toContain("Specific claims only");
+    expect(html).toContain("Software and services stay connected");
     expect(html).toContain("Public proof posture");
-    expect(html).toContain("Founder profile");
     expect(html).toContain("Zohaib Khawaja");
-    expect(html).toContain("Operational proof verified March 30, 2026");
+    expect(html).toContain("Amazon Web Services");
+    expect(html).toContain("Microsoft");
+    expect(html).toContain("Concrete founder credibility without fake proof");
   });
 });

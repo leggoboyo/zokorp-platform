@@ -1,54 +1,79 @@
+import Link from "next/link";
+
+import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
-import { buildPageMetadata } from "@/lib/site";
+import { buildMarketingPageMetadata } from "@/lib/site";
 
-export const metadata = buildPageMetadata({
+export const metadata = buildMarketingPageMetadata({
   title: "Privacy",
-  description: "How ZoKorp Platform minimizes storage, delivers results by email, and handles opt-in follow-up data.",
+  description: "How ZoKorp minimizes storage, delivers results by email, and handles opt-in follow-up data.",
   path: "/privacy",
 });
 
 const sections = [
   {
-    title: "Default data posture",
+    title: "Work-email accounts and account data",
     paragraphs: [
-      "ZoKorp is designed for zero retention by default on diagnostic submissions. Tool inputs and generated reports are processed to produce the result email, then are not stored as part of the normal workflow.",
-      "By default, ZoKorp stores only the account information needed to operate the platform, including your business email, verification state, password-auth credentials, billing records, support requests, and minimal audit or usage events.",
-      "For free diagnostics, the default stored lead metadata is limited to the tool name, timestamp, delivery state, consent flags, and broad score or estimate bands needed to run the service and understand demand.",
+      "ZoKorp accounts are intended for business use. Registration, sign-in, and customer support flows are built around work-email accounts rather than personal inbox domains.",
+      "The platform stores the minimum account data needed to operate the service, including your business email, verification state, password-auth credentials, billing linkage, service requests, and core audit or usage events.",
+      "Security-related account events such as verification requests, password resets, sign-in attempts, and billing changes may be logged so ZoKorp can operate the platform safely.",
     ],
   },
   {
-    title: "Optional follow-up storage",
+    title: "Tool submissions, results, and account history",
     paragraphs: [
-      "Some tool forms offer an explicit opt-in to save the submission for follow-up. When you enable that option, ZoKorp stores an encrypted archive of the submission payload for up to 30 days so the work can be reviewed later.",
-      "If you do not opt in, ZoKorp does not keep the detailed narrative, answers, diagrams, OCR text, or per-user report JSON after delivery processing completes.",
-      "Short-lived duplicate protection may store a submission fingerprint hash for up to 15 minutes. The hash is used only to prevent accidental repeat sends and does not store the raw answers.",
+      "ZoKorp tries to keep detailed diagnostic payload retention narrow by default. Tool inputs are processed to generate the result, then detailed submission content is minimized or scrubbed from the normal workflow when the job is complete.",
+      "What does remain by default is the operational history needed to support the customer account: tool name, run timestamp, delivery state, broad score or estimate bands, purchases, credits, entitlements, and supportable audit trails.",
+      "Architecture review results, Validator runs, forecasting runs, and service requests may appear in account history even when the full uploaded source material is not retained long term.",
     ],
   },
   {
-    title: "Email, CRM, and service providers",
+    title: "Optional archival, booked calls, and follow-up storage",
     paragraphs: [
-      "ZoKorp uses hosted providers for application hosting, database access, authentication, billing, and email delivery. Stripe handles billing workflows, and ZoKorp does not build a custom credit-card storage layer inside this application.",
-      "Diagnostic results are delivered to the verified account email used to run the tool. Operational result emails and future marketing follow-up are tracked separately in account email preferences.",
-      "Optional CRM follow-up is off by default and only runs when you explicitly allow it on a submission.",
-      "If you opt in to archival or CRM follow-up, the relevant workflow data may be transmitted to those providers to complete the requested operation.",
+      "Some workflows offer explicit follow-up options such as saving a submission for later review, allowing CRM follow-up, or booking a consultation. Those paths store more operational context than the default no-follow-up path because ZoKorp needs enough information to continue the conversation responsibly.",
+      "Architecture review archival is opt-in. If you do not choose follow-up archival, ZoKorp is designed not to keep the detailed diagram narrative, OCR text, or report JSON as a long-term customer record after delivery processing finishes.",
+      "Short-lived duplicate protection may store a submission fingerprint hash for a brief period to prevent accidental duplicate sends. This is used for operational safety, not for profiling or marketing.",
     ],
   },
   {
-    title: "Forecasting beta data handling",
+    title: "Email preferences, CRM, and service providers",
     paragraphs: [
-      "ZoKorp Forecasting Beta is currently a narrow forecasting workflow, not a broad MLOps platform. By default, uploaded forecasting files are processed to produce the result and supporting audit metadata, but the raw uploaded dataset is not treated as a long-term platform data warehouse.",
-      "Live data connectors and broad persistent dataset storage are intentionally out of scope for the current beta launch.",
+      "ZoKorp uses hosted providers for application hosting, database access, authentication, billing, email delivery, scheduling, and optional follow-up workflows. Stripe handles billing workflows, and ZoKorp does not operate a custom credit-card storage system inside the app.",
+      "Operational result delivery and future marketing or CRM follow-up are treated separately. Signed-in users can manage email preference controls, and optional CRM follow-up remains an explicit submission-level choice instead of a silent default.",
+      "When you choose a workflow that needs a provider, such as Stripe billing, booked-call scheduling, or optional archival or CRM follow-up, the minimum data needed for that workflow may be shared with the relevant provider to complete the requested operation.",
+    ],
+  },
+  {
+    title: "Forecasting beta and current platform scope",
+    paragraphs: [
+      "ZoKorp Forecasting Beta is a narrow forecasting workflow, not a broad MLOps data platform. Uploaded forecasting files are processed to produce the result and supporting audit metadata, but the current launch is not designed as a long-term persistent training-data warehouse.",
+      "Live data connectors, broad persistent dataset storage, and general-purpose MLOps claims are intentionally out of scope for the current launch.",
     ],
   },
   {
     title: "Retention enforcement and contact",
     paragraphs: [
-      "ZoKorp runs scheduled cleanup to delete expired archives, remove duplicate-detection fingerprints, and scrub any legacy sensitive records that should no longer remain in storage.",
-      `Questions about privacy or data handling can be sent to ${PUBLIC_LAUNCH_CONTACT.primaryEmail}.`,
+      "ZoKorp runs scheduled cleanup to delete expired archives, remove duplicate-protection fingerprints, and scrub sensitive records that should not remain in storage beyond their intended operational window.",
+      `Questions about privacy, retention, or data handling can be sent to ${PUBLIC_LAUNCH_CONTACT.primaryEmail}.`,
     ],
   },
 ];
+
+const summaryCards = [
+  {
+    title: "Work-email accounts",
+    detail: "Customer-facing account flows are built around verified business email addresses, not personal inbox domains.",
+  },
+  {
+    title: "Minimal default retention",
+    detail: "Detailed diagnostic payloads are not meant to become a long-term customer archive unless a follow-up workflow explicitly needs that storage.",
+  },
+  {
+    title: "Separate preference controls",
+    detail: "Operational result delivery and future CRM or marketing-style follow-up are tracked separately.",
+  },
+] as const;
 
 export default function PrivacyPage() {
   return (
@@ -60,6 +85,15 @@ export default function PrivacyPage() {
           This page summarizes how ZoKorp Platform handles account, billing, diagnostic, and optional follow-up data under a privacy-first storage policy.
         </p>
       </Card>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {summaryCards.map((card) => (
+          <Card key={card.title} className="rounded-2xl p-5">
+            <h2 className="font-display text-xl font-semibold text-slate-900">{card.title}</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{card.detail}</p>
+          </Card>
+        ))}
+      </section>
 
       <Card className="rounded-2xl p-6 md:p-8">
         <div className="space-y-8">
@@ -73,6 +107,21 @@ export default function PrivacyPage() {
               ))}
             </section>
           ))}
+        </div>
+      </Card>
+
+      <Card tone="muted" className="rounded-2xl p-6">
+        <h2 className="font-display text-2xl font-semibold text-slate-900">Preference and support paths</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          If you already have an account, use the email-preferences page to manage delivery preferences. If you need a privacy or retention clarification, contact ZoKorp directly and include the account email or request context you want reviewed.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link href="/email-preferences" className={buttonVariants()}>
+            Email preferences
+          </Link>
+          <Link href="/support" className={buttonVariants({ variant: "secondary" })}>
+            Contact support
+          </Link>
         </div>
       </Card>
     </div>

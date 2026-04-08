@@ -82,7 +82,8 @@ export function buildRuntimeReadinessReport(env: RuntimeEnv = process.env): Runt
   const nextAuthSecretConfigured = configured(env.NEXTAUTH_SECRET);
   const authSecretFallbackConfigured = configured(env.AUTH_SECRET);
   const nextAuthOrigin = originOf(env.NEXTAUTH_URL);
-  const siteOrigin = originOf(env.NEXT_PUBLIC_SITE_URL);
+  const appOrigin = originOf(env.APP_SITE_URL) ?? originOf(env.NEXT_PUBLIC_SITE_URL);
+  const marketingOrigin = originOf(env.MARKETING_SITE_URL);
   const smtpConfigured =
     configured(env.EMAIL_SERVER_HOST) &&
     configured(env.EMAIL_SERVER_PORT) &&
@@ -160,28 +161,43 @@ export function buildRuntimeReadinessReport(env: RuntimeEnv = process.env): Runt
                 summary: "No auth secret is configured.",
                 operatorAction: "Set NEXTAUTH_SECRET before treating auth/session flows as production-ready.",
               },
-        nextAuthOrigin && siteOrigin
-          ? nextAuthOrigin === siteOrigin
+        nextAuthOrigin && appOrigin
+          ? nextAuthOrigin === appOrigin
             ? {
                 id: "auth-origin-alignment",
                 label: "Callback origin alignment",
                 level: "pass",
-                summary: "NEXTAUTH_URL and NEXT_PUBLIC_SITE_URL resolve to the same origin.",
+                summary: "NEXTAUTH_URL and the configured app origin resolve to the same origin.",
               }
             : {
                 id: "auth-origin-alignment",
                 label: "Callback origin alignment",
                 level: "fail",
-                summary: "NEXTAUTH_URL and NEXT_PUBLIC_SITE_URL point at different origins.",
-                details: [`NEXTAUTH_URL origin: ${nextAuthOrigin}`, `NEXT_PUBLIC_SITE_URL origin: ${siteOrigin}`],
-                operatorAction: "Align auth callback and canonical site origins to avoid redirect and origin-check drift.",
+                summary: "NEXTAUTH_URL and the configured app origin point at different origins.",
+                details: [`NEXTAUTH_URL origin: ${nextAuthOrigin}`, `App origin: ${appOrigin}`],
+                operatorAction: "Align auth callback and app origins to avoid redirect and origin-check drift.",
               }
           : {
               id: "auth-origin-alignment",
               label: "Callback origin alignment",
               level: "warning",
-              summary: "NEXTAUTH_URL or NEXT_PUBLIC_SITE_URL is missing or not a valid URL.",
-              operatorAction: "Set both origins explicitly in deployed environments.",
+              summary: "NEXTAUTH_URL or the app origin is missing or not a valid URL.",
+              operatorAction: "Set NEXTAUTH_URL and APP_SITE_URL explicitly in deployed environments.",
+            },
+        marketingOrigin
+          ? {
+              id: "marketing-origin",
+              label: "Canonical marketing origin",
+              level: "pass",
+              summary: "MARKETING_SITE_URL is configured.",
+              details: [`Marketing origin: ${marketingOrigin}`],
+            }
+          : {
+              id: "marketing-origin",
+              label: "Canonical marketing origin",
+              level: "warning",
+              summary: "MARKETING_SITE_URL is missing or not a valid URL.",
+              operatorAction: "Set MARKETING_SITE_URL explicitly so marketing canonicals and sitemap output stay stable.",
             },
         passwordAuthEnabled
           ? smtpConfigured

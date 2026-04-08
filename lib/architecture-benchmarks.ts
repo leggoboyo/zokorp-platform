@@ -20,7 +20,8 @@ export const ARCHITECTURE_BENCHMARK_LIBRARY: ProviderBenchmarkLibrary[] = [
   {
     provider: "aws",
     providerLabel: "AWS",
-    description: "Aggregate benchmarks across AWS diagrams submitted to ZoKorp Architecture Diagram Reviewer.",
+    description:
+      "Aggregate benchmarks across AWS diagrams submitted to ZoKorp Architecture Diagram Reviewer. AWS is the live supported review provider today.",
     patterns: [
       {
         slug: "3-tier-web",
@@ -73,7 +74,8 @@ export const ARCHITECTURE_BENCHMARK_LIBRARY: ProviderBenchmarkLibrary[] = [
   {
     provider: "azure",
     providerLabel: "Azure",
-    description: "Aggregate benchmarks across Azure diagrams submitted to ZoKorp Architecture Diagram Reviewer.",
+    description:
+      "Historical Azure benchmark archive and research digest. These pages do not mean the live reviewer currently supports Azure submissions.",
     patterns: [
       {
         slug: "3-tier-web",
@@ -116,7 +118,8 @@ export const ARCHITECTURE_BENCHMARK_LIBRARY: ProviderBenchmarkLibrary[] = [
   {
     provider: "gcp",
     providerLabel: "GCP",
-    description: "Aggregate benchmarks across GCP diagrams submitted to ZoKorp Architecture Diagram Reviewer.",
+    description:
+      "Historical GCP benchmark archive and research digest. These pages do not mean the live reviewer currently supports GCP submissions.",
     patterns: [
       {
         slug: "3-tier-web",
@@ -192,6 +195,11 @@ export function getBenchmarkFaqItems() {
       question: "Where do I get my detailed findings?",
       answer:
         "Detailed findings and estimate outputs are delivered by email only and are not rendered in the web UI.",
+    },
+    {
+      question: "Do benchmark pages mean the live reviewer supports every provider shown here?",
+      answer:
+        "No. The benchmark library can include historical or research-backed provider material before live submission support is released. The current launch reviewer remains AWS-only.",
     },
   ] as const;
 }

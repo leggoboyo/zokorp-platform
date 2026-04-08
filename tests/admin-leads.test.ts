@@ -133,6 +133,44 @@ describe("admin leads helper", () => {
     expect(result.entries[0]?.signals).toContain("test-domain");
   });
 
+  it("treats personal-email leads as flagged instead of qualified business contacts", async () => {
+    userFindManyMock.mockResolvedValue([]);
+    leadFindManyMock.mockResolvedValue([
+      {
+        email: "founderfollowup@gmail.com",
+        name: "Jordan Rivera",
+        companyName: "Rivera Ventures",
+        createdAt: new Date("2026-03-15T00:00:00.000Z"),
+        lastSeenAt: new Date("2026-03-15T01:00:00.000Z"),
+        userId: null,
+        user: null,
+        events: [
+          {
+            source: "architecture-review",
+            deliveryState: "unknown",
+            crmSyncState: "unknown",
+            saveForFollowUp: false,
+            allowCrmFollowUp: false,
+            scoreBand: null,
+            estimateBand: null,
+            recommendedEngagement: null,
+            createdAt: new Date("2026-03-15T01:00:00.000Z"),
+            sourceRecordKey: null,
+          },
+        ],
+      },
+    ]);
+    leadLogFindManyMock.mockResolvedValue([]);
+
+    const result = await getLeadDirectory({ audience: "flagged" });
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0]?.email).toBe("founderfollowup@gmail.com");
+    expect(result.entries[0]?.isLikelyHuman).toBe(false);
+    expect(result.entries[0]?.signals).toContain("non-business-email");
+    expect(result.entries[0]?.nextAction).toContain("Business-email policy flagged");
+  });
+
   it("can filter to leads needing operational attention", async () => {
     const result = await getLeadDirectory({ ops: "needs-attention", audience: "all" });
 

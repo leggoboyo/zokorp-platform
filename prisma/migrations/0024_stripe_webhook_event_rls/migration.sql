@@ -1,0 +1,1 @@
+ALTER TABLE "public"."StripeWebhookEvent" ENABLE ROW LEVEL SECURITY;

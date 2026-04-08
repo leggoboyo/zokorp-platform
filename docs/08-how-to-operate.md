@@ -42,28 +42,61 @@
 - Command:
   - `npm run journey:audit:production`
 - What it verifies:
-  - home page renders on the canonical site
-  - top navigation reaches `Software`, `Services`, `Case Studies`, `Contact Us`, and `About`
-  - `/software` shows only the 3 launch products
-  - retired public products stay absent from the catalog
-  - each launch product page renders its expected public access state
+  - the configured marketing host serves the current public pages
+  - the configured app host serves product and auth routes without breaking the split
+  - public product pages render their expected unsigned state
+  - authenticated product pages render their expected signed-in state when creds are provided
 - Optional authenticated checks:
   - if `.env.audit.local` exists, the audit loads `JOURNEY_EMAIL` and `JOURNEY_PASSWORD` automatically
   - you can still override with shell env vars if you want to use a different account
-  - set `JOURNEY_EXPECT_SUBSCRIPTION=true` if that account should already have MLOps access
   - with those env vars present, the audit also signs in, checks `/account`, and validates authenticated product states
 - Optional runtime controls:
-  - `JOURNEY_BASE_URL` to point at a preview or non-production target
+  - `JOURNEY_MARKETING_BASE_URL` to target a preview or local marketing host
+  - `JOURNEY_APP_BASE_URL` to target a preview or local app host
+  - `JOURNEY_BASE_URL` remains a compatibility fallback when both hosts are the same
   - `JOURNEY_HEADED=true` to watch the browser run
   - `JOURNEY_BROWSER_CHANNEL=chrome` to prefer local Chrome, with bundled Chromium fallback
+  - `JOURNEY_TIMEOUT_MS=30000` to tune browser waits
 - Output:
-  - screenshots and `summary.json` under `output/playwright/customer-journey-audit/`
+  - `summary.json`, `console.log`, `network.json`, and screenshots under `output/playwright/customer-journey-audit/`
   - non-zero exit code if any checked browser step fails
 - Important:
   - the synthetic audit account is enough for sign-in and protected-page checks
+  - if the marketing host still redirects to `app`, the marketing-browser steps are marked `blocked` instead of `failed`
   - if you later want to verify email delivery end to end, use a real monitored inbox alias instead of the synthetic `.test` account
 
-## 2c) Run the soft-launch operational proof from CLI
+## 2c) Run the guided full GUI walkthrough from CLI
+- Command:
+  - `npm run journey:walkthrough`
+  - `npm run journey:walkthrough:low-risk`
+- What it verifies:
+  - the same host preflight as the standard browser audit
+  - desktop and mobile marketing browsing
+  - public app browsing on `app.zokorp.com`
+  - manual or credential-driven app login
+  - low-risk synthetic service-request submission when `JOURNEY_MUTATION_MODE=low-risk`
+  - Zoho CRM lead verification through the GUI after manual Zoho login
+  - browser artifacts including trace, console log, network failures, JSON summary, Markdown summary, and screenshots
+- Required runtime controls:
+  - `JOURNEY_MUTATION_MODE=readonly|low-risk|full`
+  - default is `readonly`
+  - use `low-risk` for a synthetic service request without paid checkout
+- Optional runtime controls:
+  - `JOURNEY_SERVICE_REQUEST_EMAIL`, `JOURNEY_SERVICE_REQUEST_NAME`, and `JOURNEY_SERVICE_REQUEST_COMPANY` for unsigned request coverage
+  - `JOURNEY_SIGNUP_EMAIL`, `JOURNEY_SIGNUP_PASSWORD`, and `JOURNEY_SIGNUP_NAME` for disposable signup coverage in non-readonly runs
+  - `JOURNEY_ZOHO_LOGIN_URL` if you need a non-default Zoho CRM login entry
+- Output:
+  - `output/playwright/full-gui-walkthrough/summary.json`
+  - `output/playwright/full-gui-walkthrough/summary.md`
+  - `output/playwright/full-gui-walkthrough/trace.zip`
+  - `output/playwright/full-gui-walkthrough/console.log`
+  - `output/playwright/full-gui-walkthrough/network.json`
+  - screenshots in the same folder and auth state under `output/playwright/.auth/`
+- Important:
+  - this walkthrough stays free by default: no provider APIs, no browser cloud, no paid checkout completion, no live Calendly booking creation
+  - manual login prompts pause cleanly for app or Zoho when credentials are not provided
+
+## 2d) Run the soft-launch operational proof from CLI
 - Command:
   - `npm run ops:proof:production`
 - What it verifies:
@@ -81,7 +114,7 @@
   - it is intended as a repeatable operator proof, not a marketing demo
   - add `CALENDLY_SYNC_SECRET` to `.env.audit.local` if you want the proof runner to verify the live internal ingest route directly instead of falling back when provider-secret export is unavailable
 
-## 2d) Run the full soft-launch audit bundle
+## 2e) Run the full soft-launch audit bundle
 - Command:
   - `npm run soft-launch:audit:production`
 - What it does:
@@ -90,7 +123,7 @@
   - runs the non-admin validator + booked-call operational proof
   - waits briefly before the operational proof and retries that proof automatically if production database pool pressure causes a transient failure
 
-## 2e) Current scheduled-job and secret dependency map
+## 2f) Current scheduled-job and secret dependency map
 - Architecture review queue drain:
   - workflow: `.github/workflows/architecture-review-worker.yml`
   - requires:
@@ -119,6 +152,8 @@
     - `CRON_SECRET`
 - Operator note:
   - `/admin/operations` is now the first stop for retrying Zoho lead sync, retrying estimate sync, checking booked-call linkage, reviewing quote-follow-up attention, and retrying failed architecture-review email delivery from the outbox.
+  - `/admin/operations` now also includes automation-health signals for the architecture queue worker, architecture follow-up sender, retention sweep, Zoho lead sync, and estimate-companion sync so stale or failed scheduled jobs are visible without querying raw logs.
+  - `/admin/billing` is now the first stop for Stripe checkout fulfillment issues, recent webhook processing history, refunds/disputes, and entitlement or credit-balance reconciliation signals.
 
 ## 3) Add or update Stripe prices
 - Open `/admin/prices` as an admin user.
@@ -149,7 +184,16 @@
     - `billing.webhook_checkout_skipped`
     - `billing.subscription_sync_applied`
     - `billing.webhook_failed`
-  - If Stripe billing state looks wrong, inspect those audit actions before retrying webhooks or changing entitlements manually.
+  - Persisted Stripe event history is now recorded in the `StripeWebhookEvent` table and surfaced in `/admin/billing`, including:
+    - latest webhook receipt time
+    - recent event processing state
+    - linked checkout/session/customer/subscription/invoice/dispute identifiers
+    - failure details when processing fails
+  - `/admin/billing` also surfaces billing integrity signals such as:
+    - active entitlements missing Stripe customer bindings
+    - active subscription entitlements missing Stripe subscription identifiers
+    - credit entitlements whose remaining uses do not match active wallet totals
+  - If Stripe billing state looks wrong, inspect `/admin/billing` first, then the related audit actions, before retrying webhooks or changing entitlements manually.
 
 ## 6) Entitlement operations
 - One-time credit products:

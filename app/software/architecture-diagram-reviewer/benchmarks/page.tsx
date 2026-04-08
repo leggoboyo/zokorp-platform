@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ARCHITECTURE_BENCHMARK_LIBRARY, getBenchmarkFaqItems } from "@/lib/architecture-benchmarks";
-import { buildPageMetadata, getSiteUrl } from "@/lib/site";
+import { buildMarketingPageMetadata, getMarketingSiteUrl } from "@/lib/site";
 
-export const metadata = buildPageMetadata({
+export const metadata = buildMarketingPageMetadata({
   title: "Architecture Diagram Benchmarks",
   description:
     "Provider-level architecture benchmark ranges, common deductions, and remediation snippets from anonymized ZoKorp Architecture Diagram Reviewer submissions.",
@@ -64,6 +64,9 @@ export default function ArchitectureBenchmarkLibraryPage() {
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200 md:text-base">
           Compare common architecture patterns by provider, see recurring deductions, and identify remediation priorities
           before your next review.
+        </p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-200/90">
+          The live Architecture Diagram Reviewer is AWS-only today. Azure and GCP pages in this library are benchmark and research material, not active submission support.
         </p>
         <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-100">
           <Badge className="border-white/30 bg-white/10 text-white">Anonymized aggregates</Badge>
@@ -140,7 +143,7 @@ export default function ArchitectureBenchmarkLibraryPage() {
             "@context": "https://schema.org",
             "@type": "CollectionPage",
             name: "Architecture Diagram Benchmarks",
-            url: `${getSiteUrl()}/software/architecture-diagram-reviewer/benchmarks`,
+            url: `${getMarketingSiteUrl()}/software/architecture-diagram-reviewer/benchmarks`,
           }),
         }}
       />

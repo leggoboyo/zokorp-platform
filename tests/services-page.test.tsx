@@ -52,7 +52,8 @@ describe("ServicesPage", () => {
     expect(html).toContain("Signed in as");
     expect(html).toContain("consulting@zokorp.com");
     expect(html).toContain("Initial response within one business day");
-    expect(html).toContain("No blind pay-now consulting checkout");
+    expect(html).toContain("Visible consulting pricing without pretending every job is identical.");
+    expect(html).toContain("https://app.zokorp.com/register");
     expect(html).not.toContain("Sign in to submit a request and track milestones from your account.");
   });
 });

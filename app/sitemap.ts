@@ -3,12 +3,11 @@ import type { MetadataRoute } from "next";
 import { getMediaArticles } from "@/data/media-articles";
 import { ARCHITECTURE_BENCHMARK_LIBRARY } from "@/lib/architecture-benchmarks";
 import { CatalogUnavailableError, getSoftwareCatalog } from "@/lib/catalog";
-import { getSiteUrl } from "@/lib/site";
+import { getMarketingSiteUrl } from "@/lib/site";
 
 const staticRoutes = [
   "/",
   "/about",
-  "/case-studies",
   "/contact",
   "/media",
   "/pricing",
@@ -24,7 +23,7 @@ const staticRoutes = [
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = getSiteUrl();
+  const baseUrl = getMarketingSiteUrl();
   const now = new Date();
   let products: Awaited<ReturnType<typeof getSoftwareCatalog>> = [];
 

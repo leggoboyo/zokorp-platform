@@ -4,7 +4,7 @@ import localFont from "next/font/local";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { getSiteUrl, siteConfig } from "@/lib/site";
+import { getMarketingSiteUrl, siteConfig } from "@/lib/site";
 
 import "./globals.css";
 
@@ -85,28 +85,24 @@ const jetBrainsMono = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(getSiteUrl()),
+  metadataBase: new URL(getMarketingSiteUrl()),
   title: {
-    default: siteConfig.platformName,
-    template: `%s | ${siteConfig.platformName}`,
+    default: siteConfig.name,
+    template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  applicationName: siteConfig.platformName,
+  applicationName: siteConfig.name,
   referrer: "strict-origin-when-cross-origin",
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
-    title: siteConfig.platformName,
+    title: siteConfig.name,
     description: siteConfig.description,
-    siteName: siteConfig.platformName,
-    url: getSiteUrl(),
+    siteName: siteConfig.name,
     type: "website",
     images: ["/opengraph-image"],
   },
   twitter: {
     card: "summary_large_image",
-    title: siteConfig.platformName,
+    title: siteConfig.name,
     description: siteConfig.description,
     images: ["/twitter-image"],
   },

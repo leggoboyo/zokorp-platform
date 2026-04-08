@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
 import { getMediaArticleBySlug, getMediaArticles } from "@/data/media-articles";
-import { buildPageMetadata } from "@/lib/site";
+import { buildMarketingPageMetadata } from "@/lib/site";
 
 export async function generateStaticParams() {
   return getMediaArticles().map((article) => ({ slug: article.slug }));
@@ -19,14 +19,14 @@ export async function generateMetadata({
   const article = getMediaArticleBySlug(slug);
 
   if (!article) {
-    return buildPageMetadata({
-      title: "Media",
-      description: "Guides, operating notes, and platform perspectives from ZoKorp.",
+    return buildMarketingPageMetadata({
+      title: "Insights",
+      description: "Guides and operating notes from ZoKorp.",
       path: "/media",
     });
   }
 
-  return buildPageMetadata({
+  return buildMarketingPageMetadata({
     title: article.title,
     description: article.description,
     path: `/media/${article.slug}`,
