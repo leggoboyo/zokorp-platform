@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   retryArchitectureReviewEmailOutboxAction,
   triggerEstimateCompanionSyncNowAction,
+  triggerServiceRequestZohoSyncNowAction,
   triggerZohoLeadSyncNowAction,
 } from "@/app/admin/actions";
 import { AdminNav } from "@/components/admin/admin-nav";
@@ -28,7 +29,7 @@ export default async function AdminOperationsPage() {
     {
       key: "crm-sync",
       title: "CRM sync attention",
-      description: "Architecture-review lead syncs that are pending or failed against Zoho.",
+      description: "Architecture-review lead syncs and service-request CRM updates that are pending or failed against Zoho.",
       entries: snapshot.crmSyncIssues,
     },
     {
@@ -131,11 +132,18 @@ export default async function AdminOperationsPage() {
                     </Link>
                   ) : null}
                   {section.key === "crm-sync" ? (
-                    <form action={triggerZohoLeadSyncNowAction}>
-                      <Button type="submit" variant="secondary" size="sm">
-                        Run Zoho sync now
-                      </Button>
-                    </form>
+                    <>
+                      <form action={triggerZohoLeadSyncNowAction}>
+                        <Button type="submit" variant="secondary" size="sm">
+                          Run lead sync now
+                        </Button>
+                      </form>
+                      <form action={triggerServiceRequestZohoSyncNowAction}>
+                        <Button type="submit" variant="secondary" size="sm">
+                          Run service-request sync
+                        </Button>
+                      </form>
+                    </>
                   ) : null}
                   {section.key === "estimate-sync" ? (
                     <form action={triggerEstimateCompanionSyncNowAction}>

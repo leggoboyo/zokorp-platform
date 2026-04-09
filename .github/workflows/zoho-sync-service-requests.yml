@@ -1,0 +1,23 @@
+name: Sync Service Requests To Zoho
+
+on:
+  schedule:
+    - cron: "11,26,41,56 * * * *"
+  workflow_dispatch:
+
+jobs:
+  sync-service-requests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Zoho service-request sync endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Missing CRON_SECRET"
+            exit 1
+          fi
+
+          curl --fail --show-error --silent \
+            "https://app.zokorp.com/api/internal/cron/zoho-sync-service-requests" \
+            -H "x-cron-secret: $CRON_SECRET"

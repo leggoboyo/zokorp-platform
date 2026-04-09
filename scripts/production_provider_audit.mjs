@@ -42,6 +42,10 @@ const schedulerWorkflows = [
     label: "Zoho estimate companion sync",
   },
   {
+    workflow: "zoho-sync-service-requests.yml",
+    label: "Zoho service-request sync",
+  },
+  {
     workflow: "uptime-checks.yml",
     label: "Uptime checks",
   },

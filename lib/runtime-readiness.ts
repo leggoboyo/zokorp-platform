@@ -580,6 +580,8 @@ export function buildRuntimeReadinessReport(env: RuntimeEnv = process.env): Runt
             "Architecture review follow-ups -> ARCH_REVIEW_FOLLOWUP_URL + ARCH_REVIEW_FOLLOWUP_SECRET",
             "Calendly booking sync -> CALENDLY_PERSONAL_ACCESS_TOKEN + CALENDLY_SYNC_INGEST_URL + CALENDLY_SYNC_SECRET",
             "Zoho lead sync -> ZOHO_SYNC_URL + ZOHO_SYNC_SECRET",
+            "Zoho service-request sync -> CRON_SECRET",
+            "Zoho estimate companion sync -> ZOHO_ESTIMATE_COMPANION_SYNC_URL + CRON_SECRET",
             "Uptime checks -> no secrets (uses the public marketing/app URLs and /api/health)",
           ],
           operatorAction: "Verify repo-level secrets and recent successful workflow runs in GitHub Actions before declaring scheduler health.",

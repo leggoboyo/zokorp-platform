@@ -25,7 +25,7 @@
   - `/api/health` returns `status: ok` with a healthy database check on both hosts
   - Stripe webhook endpoint is enabled and pointed at `/api/stripe/webhook`
   - Zoho Invoice refresh-token flow works and can read the configured organization
-  - the latest GitHub scheduled runs for queue drain, follow-ups, Calendly sync, Zoho lead sync, estimate sync, and uptime checks all succeeded
+  - the latest GitHub scheduled runs for queue drain, follow-ups, Calendly sync, Zoho lead sync, service-request CRM sync, estimate sync, and uptime checks all succeeded
 - Prerequisites on the operator machine:
   - Vercel CLI is authenticated and linked to `leggoboyos-projects/zokorp-web`
   - GitHub CLI is authenticated with access to `leggoboyo/zokorp-platform`
@@ -206,6 +206,12 @@
   - requires:
     - `ZOHO_ESTIMATE_COMPANION_SYNC_URL`
     - `CRON_SECRET`
+- Zoho service-request CRM sync:
+  - workflow: `.github/workflows/zoho-sync-service-requests.yml`
+  - requires:
+    - `CRON_SECRET`
+  - uses:
+    - `https://app.zokorp.com/api/internal/cron/zoho-sync-service-requests`
 - Uptime checks:
   - workflow: `.github/workflows/uptime-checks.yml`
   - requires:
@@ -216,8 +222,9 @@
     - `https://app.zokorp.com`
     - public `/api/health` routes
 - Operator note:
-  - `/admin/operations` is now the first stop for retrying Zoho lead sync, retrying estimate sync, checking booked-call linkage, reviewing quote-follow-up attention, and retrying failed architecture-review email delivery from the outbox.
-  - `/admin/operations` now also includes automation-health signals for the architecture queue worker, architecture follow-up sender, retention sweep, Zoho lead sync, and estimate-companion sync so stale or failed scheduled jobs are visible without querying raw logs.
+  - `/admin/operations` is now the first stop for retrying Zoho lead sync, retrying service-request CRM sync, retrying estimate sync, checking booked-call linkage, reviewing quote-follow-up attention, and retrying failed architecture-review email delivery from the outbox.
+  - `/admin/operations` now also includes automation-health signals for the architecture queue worker, architecture follow-up sender, retention sweep, Zoho lead sync, service-request CRM sync, and estimate-companion sync so stale or failed scheduled jobs are visible without querying raw logs.
+  - `/admin/service-requests` now shows whether each request is pending CRM sync, successfully synced, or failed, and updating a request status/note re-queues that request for CRM sync.
   - `/admin/operations` now also surfaces recent internal failures and CSP/security signals so caught runtime issues no longer stay in platform logs only.
   - `/admin/billing` is now the first stop for Stripe checkout fulfillment issues, recent webhook processing history, refunds/disputes, and entitlement or credit-balance reconciliation signals.
 

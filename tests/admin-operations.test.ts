@@ -168,6 +168,12 @@ describe("admin operations snapshot", () => {
           createdAt: new Date("2026-04-04T21:10:00.000Z"),
           metadataJson: { scanned: 5, updated: 1, failed: 0 },
         },
+        {
+          id: "service_request_sync_ok",
+          action: "internal.zoho_sync_service_requests.run",
+          createdAt: new Date("2026-04-04T21:50:00.000Z"),
+          metadataJson: { attempted: 2, synced: 2, failed: 0 },
+        },
       ]);
     leadInteractionFindManyMock.mockResolvedValueOnce([]);
     leadInteractionFindManyMock.mockResolvedValueOnce([]);
@@ -179,6 +185,7 @@ describe("admin operations snapshot", () => {
       ["Zoho lead sync", "failed"],
       ["Architecture follow-ups", "stale"],
       ["Architecture queue worker", "healthy"],
+      ["Service-request CRM sync", "healthy"],
       ["Estimate companion sync", "healthy"],
       ["Retention sweep", "healthy"],
     ]);
@@ -243,5 +250,41 @@ describe("admin operations snapshot", () => {
       summary: "script-src · https://example.com/script.js · https://www.zokorp.com/",
       href: "/admin/readiness",
     });
+  });
+
+  it("includes service-request CRM sync items in CRM attention", async () => {
+    estimateCompanionFindManyMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    serviceRequestFindManyMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "service_request_1",
+          trackingCode: "SR-260409-ABCDE",
+          requesterEmail: "founder@customerco.com",
+          requesterName: "Customer Founder",
+          requesterCompanyName: "CustomerCo",
+          status: "TRIAGED",
+          title: "Architecture remediation follow-through",
+          updatedAt: new Date("2026-04-04T22:00:00.000Z"),
+          zohoSyncNeedsUpdate: true,
+          zohoSyncError: null,
+          zohoRecordId: null,
+          syncedToZohoAt: null,
+          latestNote: "Waiting for quote scope review",
+          user: null,
+        },
+      ]);
+
+    const snapshot = await getAdminOperationsSnapshot();
+
+    expect(snapshot.stats.crmNeedsAttention).toBe(1);
+    expect(snapshot.crmSyncIssues[0]).toMatchObject({
+      title: "Service request CRM sync",
+      statusLabel: "pending",
+      href: "/admin/service-requests",
+    });
+    expect(snapshot.crmSyncIssues[0].summary).toContain("SR-260409-ABCDE");
   });
 });

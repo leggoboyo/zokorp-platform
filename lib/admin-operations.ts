@@ -74,6 +74,19 @@ const AUTOMATION_HEALTH_CONFIGS = [
     ],
     href: "/admin/billing",
   },
+  {
+    key: "service-request-crm-sync",
+    title: "Service-request CRM sync",
+    cadenceLabel: "Expected every 15 minutes or on demand",
+    staleAfterMs: 45 * 60 * 1000,
+    successActions: ["internal.zoho_sync_service_requests.run"],
+    warningActions: ["internal.zoho_sync_service_requests.not_ready"],
+    failureActions: [
+      "internal.zoho_sync_service_requests.failed",
+      "internal.cron_zoho_sync_service_requests.not_configured",
+    ],
+    href: "/admin/service-requests",
+  },
 ] as const;
 
 const AUTOMATION_HEALTH_ACTIONS = [
@@ -271,7 +284,7 @@ function formatRelativeAge(date: Date) {
 export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnapshot> {
   const staleThreshold = new Date(Date.now() - FOLLOW_UP_ATTENTION_WINDOW_MS);
 
-  const [emailOutboxes, crmLeads, estimateCompanions, toolRuns, legacyToolRunLogs, bookedCalls, flaggedBookedCallLogs, automationHealthLogs, internalFailureLogs, securitySignalLogs, staleServiceRequests] = await Promise.all([
+  const [emailOutboxes, crmLeads, estimateCompanions, toolRuns, legacyToolRunLogs, bookedCalls, flaggedBookedCallLogs, automationHealthLogs, internalFailureLogs, securitySignalLogs, staleServiceRequests, serviceRequestCrmAttention] = await Promise.all([
     db.architectureReviewEmailOutbox.findMany({
       where: {
         status: {
@@ -429,6 +442,22 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
       },
       orderBy: {
         updatedAt: "asc",
+      },
+      take: 20,
+      include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
+      },
+    }),
+    db.serviceRequest.findMany({
+      where: {
+        OR: [{ zohoSyncNeedsUpdate: true }, { zohoSyncError: { not: null } }],
+      },
+      orderBy: {
+        updatedAt: "desc",
       },
       take: 20,
       include: {
@@ -773,7 +802,7 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
     stats: {
       pendingArchitectureEmail: emailOutboxes.filter((item) => item.status === "pending").length,
       failedArchitectureEmail: emailOutboxes.filter((item) => item.status === "failed").length,
-      crmNeedsAttention: crmLeads.length,
+      crmNeedsAttention: crmLeads.length + serviceRequestCrmAttention.length,
       failedQuoteCompanions: estimateCompanions.length,
       recentValidatorRuns: toolRunSignals.filter((item) => item.href === "/software/zokorp-validator").length,
       recentMlopsRuns: toolRunSignals.filter((item) => item.href === "/software/mlops-foundation-platform").length,
@@ -795,20 +824,37 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
       ),
       href: "/admin/leads?source=architecture-review&ops=needs-attention",
     })),
-    crmSyncIssues: crmLeads.map((item) => ({
-      id: item.id,
-      createdAt: item.createdAt,
-      title: "CRM follow-up sync",
-      statusLabel: item.zohoSyncError ? "failed" : "pending",
-      statusTone: item.zohoSyncError ? "danger" : "warning",
-      summary: `${item.userEmail} · Score ${item.overallScore}/100 · ${item.leadStage}`,
-      details: [
-        item.analysisConfidence ? `${item.analysisConfidence} confidence` : null,
-        item.quoteTier ? item.quoteTier : null,
-        item.zohoSyncError ? item.zohoSyncError : "Waiting for Zoho sync update.",
-      ].filter((value): value is string => Boolean(value)),
-      href: "/admin/leads?source=architecture-review&ops=needs-attention",
-    })),
+    crmSyncIssues: [
+      ...crmLeads.map((item) => ({
+        id: item.id,
+        createdAt: item.createdAt,
+        title: "CRM follow-up sync",
+        statusLabel: item.zohoSyncError ? "failed" : "pending",
+        statusTone: item.zohoSyncError ? ("danger" as const) : ("warning" as const),
+        summary: `${item.userEmail} · Score ${item.overallScore}/100 · ${item.leadStage}`,
+        details: [
+          item.analysisConfidence ? `${item.analysisConfidence} confidence` : null,
+          item.quoteTier ? item.quoteTier : null,
+          item.zohoSyncError ? item.zohoSyncError : "Waiting for Zoho sync update.",
+        ].filter((value): value is string => Boolean(value)),
+        href: "/admin/leads?source=architecture-review&ops=needs-attention",
+      }) satisfies OperationsIssue),
+      ...serviceRequestCrmAttention.map((item) => ({
+        id: item.id,
+        createdAt: item.updatedAt,
+        title: "Service request CRM sync",
+        statusLabel: item.zohoSyncError ? "failed" : "pending",
+        statusTone: item.zohoSyncError ? ("danger" as const) : ("warning" as const),
+        summary: `${item.trackingCode} · ${resolveServiceRequestOwnerLabel(item)} · ${item.status}`,
+        details: [
+          item.title,
+          item.zohoRecordId ? `Zoho record ${item.zohoRecordId}` : null,
+          item.syncedToZohoAt ? `Last synced ${item.syncedToZohoAt.toLocaleString()}` : null,
+          item.zohoSyncError ? item.zohoSyncError : "Waiting for service-request CRM sync.",
+        ].filter((value): value is string => Boolean(value)),
+        href: "/admin/service-requests",
+      }) satisfies OperationsIssue),
+    ].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime()),
     estimateCompanionIssues: estimateCompanions.map((item) => ({
       id: item.id,
       createdAt: item.updatedAt,

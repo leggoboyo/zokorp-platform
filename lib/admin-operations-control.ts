@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { runEstimateCompanionSync } from "@/lib/estimate-companion-sync";
 import { sendToolResultEmail } from "@/lib/architecture-review/sender";
+import { runZohoServiceRequestSync } from "@/lib/zoho-service-request-sync";
 import { runZohoLeadSync } from "@/lib/zoho-sync-leads";
 
 export async function retryArchitectureReviewEmailOutbox(input: { outboxId: string }) {
@@ -95,4 +96,8 @@ export async function triggerZohoLeadSyncNow() {
 
 export async function triggerEstimateCompanionSyncNow() {
   return runEstimateCompanionSync();
+}
+
+export async function triggerServiceRequestZohoSyncNow() {
+  return runZohoServiceRequestSync();
 }

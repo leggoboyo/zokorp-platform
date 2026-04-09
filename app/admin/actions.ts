@@ -14,6 +14,7 @@ import {
 import {
   retryArchitectureReviewEmailOutbox,
   triggerEstimateCompanionSyncNow,
+  triggerServiceRequestZohoSyncNow,
   triggerZohoLeadSyncNow,
 } from "@/lib/admin-operations-control";
 import { db } from "@/lib/db";
@@ -207,6 +208,8 @@ export async function updateServiceRequestStatusAction(formData: FormData) {
     data: {
       status: parsed.data.status,
       latestNote: parsed.data.latestNote || null,
+      zohoSyncNeedsUpdate: true,
+      zohoSyncError: null,
     },
   });
 
@@ -284,5 +287,11 @@ export async function triggerZohoLeadSyncNowAction() {
 export async function triggerEstimateCompanionSyncNowAction() {
   await requireAdmin();
   await triggerEstimateCompanionSyncNow();
+  revalidateAdminViews();
+}
+
+export async function triggerServiceRequestZohoSyncNowAction() {
+  await requireAdmin();
+  await triggerServiceRequestZohoSyncNow();
   revalidateAdminViews();
 }

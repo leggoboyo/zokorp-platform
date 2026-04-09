@@ -9,7 +9,6 @@ const {
   createServiceRequestMock,
   auditCreateMock,
   upsertLeadMock,
-  upsertZohoLeadMock,
   isSchemaDriftErrorMock,
   isTransientDatabaseConnectionErrorMock,
 } = vi.hoisted(() => ({
@@ -21,7 +20,6 @@ const {
   createServiceRequestMock: vi.fn(),
   auditCreateMock: vi.fn(),
   upsertLeadMock: vi.fn(),
-  upsertZohoLeadMock: vi.fn(),
   isSchemaDriftErrorMock: vi.fn(),
   isTransientDatabaseConnectionErrorMock: vi.fn(),
 }));
@@ -46,10 +44,6 @@ vi.mock("@/lib/service-requests", () => ({
 
 vi.mock("@/lib/privacy-leads", () => ({
   upsertLead: upsertLeadMock,
-}));
-
-vi.mock("@/lib/zoho-crm", () => ({
-  upsertZohoLead: upsertZohoLeadMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -96,11 +90,6 @@ describe("service requests route", () => {
     });
     auditCreateMock.mockRejectedValue(new Error("audit unavailable"));
     upsertLeadMock.mockResolvedValue(undefined);
-    upsertZohoLeadMock.mockResolvedValue({
-      status: "success",
-      recordId: "zoho_123",
-      error: null,
-    });
     isSchemaDriftErrorMock.mockReturnValue(false);
     isTransientDatabaseConnectionErrorMock.mockReturnValue(false);
   });
@@ -145,15 +134,19 @@ describe("service requests route", () => {
         type: "CONSULTATION",
       }),
     );
-    expect(upsertZohoLeadMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        email: "consulting@zokorp.com",
-        fullName: "Zohaib Khawaja",
-        leadSource: "ZoKorp Service Request",
-      }),
-    );
     expect(upsertLeadMock).not.toHaveBeenCalled();
     expect(auditCreateMock).toHaveBeenCalledTimes(2);
+    expect(auditCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "service.request_submitted",
+          metadataJson: expect.objectContaining({
+            trackingCode: "SR-260326-ABCDE",
+            zohoSyncQueued: true,
+          }),
+        }),
+      }),
+    );
 
     consoleErrorSpy.mockRestore();
   });
@@ -204,15 +197,18 @@ describe("service requests route", () => {
       name: "Customer Founder",
       companyName: "CustomerCo",
     });
-    expect(upsertZohoLeadMock).toHaveBeenCalledWith(
+    expect(auditCreateMock).toHaveBeenCalledTimes(1);
+    expect(auditCreateMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        email: "founder@customerco.com",
-        fullName: "Customer Founder",
-        companyName: "CustomerCo",
-        leadSource: "ZoKorp Service Request",
+        data: expect.objectContaining({
+          action: "service.request_submitted",
+          metadataJson: expect.objectContaining({
+            requesterSource: "public_form",
+            zohoSyncQueued: true,
+          }),
+        }),
       }),
     );
-    expect(auditCreateMock).toHaveBeenCalledTimes(1);
 
     consoleErrorSpy.mockRestore();
   });
@@ -302,15 +298,12 @@ describe("service requests route", () => {
     });
   });
 
-  it("still returns success when Zoho sync fails", async () => {
+  it("still returns success when public lead capture fails", async () => {
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     authMock.mockResolvedValue(null);
     userFindUniqueMock.mockResolvedValue(null);
     auditCreateMock.mockResolvedValue({});
-    upsertZohoLeadMock.mockResolvedValue({
-      status: "failed",
-      error: "ZOHO_CRM_CALL_FAILED:500",
-    });
+    upsertLeadMock.mockRejectedValue(new Error("lead capture unavailable"));
 
     const response = await POST(
       new Request("https://www.zokorp.com/api/services/requests", {
@@ -337,7 +330,7 @@ describe("service requests route", () => {
       status: "SUBMITTED",
       linkedToAccount: false,
     });
-    expect(upsertZohoLeadMock).toHaveBeenCalledTimes(1);
+    expect(upsertLeadMock).toHaveBeenCalledTimes(1);
 
     consoleErrorSpy.mockRestore();
   });
