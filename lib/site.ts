@@ -9,7 +9,8 @@ export const siteConfig = {
   name: "ZoKorp",
   platformName: "ZoKorp Platform",
   marketingUrl: process.env.MARKETING_SITE_URL ?? DEFAULT_MARKETING_SITE_URL,
-  appUrl: process.env.APP_SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_APP_SITE_URL,
+  appUrl: process.env.APP_SITE_URL ?? DEFAULT_APP_SITE_URL,
+  legacySiteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? process.env.APP_SITE_URL ?? DEFAULT_APP_SITE_URL,
   description:
     "Founder-led AWS architecture, AI/ML advisory, and software for teams that need practical delivery.",
   platformDescription:
@@ -17,6 +18,11 @@ export const siteConfig = {
   supportEmail: PUBLIC_LAUNCH_CONTACT.primaryEmail,
   location: PUBLIC_LAUNCH_CONTACT.location,
   linkedInUrl: PUBLIC_LAUNCH_CONTACT.linkedInUrl,
+};
+
+const APP_DEFAULT_ROBOTS: NonNullable<Metadata["robots"]> = {
+  index: false,
+  follow: false,
 };
 
 function normalizeOrigin(value: string, fallback: string) {
@@ -35,9 +41,12 @@ export function getAppSiteUrl() {
   return normalizeOrigin(siteConfig.appUrl, DEFAULT_APP_SITE_URL);
 }
 
-// Compatibility helper for existing app-oriented code paths.
+/**
+ * @deprecated Prefer getMarketingSiteUrl() or getAppSiteUrl() explicitly so
+ * route ownership stays obvious.
+ */
 export function getSiteUrl() {
-  return getAppSiteUrl();
+  return normalizeOrigin(siteConfig.legacySiteUrl, DEFAULT_APP_SITE_URL);
 }
 
 type MetadataInput = {
@@ -99,7 +108,7 @@ export function buildAppPageMetadata(input: MetadataInput): Metadata {
       description: input.description,
       images: ["/twitter-image"],
     },
-    robots: input.robots,
+    robots: input.robots ?? APP_DEFAULT_ROBOTS,
   };
 }
 

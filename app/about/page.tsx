@@ -95,18 +95,18 @@ export default function AboutPage() {
             </div>
           </div>
 
-          <Card className="overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
-            <div className="grid gap-0 md:grid-cols-[0.95fr_1.05fr]">
-              <div className="relative min-h-[280px] bg-[linear-gradient(180deg,#e7ebf4_0%,#cfd7e7_100%)]">
+          <Card tone="plain" className="overflow-hidden rounded-[1.85rem] border border-slate-200 bg-white shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+            <div className="grid gap-5 p-4 md:grid-cols-[0.8fr_1.2fr] md:p-5">
+              <div className="relative min-h-[340px] overflow-hidden rounded-[1.45rem] bg-[linear-gradient(180deg,#e2e8f4_0%,#cad4e5_100%)]">
                 <Image
                   src={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
                   alt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
                   fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 360px"
+                  className="object-cover object-[center_18%]"
+                  sizes="(max-width: 768px) 100vw, 320px"
                 />
               </div>
-              <div className="p-6">
+              <div className="flex flex-col justify-between py-2 pr-2">
                 <div className="flex items-center gap-3">
                   <Image
                     src={PUBLIC_LAUNCH_FOUNDER_PROFILE.logoPath}
@@ -124,10 +124,11 @@ export default function AboutPage() {
                   </div>
                 </div>
                 <p className="mt-3 text-sm font-medium text-slate-700">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
+                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{PUBLIC_LAUNCH_CONTACT.location}</p>
                 <p className="mt-4 text-sm leading-7 text-slate-600">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials.map((credential) => (
-                    <Badge key={credential} variant="secondary" className="bg-slate-100 text-slate-700">
+                    <Badge key={credential} variant="secondary" className="border border-slate-200 bg-slate-50 text-slate-700">
                       {credential}
                     </Badge>
                   ))}
@@ -146,7 +147,7 @@ export default function AboutPage() {
 
       <section className="grid gap-4 lg:grid-cols-3">
         {backgroundChapters.map((chapter) => (
-          <Card key={chapter.company} className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-none">
+          <Card tone="plain" key={chapter.company} className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-none">
             <CardHeader className="gap-2 px-0">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{chapter.company}</p>
               <h2 className="font-display text-2xl font-semibold text-slate-950">{chapter.role}</h2>
@@ -159,7 +160,7 @@ export default function AboutPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+        <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">How ZoKorp operates</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">Clear trust posture instead of inflated positioning.</h2>
@@ -174,7 +175,7 @@ export default function AboutPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
+        <Card tone="plain" className="rounded-[1.8rem] border border-slate-900 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Public proof posture</p>
             <h2 className="font-display text-3xl font-semibold">{PUBLIC_LAUNCH_PROOF_ASSET.title}</h2>
@@ -191,7 +192,7 @@ export default function AboutPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
+        <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Who this is for</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">Buyers who want real technical judgment before they buy more work.</h2>
@@ -205,7 +206,7 @@ export default function AboutPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+        <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Background summary</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">The company is small on purpose, not vague by accident.</h2>

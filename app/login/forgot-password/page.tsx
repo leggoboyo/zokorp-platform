@@ -5,6 +5,13 @@ import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
+import { buildAppPageMetadata } from "@/lib/site";
+
+export const metadata = buildAppPageMetadata({
+  title: "Forgot Password",
+  description: "Request a password reset link for your ZoKorp Platform business email.",
+  path: "/login/forgot-password",
+});
 
 export default function ForgotPasswordPage() {
   const passwordAuthEnabled = isPasswordAuthEnabled();

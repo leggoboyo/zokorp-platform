@@ -26,8 +26,10 @@ describe("email preferences helpers", () => {
       email: "owner@acmecloud.com",
     });
 
-    expect(links?.manageUrl).toContain("/email-preferences?token=");
-    expect(links?.marketingUnsubscribeUrl).toContain("/email-preferences/unsubscribe?token=");
+    expect(links?.manageUrl).toMatch(/^https:\/\/app\.zokorp\.com\/email-preferences\?token=/);
+    expect(links?.marketingUnsubscribeUrl).toMatch(
+      /^https:\/\/app\.zokorp\.com\/email-preferences\/unsubscribe\?token=/,
+    );
 
     const footer = buildEmailPreferenceFooter({
       manageUrl: links?.manageUrl ?? "",

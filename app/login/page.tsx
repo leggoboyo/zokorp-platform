@@ -7,6 +7,13 @@ import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
 import { sanitizeCallbackUrl } from "@/lib/callback-url";
+import { buildAppPageMetadata } from "@/lib/site";
+
+export const metadata = buildAppPageMetadata({
+  title: "Sign In",
+  description: "Sign in to your ZoKorp Platform account with your business email and password.",
+  path: "/login",
+});
 
 function getErrorMessage(error: string | undefined) {
   if (!error) {

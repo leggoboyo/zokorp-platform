@@ -26,10 +26,17 @@ import {
   SERVICE_REQUEST_STATUS_STYLE,
   SERVICE_REQUEST_TYPE_LABEL,
 } from "@/lib/service-requests";
+import { buildAppPageMetadata } from "@/lib/site";
 
 import { saveAccountEmailPreferencesAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = buildAppPageMetadata({
+  title: "Account",
+  description: "Manage purchases, credits, service requests, tool history, and email preferences in your ZoKorp account.",
+  path: "/account",
+});
 
 type TimelineBadgeVariant = "secondary" | "success" | "warning" | "danger" | "info" | "outline";
 

@@ -5,6 +5,13 @@ import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
+import { buildAppPageMetadata } from "@/lib/site";
+
+export const metadata = buildAppPageMetadata({
+  title: "Reset Password",
+  description: "Set a new ZoKorp Platform password from a secure reset link.",
+  path: "/login/reset-password",
+});
 
 export default async function ResetPasswordPage({
   searchParams,

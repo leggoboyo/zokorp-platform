@@ -3,13 +3,13 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getUserEmailPreferencesByToken } from "@/lib/email-preferences";
-import { buildPageMetadata } from "@/lib/site";
+import { buildAppPageMetadata } from "@/lib/site";
 
 import { saveEmailPreferencesByTokenAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = buildPageMetadata({
+export const metadata = buildAppPageMetadata({
   title: "Email Preferences",
   description: "Manage ZoKorp operational-result and future follow-up email preferences.",
   path: "/email-preferences",

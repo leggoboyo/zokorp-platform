@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
-import { getSiteUrl } from "@/lib/site";
+import { getAppSiteUrl } from "@/lib/site";
 
 export type UserEmailPreferenceSnapshot = {
   operationalResultEmails: boolean;
@@ -188,7 +188,7 @@ export function buildEmailPreferenceLinks(input: { userId: string | null | undef
     userId: input.userId,
     email,
   });
-  const siteUrl = getSiteUrl();
+  const siteUrl = getAppSiteUrl();
 
   return {
     manageUrl: `${siteUrl}/email-preferences?token=${encodeURIComponent(token)}`,

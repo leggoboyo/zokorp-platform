@@ -3,6 +3,13 @@ import { redirect } from "next/navigation";
 import { PortalButton } from "@/components/portal-button";
 import { Card } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
+import { buildAppPageMetadata } from "@/lib/site";
+
+export const metadata = buildAppPageMetadata({
+  title: "Billing and Subscriptions",
+  description: "Manage ZoKorp Platform subscriptions, invoices, receipts, and payment methods.",
+  path: "/account/billing",
+});
 
 export default async function BillingPage() {
   const session = await auth();

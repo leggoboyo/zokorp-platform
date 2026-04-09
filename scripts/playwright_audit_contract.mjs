@@ -66,21 +66,31 @@ export const APP_ROUTE_EXPECTATIONS = [
     path: "/login",
     label: "Login",
     marker: "Sign in",
+    expectedCanonicalHost: "app",
+    expectedRobotsHeader: "noindex, nofollow",
+    expectedRobotsContent: "noindex,nofollow",
   },
   {
     path: "/register",
     label: "Register",
     marker: "Create account",
+    expectedCanonicalHost: "app",
+    expectedRobotsHeader: "noindex, nofollow",
+    expectedRobotsContent: "noindex,nofollow",
   },
   {
     path: "/software",
     label: "Software hub",
     marker: "Software that supports the consulting model instead of pretending to replace it.",
+    expectedCanonicalHost: "marketing",
+    expectedRobotsHeader: "noindex, follow",
   },
   {
     path: "/software/architecture-diagram-reviewer/sample-report",
     label: "Architecture reviewer sample report",
     marker: "Architecture Diagram Reviewer Sample Report",
+    expectedCanonicalHost: "marketing",
+    expectedRobotsHeader: "noindex, follow",
   },
 ];
 
@@ -90,6 +100,8 @@ export const APP_PRODUCT_EXPECTATIONS = [
     label: "Architecture Diagram Reviewer",
     path: "/software/architecture-diagram-reviewer",
     titleMarker: "Architecture Diagram Reviewer",
+    expectedCanonicalHost: "marketing",
+    expectedRobotsHeader: "noindex, follow",
     publicMarkers: [
       "Verified business-email account required",
       "Sign in with your verified business email before running this diagnostic.",
@@ -103,6 +115,8 @@ export const APP_PRODUCT_EXPECTATIONS = [
     label: "ZoKorpValidator",
     path: "/software/zokorp-validator",
     titleMarker: "ZoKorpValidator",
+    expectedCanonicalHost: "marketing",
+    expectedRobotsHeader: "noindex, follow",
     publicMarkers: [
       "Sign in first",
       "Sign in first, then purchase the correct tier to unlock this tool.",
@@ -116,6 +130,8 @@ export const APP_PRODUCT_EXPECTATIONS = [
     label: "ZoKorp Forecasting Beta",
     path: "/software/mlops-foundation-platform",
     titleMarker: "ZoKorp Forecasting Beta",
+    expectedCanonicalHost: "marketing",
+    expectedRobotsHeader: "noindex, follow",
     publicMarkers: [
       "Forecasting beta only",
       "Subscription required",
@@ -124,6 +140,23 @@ export const APP_PRODUCT_EXPECTATIONS = [
       "Subscription required",
       "Active subscription",
     ],
+  },
+];
+
+export const APP_META_EXPECTATIONS = [
+  {
+    id: "app_email_preferences_canonical",
+    label: "Email preferences canonical",
+    path: "/email-preferences",
+    expectedCanonicalHost: "app",
+    expectedRobotsContent: "noindex,nofollow",
+  },
+  {
+    id: "app_access_denied_robots",
+    label: "Access denied robots meta",
+    path: "/access-denied",
+    expectedCanonicalHost: "app",
+    expectedRobotsContent: "noindex,nofollow",
   },
 ];
 

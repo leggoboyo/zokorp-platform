@@ -89,7 +89,7 @@ export function proxy(request: NextRequest) {
   const response = NextResponse.next();
 
   if (host === APP_HOST && isRenderablePage(pathname)) {
-    response.headers.set("x-robots-tag", "noindex, follow");
+    response.headers.set("x-robots-tag", isAppOnlyPage(pathname) ? "noindex, nofollow" : "noindex, follow");
   }
 
   return response;

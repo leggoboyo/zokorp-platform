@@ -3,6 +3,7 @@
 import {
   APP_PRODUCT_EXPECTATIONS,
   APP_ROUTE_EXPECTATIONS,
+  APP_META_EXPECTATIONS,
   LEGACY_REDIRECT_EXPECTATIONS,
   MARKETING_ROUTE_EXPECTATIONS,
 } from "./playwright_audit_contract.mjs";
@@ -11,10 +12,12 @@ import {
   buildTotals,
   createSettingsReader,
   followFetch,
+  isLocalHostUrl,
   loadAuditEnv,
   manualRedirectCheck,
   outcomeFromSteps,
   parseArgs,
+  resolveExpectedCanonicalBaseUrl,
   shouldUseCompatibilityBaseUrl,
   toAbsoluteUrl,
 } from "./playwright_audit_support.mjs";
@@ -48,15 +51,6 @@ function getErrorCode(error) {
 function sameOrigin(left, right) {
   try {
     return new URL(left).origin === new URL(right).origin;
-  } catch {
-    return false;
-  }
-}
-
-function isLocalHostUrl(value) {
-  try {
-    const { hostname } = new URL(value);
-    return hostname === "localhost" || hostname === "127.0.0.1";
   } catch {
     return false;
   }
@@ -109,6 +103,25 @@ function expectedProductionMarketingBlock(marketingBaseUrl, appBaseUrl) {
   } catch {
     return false;
   }
+}
+
+function normalizeCompact(value) {
+  return value.replaceAll(/\s+/g, "").toLowerCase();
+}
+
+function extractCanonicalUrl(body) {
+  const match = body.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
+  return match?.[1] ?? null;
+}
+
+function extractRobotsMetaContent(body) {
+  const match = body.match(/<meta[^>]+name=["']robots["'][^>]+content=["']([^"']+)["']/i);
+  return match?.[1] ?? null;
+}
+
+function canonicalUrlFor({ marketingBaseUrl, appBaseUrl }, path, canonicalHost) {
+  const targetBaseUrl = canonicalHost === "app" ? appBaseUrl : marketingBaseUrl;
+  return toAbsoluteUrl(path, targetBaseUrl);
 }
 
 async function probeControlHost(url, timeoutMs) {
@@ -192,11 +205,17 @@ async function runPageCheck({
   id,
   label,
   baseUrl,
+  marketingBaseUrl,
+  appBaseUrl,
   path,
   marker,
   timeoutMs,
   expectedHost,
   blockedHost,
+  expectedCanonicalHost,
+  expectedRobotsHeader,
+  expectedRobotsContent,
+  checkRobotsHeader = true,
 }) {
   const url = toAbsoluteUrl(path, baseUrl);
 
@@ -233,6 +252,56 @@ async function runPageCheck({
       });
     }
 
+    if (expectedCanonicalHost) {
+      const canonicalUrl = extractCanonicalUrl(response.body);
+      const expectedCanonicalUrl = canonicalUrlFor(
+        { marketingBaseUrl, appBaseUrl },
+        path,
+        expectedCanonicalHost,
+      );
+      if (!canonicalUrl) {
+        return buildStep(id, label, "fail", {
+          url,
+          statusCode: response.status,
+          finalUrl: response.finalUrl,
+          detail: "Expected canonical link missing from page HTML.",
+        });
+      }
+
+      if (canonicalUrl !== expectedCanonicalUrl) {
+        return buildStep(id, label, "fail", {
+          url,
+          statusCode: response.status,
+          finalUrl: response.finalUrl,
+          detail: `Expected canonical ${expectedCanonicalUrl}, got ${canonicalUrl}.`,
+        });
+      }
+    }
+
+    if (expectedRobotsHeader && checkRobotsHeader) {
+      const actualRobotsHeader = response.headers["x-robots-tag"] ?? null;
+      if (actualRobotsHeader !== expectedRobotsHeader) {
+        return buildStep(id, label, "fail", {
+          url,
+          statusCode: response.status,
+          finalUrl: response.finalUrl,
+          detail: `Expected header x-robots-tag=${expectedRobotsHeader}, got ${actualRobotsHeader ?? "missing"}.`,
+        });
+      }
+    }
+
+    if (expectedRobotsContent) {
+      const robotsContent = extractRobotsMetaContent(response.body);
+      if (!robotsContent || normalizeCompact(robotsContent) !== normalizeCompact(expectedRobotsContent)) {
+        return buildStep(id, label, "fail", {
+          url,
+          statusCode: response.status,
+          finalUrl: response.finalUrl,
+          detail: `Expected robots meta ${expectedRobotsContent}, got ${robotsContent ?? "missing"}.`,
+        });
+      }
+    }
+
     return buildStep(id, label, "pass", {
       url,
       statusCode: response.status,
@@ -243,6 +312,73 @@ async function runPageCheck({
       url,
       failureCode: String(getErrorCode(error)),
       detail: "Page check failed because the destination could not be reached.",
+    });
+  }
+}
+
+async function runMetaCheck({
+  id,
+  label,
+  baseUrl,
+  path,
+  timeoutMs,
+  expectedCanonicalHost,
+  expectedRobotsContent,
+  marketingBaseUrl,
+  appBaseUrl,
+}) {
+  const url = toAbsoluteUrl(path, baseUrl);
+
+  try {
+    const response = await followFetch(url, timeoutMs, smokeUserAgent);
+    if (response.status !== 200) {
+      return buildStep(id, label, "fail", {
+        url,
+        statusCode: response.status,
+        finalUrl: response.finalUrl,
+        detail: `Expected HTTP 200, got ${response.status}.`,
+      });
+    }
+
+    if (expectedCanonicalHost) {
+      const canonicalUrl = extractCanonicalUrl(response.body);
+      const expectedCanonicalUrl = canonicalUrlFor(
+        { marketingBaseUrl, appBaseUrl },
+        path,
+        expectedCanonicalHost,
+      );
+      if (canonicalUrl !== expectedCanonicalUrl) {
+        return buildStep(id, label, "fail", {
+          url,
+          statusCode: response.status,
+          finalUrl: response.finalUrl,
+          detail: `Expected canonical ${expectedCanonicalUrl}, got ${canonicalUrl ?? "missing"}.`,
+        });
+      }
+    }
+
+    if (expectedRobotsContent) {
+      const robotsContent = extractRobotsMetaContent(response.body);
+      if (!robotsContent || normalizeCompact(robotsContent) !== normalizeCompact(expectedRobotsContent)) {
+        return buildStep(id, label, "fail", {
+          url,
+          statusCode: response.status,
+          finalUrl: response.finalUrl,
+          detail: `Expected robots meta ${expectedRobotsContent}, got ${robotsContent ?? "missing"}.`,
+        });
+      }
+    }
+
+    return buildStep(id, label, "pass", {
+      url,
+      statusCode: response.status,
+      finalUrl: response.finalUrl,
+    });
+  } catch (error) {
+    return buildStep(id, label, "fail", {
+      url,
+      failureCode: String(getErrorCode(error)),
+      detail: "Meta check failed because the destination could not be reached.",
     });
   }
 }
@@ -380,6 +516,20 @@ export async function runProductionSmokeCheck(options = {}) {
   const appBaseUrl =
     options.appBaseUrl ??
     (explicitAppBaseUrl || (!explicitMarketingBaseUrl && compatibilityBaseUrl) || "https://app.zokorp.com");
+  const expectedMarketingCanonicalBaseUrl =
+    options.expectedMarketingCanonicalBaseUrl ??
+    resolveExpectedCanonicalBaseUrl({
+      observedBaseUrl: marketingBaseUrl,
+      explicitBaseUrl: readSetting("SMOKE_EXPECTED_MARKETING_CANONICAL_BASE_URL", ""),
+      defaultBaseUrl: "https://www.zokorp.com",
+    });
+  const expectedAppCanonicalBaseUrl =
+    options.expectedAppCanonicalBaseUrl ??
+    resolveExpectedCanonicalBaseUrl({
+      observedBaseUrl: appBaseUrl,
+      explicitBaseUrl: readSetting("SMOKE_EXPECTED_APP_CANONICAL_BASE_URL", ""),
+      defaultBaseUrl: "https://app.zokorp.com",
+    });
   const apexBaseUrl =
     options.apexBaseUrl ??
     readSetting(
@@ -445,6 +595,8 @@ export async function runProductionSmokeCheck(options = {}) {
         id: `marketing_${route.label.toLowerCase().replaceAll(/\s+/g, "_")}`,
         label: `Marketing page: ${route.label}`,
         baseUrl: marketingBaseUrl,
+        marketingBaseUrl: expectedMarketingCanonicalBaseUrl,
+        appBaseUrl: expectedAppCanonicalBaseUrl,
         path: route.path,
         marker: route.marker,
         timeoutMs,
@@ -460,10 +612,16 @@ export async function runProductionSmokeCheck(options = {}) {
         id: `app_${route.label.toLowerCase().replaceAll(/\s+/g, "_")}`,
         label: `App route: ${route.label}`,
         baseUrl: appBaseUrl,
+        marketingBaseUrl: expectedMarketingCanonicalBaseUrl,
+        appBaseUrl: expectedAppCanonicalBaseUrl,
         path: route.path,
         marker: route.marker,
         timeoutMs,
         expectedHost: appHost,
+        expectedCanonicalHost: route.expectedCanonicalHost,
+        expectedRobotsHeader: route.expectedRobotsHeader,
+        expectedRobotsContent: route.expectedRobotsContent,
+        checkRobotsHeader: !hostSplitSkipped,
       }),
     );
   }
@@ -474,10 +632,32 @@ export async function runProductionSmokeCheck(options = {}) {
         id: `product_${product.slug}`,
         label: `App product page: ${product.label}`,
         baseUrl: appBaseUrl,
+        marketingBaseUrl: expectedMarketingCanonicalBaseUrl,
+        appBaseUrl: expectedAppCanonicalBaseUrl,
         path: product.path,
         marker: product.titleMarker,
         timeoutMs,
         expectedHost: appHost,
+        expectedCanonicalHost: product.expectedCanonicalHost,
+        expectedRobotsHeader: product.expectedRobotsHeader,
+        expectedRobotsContent: product.expectedRobotsContent,
+        checkRobotsHeader: !hostSplitSkipped,
+      }),
+    );
+  }
+
+  for (const metaExpectation of APP_META_EXPECTATIONS) {
+    steps.push(
+      await runMetaCheck({
+        id: metaExpectation.id,
+        label: metaExpectation.label,
+        baseUrl: appBaseUrl,
+        path: metaExpectation.path,
+        timeoutMs,
+        expectedCanonicalHost: metaExpectation.expectedCanonicalHost,
+        expectedRobotsContent: metaExpectation.expectedRobotsContent,
+        marketingBaseUrl: expectedMarketingCanonicalBaseUrl,
+        appBaseUrl: expectedAppCanonicalBaseUrl,
       }),
     );
   }

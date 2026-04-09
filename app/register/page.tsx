@@ -6,6 +6,13 @@ import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
 import { sanitizeCallbackUrl } from "@/lib/callback-url";
+import { buildAppPageMetadata } from "@/lib/site";
+
+export const metadata = buildAppPageMetadata({
+  title: "Create Account",
+  description: "Create and verify a ZoKorp Platform account with your business email.",
+  path: "/register",
+});
 
 export default async function RegisterPage({
   searchParams,

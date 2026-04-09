@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 
 const variantClasses = {
   primary:
-    "border-transparent bg-brand text-white shadow-[var(--shadow-card)] hover:bg-brand-strong",
+    "border-transparent bg-brand text-white shadow-[0_10px_24px_rgba(16,58,103,0.18)] hover:bg-brand-strong",
   secondary:
-    "border-border bg-surface text-foreground shadow-[var(--shadow-soft)] hover:bg-background-elevated",
-  outline: "border-border bg-white/80 text-foreground hover:bg-background-elevated",
+    "border-slate-300 bg-white text-foreground shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] hover:border-slate-400 hover:bg-slate-50",
+  outline: "border-slate-300 bg-white/75 text-foreground hover:border-slate-400 hover:bg-slate-50",
   ghost: "border-transparent bg-transparent text-foreground hover:bg-background-elevated/80",
   destructive: "border-transparent bg-danger text-white hover:brightness-95",
   link: "border-transparent bg-transparent px-0 py-0 text-brand shadow-none hover:text-brand-strong hover:underline",

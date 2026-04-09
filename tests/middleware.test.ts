@@ -82,6 +82,18 @@ describe("host routing proxy", () => {
     expect(response.headers.get("x-robots-tag")).toBe("noindex, follow");
   });
 
+  it.each(["/login", "/register", "/account"])("marks protected app route %s as noindex", (path) => {
+    const request = new NextRequest(`https://app.zokorp.com${path}`, {
+      headers: {
+        host: "app.zokorp.com",
+      },
+    });
+
+    const response = proxy(request);
+
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+  });
+
   it("leaves canonical marketing traffic alone", () => {
     const request = new NextRequest("https://www.zokorp.com/contact", {
       headers: {

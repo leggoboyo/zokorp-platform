@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   APP_PRODUCT_EXPECTATIONS,
   APP_ROUTE_EXPECTATIONS,
+  APP_META_EXPECTATIONS,
   LEGACY_REDIRECT_EXPECTATIONS,
   MARKETING_ROUTE_EXPECTATIONS,
 } from "@/scripts/playwright_audit_contract.mjs";
@@ -31,6 +32,34 @@ function mockResponse({
   return response;
 }
 
+function htmlResponse({
+  url,
+  body,
+  canonicalUrl,
+  robotsContent,
+  headers = {},
+}: {
+  url: string;
+  body: string;
+  canonicalUrl?: string;
+  robotsContent?: string;
+  headers?: Record<string, string>;
+}) {
+  const headParts = [];
+  if (canonicalUrl) {
+    headParts.push(`<link rel="canonical" href="${canonicalUrl}">`);
+  }
+  if (robotsContent) {
+    headParts.push(`<meta name="robots" content="${robotsContent}">`);
+  }
+
+  return mockResponse({
+    url,
+    body: `<!doctype html><html><head>${headParts.join("")}</head><body>${body}</body></html>`,
+    headers,
+  });
+}
+
 describe("runProductionSmokeCheck", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
@@ -44,6 +73,7 @@ describe("runProductionSmokeCheck", () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockImplementation(async (input, init) => {
       const url = String(input);
+      const localBaseUrl = "http://127.0.0.1:3000";
 
       if (url === "http://example.com" || url === "https://vercel.com") {
         return mockResponse({ url, body: "ok" });
@@ -75,21 +105,56 @@ describe("runProductionSmokeCheck", () => {
         }
       }
 
-      for (const route of MARKETING_ROUTE_EXPECTATIONS) {
-        if (url === `http://127.0.0.1:3000${route.path}`) {
-          return mockResponse({ url, body: route.marker });
+      for (const route of APP_ROUTE_EXPECTATIONS) {
+        if (url === `${localBaseUrl}${route.path}`) {
+          return htmlResponse({
+            url,
+            body: route.marker,
+            canonicalUrl: route.expectedCanonicalHost
+              ? `${route.expectedCanonicalHost === "app" ? "https://app.zokorp.com" : "https://www.zokorp.com"}${route.path}`
+              : undefined,
+            robotsContent: route.expectedRobotsContent,
+            headers:
+              route.expectedRobotsHeader
+                ? { "x-robots-tag": route.expectedRobotsHeader }
+                : undefined,
+          });
         }
       }
 
-      for (const route of APP_ROUTE_EXPECTATIONS) {
-        if (url === `http://127.0.0.1:3000${route.path}`) {
-          return mockResponse({ url, body: route.marker });
+      for (const route of MARKETING_ROUTE_EXPECTATIONS) {
+        if (url === `${localBaseUrl}${route.path}`) {
+          return htmlResponse({
+            url,
+            body: route.marker,
+            canonicalUrl: `${localBaseUrl}${route.path}`,
+          });
         }
       }
 
       for (const product of APP_PRODUCT_EXPECTATIONS) {
-        if (url === `http://127.0.0.1:3000${product.path}`) {
-          return mockResponse({ url, body: product.titleMarker });
+        if (url === `${localBaseUrl}${product.path}`) {
+          return htmlResponse({
+            url,
+            body: product.titleMarker,
+            canonicalUrl: `https://www.zokorp.com${product.path}`,
+            robotsContent: "noindex,follow",
+            headers: { "x-robots-tag": "noindex, follow" },
+          });
+        }
+      }
+
+      for (const metaExpectation of APP_META_EXPECTATIONS) {
+        if (url === `${localBaseUrl}${metaExpectation.path}`) {
+          return htmlResponse({
+            url,
+            body: metaExpectation.label,
+            canonicalUrl: metaExpectation.expectedCanonicalHost
+              ? `${metaExpectation.expectedCanonicalHost === "app" ? "https://app.zokorp.com" : "https://www.zokorp.com"}${metaExpectation.path}`
+              : undefined,
+            robotsContent: metaExpectation.expectedRobotsContent,
+            headers: metaExpectation.path === "/email-preferences" ? { "x-robots-tag": "noindex, nofollow" } : undefined,
+          });
         }
       }
 
@@ -106,6 +171,8 @@ describe("runProductionSmokeCheck", () => {
     expect(summary.outcome).toBe("pass");
     expect(summary.steps.find((step) => step.id === "app_root_redirect")?.status).toBe("skipped");
     expect(summary.steps.find((step) => step.id === "app_noindex")?.status).toBe("skipped");
+    expect(summary.steps.find((step) => step.id === "app_email_preferences_canonical")?.status).toBe("pass");
+    expect(summary.steps.find((step) => step.id === "app_access_denied_robots")?.status).toBe("pass");
   });
 
   it("marks production marketing-host drift as blocked instead of failed", async () => {
@@ -113,6 +180,8 @@ describe("runProductionSmokeCheck", () => {
     fetchMock.mockImplementation(async (input, init) => {
       const url = String(input);
       const redirectMode = init?.redirect ?? "follow";
+      const marketingBaseUrl = "https://www.zokorp.com";
+      const appBaseUrl = "https://app.zokorp.com";
 
       if (url === "http://example.com" || url === "https://vercel.com") {
         return mockResponse({ url, body: "ok" });
@@ -148,47 +217,69 @@ describe("runProductionSmokeCheck", () => {
 
       if (url.endsWith("/robots.txt")) {
         return mockResponse({
-          url: "https://app.zokorp.com/robots.txt",
+          url: `${appBaseUrl}/robots.txt`,
           body: "User-agent: *\nSitemap: https://www.zokorp.com/sitemap.xml\n",
         });
       }
 
       if (url.endsWith("/sitemap.xml")) {
         return mockResponse({
-          url: "https://app.zokorp.com/sitemap.xml",
+          url: `${appBaseUrl}/sitemap.xml`,
           body: "<urlset><url><loc>https://www.zokorp.com/</loc></url></urlset>",
         });
       }
 
       for (const route of MARKETING_ROUTE_EXPECTATIONS) {
-        if (url === `https://www.zokorp.com${route.path}`) {
+        if (url === `${marketingBaseUrl}${route.path}`) {
           return mockResponse({
-            url: `https://app.zokorp.com${route.path}`,
+            url: `${appBaseUrl}${route.path}`,
             body: route.marker,
           });
         }
       }
 
       for (const route of APP_ROUTE_EXPECTATIONS) {
-        if (url === `https://app.zokorp.com${route.path}`) {
-          return mockResponse({
+        if (url === `${appBaseUrl}${route.path}`) {
+          return htmlResponse({
             url,
             body: route.marker,
+            canonicalUrl: route.expectedCanonicalHost
+              ? `${route.expectedCanonicalHost === "app" ? appBaseUrl : marketingBaseUrl}${route.path}`
+              : undefined,
+            robotsContent: route.expectedRobotsContent,
+            headers: route.expectedRobotsHeader ? { "x-robots-tag": route.expectedRobotsHeader } : undefined,
           });
         }
       }
 
       for (const product of APP_PRODUCT_EXPECTATIONS) {
-        if (url === `https://app.zokorp.com${product.path}`) {
-          return mockResponse({
+        if (url === `${appBaseUrl}${product.path}`) {
+          return htmlResponse({
             url,
             body: product.titleMarker,
+            canonicalUrl: `${marketingBaseUrl}${product.path}`,
+            robotsContent: "noindex,follow",
+            headers: { "x-robots-tag": "noindex, follow" },
           });
         }
       }
 
-      if (url === "https://app.zokorp.com/contact") {
-        return mockResponse({
+      for (const metaExpectation of APP_META_EXPECTATIONS) {
+        if (url === `${appBaseUrl}${metaExpectation.path}`) {
+          return htmlResponse({
+            url,
+            body: metaExpectation.label,
+            canonicalUrl: metaExpectation.expectedCanonicalHost ? `${appBaseUrl}${metaExpectation.path}` : undefined,
+            robotsContent: metaExpectation.expectedRobotsContent,
+            headers: metaExpectation.expectedRobotsContent?.includes("nofollow")
+              ? { "x-robots-tag": "noindex, nofollow" }
+              : undefined,
+          });
+        }
+      }
+
+      if (url === `${appBaseUrl}/contact`) {
+        return htmlResponse({
           url,
           body: "Start the right conversation without getting pushed into signup first.",
           headers: { "x-robots-tag": "noindex, follow" },
@@ -207,6 +298,7 @@ describe("runProductionSmokeCheck", () => {
 
     expect(summary.outcome).toBe("blocked");
     expect(summary.steps.find((step) => step.id === "marketing_homepage")?.status).toBe("blocked");
+    expect(summary.steps.find((step) => step.id === "app_login")?.status).toBe("pass");
     expect(summary.steps.some((step) => step.status === "fail")).toBe(false);
   });
 });

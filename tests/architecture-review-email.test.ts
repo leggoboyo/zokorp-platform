@@ -5,6 +5,37 @@ import { getArchitectureReviewPricingCatalogEntry } from "@/lib/architecture-rev
 import { buildArchitectureReviewReport } from "@/lib/architecture-review/report";
 
 describe("architecture review email content", () => {
+  it("falls back to the public services CTA on the marketing host when no booking URL is configured", () => {
+    const previousBookingUrl = process.env.ARCH_REVIEW_BOOK_CALL_URL;
+    delete process.env.ARCH_REVIEW_BOOK_CALL_URL;
+
+    const report = buildArchitectureReviewReport({
+      provider: "aws",
+      flowNarrative: "Traffic enters through edge and application tiers before reaching private services and storage.",
+      findings: [
+        {
+          ruleId: "internet_facing_endpoint_without_tls",
+          category: "security",
+          pointsDeducted: 5,
+          message: "Public traffic is present without explicit TLS enforcement.",
+          fix: "Terminate TLS with ACM at the public entry point and enforce HTTPS-only.",
+          evidence: "The diagram shows internet-facing traffic but does not make HTTPS/TLS termination explicit.",
+        },
+      ],
+      userEmail: "architect@zokorp.com",
+      generatedAtISO: "2026-03-10T00:00:00.000Z",
+    });
+
+    const content = buildArchitectureReviewEmailContent(report);
+
+    expect(content.text).toContain("https://www.zokorp.com/services#service-request");
+    expect(content.html).toContain("https://www.zokorp.com/services#service-request");
+
+    if (previousBookingUrl) {
+      process.env.ARCH_REVIEW_BOOK_CALL_URL = previousBookingUrl;
+    }
+  });
+
   it("renders the implementation estimate and booking link without package menus", () => {
     const report = buildArchitectureReviewReport({
       provider: "aws",

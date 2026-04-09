@@ -5,7 +5,7 @@ import type {
 } from "@/lib/architecture-review/types";
 import { buildFallbackArchitectureEstimateSnapshot } from "@/lib/architecture-review/rule-catalog";
 import { buildEmailPreferenceFooter } from "@/lib/email-preferences";
-import { getSiteUrl } from "@/lib/site";
+import { getMarketingSiteUrl } from "@/lib/site";
 
 function providerLabel(provider: ArchitectureReviewReport["provider"]) {
   return provider.toUpperCase();
@@ -63,7 +63,7 @@ type EmailCtaLinks = {
 };
 
 function resolveDefaultCtaLinks() {
-  const siteUrl = getSiteUrl();
+  const siteUrl = getMarketingSiteUrl();
   return {
     bookArchitectureCallUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${siteUrl}/services#service-request`,
   } satisfies EmailCtaLinks;

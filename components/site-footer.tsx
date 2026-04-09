@@ -30,7 +30,7 @@ export function SiteFooter() {
   return (
     <footer className="mt-16 border-t border-slate-200 bg-[#f7f5f1]">
       <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 md:grid-cols-2 md:px-6 xl:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))]">
-        <Card className="rounded-[1.4rem] border border-slate-200 bg-white p-6 shadow-none md:col-span-2 xl:col-span-1">
+        <Card tone="plain" className="rounded-[1.4rem] border border-slate-200 bg-white p-6 shadow-none md:col-span-2 xl:col-span-1">
           <div>
             <Image
               src={PUBLIC_LAUNCH_FOUNDER_PROFILE.logoPath}

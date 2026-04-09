@@ -4,6 +4,13 @@ import { EmailVerificationResendForm } from "@/components/email-verification-res
 import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { buildAppPageMetadata } from "@/lib/site";
+
+export const metadata = buildAppPageMetadata({
+  title: "Verify Email",
+  description: "Confirm your email or request a fresh ZoKorp verification link.",
+  path: "/register/verify-email",
+});
 
 function getStatusMessage(status: string | undefined) {
   if (status === "expired") {

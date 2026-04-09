@@ -104,6 +104,27 @@ export function readNumber(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+export function isLocalHostUrl(value) {
+  try {
+    const { hostname } = new URL(value);
+    return hostname === "localhost" || hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
+export function resolveExpectedCanonicalBaseUrl({
+  observedBaseUrl,
+  explicitBaseUrl = "",
+  defaultBaseUrl,
+}) {
+  if (explicitBaseUrl) {
+    return explicitBaseUrl;
+  }
+
+  return isLocalHostUrl(observedBaseUrl) ? defaultBaseUrl : observedBaseUrl;
+}
+
 export function resolveOutputPath(path) {
   return resolve(repoRoot, path);
 }
@@ -285,6 +306,20 @@ export async function collectLandmarkSnapshot(page) {
     headings,
     landmarks: landmarkCounts,
   };
+}
+
+export async function collectHeadSnapshot(page) {
+  return page.evaluate(() => ({
+    canonicalHref: document.querySelector('link[rel="canonical"]')?.getAttribute("href") ?? null,
+    robotsContent: document.querySelector('meta[name="robots"]')?.getAttribute("content") ?? null,
+  }));
+}
+
+export async function writeLocatorScreenshot(locator, screenshotsDir, stepId) {
+  ensureDir(screenshotsDir);
+  const filePath = join(screenshotsDir, `${sanitizeFileComponent(stepId)}.png`);
+  await locator.screenshot({ path: filePath });
+  return filePath;
 }
 
 export async function manualRedirectCheck(url, timeoutMs, userAgent) {

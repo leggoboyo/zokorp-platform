@@ -8,6 +8,7 @@ import { chromium } from "playwright";
 import {
   APP_PRODUCT_EXPECTATIONS,
   APP_ROUTE_EXPECTATIONS,
+  APP_META_EXPECTATIONS,
   CONSULTING_PRICE_MARKERS,
   FOOTER_LEGAL_LINK_LABELS,
   MARKETING_MORE_MENU_LABELS,
@@ -19,6 +20,7 @@ import {
   buildStep,
   buildTotals,
   collectLandmarkSnapshot,
+  collectHeadSnapshot,
   createBrowserDiagnostics,
   createSettingsReader,
   ensureDir,
@@ -28,6 +30,7 @@ import {
   persistDiagnostics,
   readBoolean,
   readNumber,
+  resolveExpectedCanonicalBaseUrl,
   resolveOutputPath,
   shouldUseCompatibilityBaseUrl,
   writeJsonFile,
@@ -57,6 +60,16 @@ function errorDetail(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
+function normalizeCompact(value) {
+  return value.replaceAll(/\s+/g, "").toLowerCase();
+}
+
+function canonicalBaseUrlFor(config, canonicalHost) {
+  return canonicalHost === "app"
+    ? config.expectedAppCanonicalBaseUrl
+    : config.expectedMarketingCanonicalBaseUrl;
+}
+
 async function assertVisibleText(page, text, timeoutMs) {
   await page.getByText(text, { exact: false }).first().waitFor({
     state: "visible",
@@ -80,8 +93,23 @@ async function assertVisibleAny(page, texts, timeoutMs) {
 }
 
 async function gotoAndAssert(page, url, marker, timeoutMs) {
-  await page.goto(url, { waitUntil: "networkidle", timeout: timeoutMs });
+  const response = await page.goto(url, { waitUntil: "networkidle", timeout: timeoutMs });
   await assertVisibleText(page, marker, timeoutMs);
+  return response;
+}
+
+async function assertLandmarkBaseline(page, timeoutMs) {
+  const snapshot = await collectLandmarkSnapshot(page);
+  if (snapshot.landmarks.headerCount < 1 || snapshot.landmarks.mainCount < 1 || snapshot.headings.length < 1) {
+    throw new Error("Expected header, main, and at least one heading to be present.");
+  }
+
+  await page.getByRole("main").getByRole("heading").first().waitFor({
+    state: "visible",
+    timeout: timeoutMs,
+  });
+
+  return snapshot;
 }
 
 function pushBlockedSteps(steps, routeExpectations, prefix, reason) {
@@ -128,11 +156,12 @@ async function runMarketingJourney(page, steps, config) {
   }
 
   await assertVisibleText(page, MARKETING_ROUTE_EXPECTATIONS[0].marker, config.timeoutMs);
+  const homeLandmarks = await assertLandmarkBaseline(page, config.timeoutMs);
   steps.push(
     buildStep("marketing_home", "Marketing page: Homepage", "pass", {
       url: page.url(),
       screenshot: await writePageScreenshot(page, config.screenshotsDir, "marketing-home"),
-      landmarks: await collectLandmarkSnapshot(page),
+      landmarks: homeLandmarks,
     }),
   );
 
@@ -232,6 +261,7 @@ async function runMarketingJourney(page, steps, config) {
   for (const marker of CONSULTING_PRICE_MARKERS) {
     await assertVisibleText(page, marker, config.timeoutMs);
   }
+  await assertLandmarkBaseline(page, config.timeoutMs);
   steps.push(
     buildStep("marketing_services_pricing", "Services pricing anchors", "pass", {
       markers: CONSULTING_PRICE_MARKERS,
@@ -271,7 +301,33 @@ async function runAppJourney(page, steps, config) {
 
   for (const route of APP_ROUTE_EXPECTATIONS) {
     try {
-      await gotoAndAssert(page, new URL(route.path, config.appBaseUrl).toString(), route.marker, config.timeoutMs);
+      const response = await gotoAndAssert(page, new URL(route.path, config.appBaseUrl).toString(), route.marker, config.timeoutMs);
+      if (!config.hostSplitSkipped && route.expectedRobotsHeader) {
+        const robotsHeader = response?.headers()?.["x-robots-tag"] ?? null;
+        if (robotsHeader !== route.expectedRobotsHeader) {
+          throw new Error(`Expected x-robots-tag=${route.expectedRobotsHeader}, got ${robotsHeader ?? "missing"}.`);
+        }
+      }
+      if (route.expectedCanonicalHost || route.expectedRobotsContent) {
+        const headSnapshot = await collectHeadSnapshot(page);
+        if (route.expectedCanonicalHost) {
+          const expectedCanonicalUrl = new URL(
+            route.path,
+            canonicalBaseUrlFor(config, route.expectedCanonicalHost),
+          ).toString();
+          if (headSnapshot.canonicalHref !== expectedCanonicalUrl) {
+            throw new Error(`Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`);
+          }
+        }
+        if (
+          route.expectedRobotsContent &&
+          normalizeCompact(headSnapshot.robotsContent ?? "") !== normalizeCompact(route.expectedRobotsContent)
+        ) {
+          throw new Error(
+            `Expected robots meta ${route.expectedRobotsContent}, got ${headSnapshot.robotsContent ?? "missing"}.`,
+          );
+        }
+      }
       steps.push(
         buildStep(
           `app_${route.label.toLowerCase().replaceAll(/\s+/g, "_")}`,
@@ -304,12 +360,38 @@ async function runAppJourney(page, steps, config) {
 
   for (const product of APP_PRODUCT_EXPECTATIONS) {
     try {
-      await page.goto(new URL(product.path, config.appBaseUrl).toString(), {
+      const response = await page.goto(new URL(product.path, config.appBaseUrl).toString(), {
         waitUntil: "networkidle",
         timeout: config.timeoutMs,
       });
       await assertVisibleText(page, product.titleMarker, config.timeoutMs);
       const matchedMarker = await assertVisibleAny(page, product.publicMarkers, config.timeoutMs);
+      if (!config.hostSplitSkipped && product.expectedRobotsHeader) {
+        const robotsHeader = response?.headers()?.["x-robots-tag"] ?? null;
+        if (robotsHeader !== product.expectedRobotsHeader) {
+          throw new Error(`Expected x-robots-tag=${product.expectedRobotsHeader}, got ${robotsHeader ?? "missing"}.`);
+        }
+      }
+      if (product.expectedCanonicalHost || product.expectedRobotsContent) {
+        const headSnapshot = await collectHeadSnapshot(page);
+        if (product.expectedCanonicalHost) {
+          const expectedCanonicalUrl = new URL(
+            product.path,
+            canonicalBaseUrlFor(config, product.expectedCanonicalHost),
+          ).toString();
+          if (headSnapshot.canonicalHref !== expectedCanonicalUrl) {
+            throw new Error(`Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`);
+          }
+        }
+        if (
+          product.expectedRobotsContent &&
+          normalizeCompact(headSnapshot.robotsContent ?? "") !== normalizeCompact(product.expectedRobotsContent)
+        ) {
+          throw new Error(
+            `Expected robots meta ${product.expectedRobotsContent}, got ${headSnapshot.robotsContent ?? "missing"}.`,
+          );
+        }
+      }
       steps.push(
         buildStep(`app_public_${product.slug}`, `App public product page: ${product.label}`, "pass", {
           url: page.url(),
@@ -325,6 +407,45 @@ async function runAppJourney(page, steps, config) {
             config.screenshotsDir,
             `app-public-${product.slug}-failure`,
           ),
+          detail: errorDetail(error),
+        }),
+      );
+    }
+  }
+
+  for (const metaExpectation of APP_META_EXPECTATIONS) {
+    try {
+      await page.goto(new URL(metaExpectation.path, config.appBaseUrl).toString(), {
+        waitUntil: "networkidle",
+        timeout: config.timeoutMs,
+      });
+      const headSnapshot = await collectHeadSnapshot(page);
+      if (metaExpectation.expectedCanonicalHost) {
+        const expectedCanonicalUrl = new URL(
+          metaExpectation.path,
+          canonicalBaseUrlFor(config, metaExpectation.expectedCanonicalHost),
+        ).toString();
+        if (headSnapshot.canonicalHref !== expectedCanonicalUrl) {
+          throw new Error(`Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`);
+        }
+      }
+      if (
+        metaExpectation.expectedRobotsContent &&
+        normalizeCompact(headSnapshot.robotsContent ?? "") !== normalizeCompact(metaExpectation.expectedRobotsContent)
+      ) {
+        throw new Error(
+          `Expected robots meta ${metaExpectation.expectedRobotsContent}, got ${headSnapshot.robotsContent ?? "missing"}.`,
+        );
+      }
+      steps.push(
+        buildStep(metaExpectation.id, `App meta: ${metaExpectation.label}`, "pass", {
+          url: page.url(),
+        }),
+      );
+    } catch (error) {
+      steps.push(
+        buildStep(metaExpectation.id, `App meta: ${metaExpectation.label}`, "fail", {
+          url: page.url(),
           detail: errorDetail(error),
         }),
       );
@@ -356,7 +477,7 @@ async function runAuthenticatedJourney(page, steps, config) {
   } catch {
     // Fall through to the explicit /account verification below.
   }
-  await page.goto(new URL("/account", config.appBaseUrl).toString(), {
+  const accountResponse = await page.goto(new URL("/account", config.appBaseUrl).toString(), {
     waitUntil: "networkidle",
     timeout: config.timeoutMs,
   });
@@ -365,8 +486,22 @@ async function runAuthenticatedJourney(page, steps, config) {
     throw new Error("Authenticated journey did not complete successfully.");
   }
 
+  if (!config.hostSplitSkipped) {
+    const accountRobotsHeader = accountResponse?.headers()?.["x-robots-tag"] ?? null;
+    if (accountRobotsHeader !== "noindex, nofollow") {
+      throw new Error(`Expected /account to emit x-robots-tag=noindex, nofollow, got ${accountRobotsHeader ?? "missing"}.`);
+    }
+  }
+
   await assertVisibleText(page, "Welcome back", config.timeoutMs);
   await assertVisibleText(page, "Billing and Invoices", config.timeoutMs);
+  const accountHeadSnapshot = await collectHeadSnapshot(page);
+  if (accountHeadSnapshot.canonicalHref !== new URL("/account", config.expectedAppCanonicalBaseUrl).toString()) {
+    throw new Error(`Expected /account canonical to stay on the app host, got ${accountHeadSnapshot.canonicalHref ?? "missing"}.`);
+  }
+  if (normalizeCompact(accountHeadSnapshot.robotsContent ?? "") !== "noindex,nofollow") {
+    throw new Error(`Expected /account robots meta noindex,nofollow, got ${accountHeadSnapshot.robotsContent ?? "missing"}.`);
+  }
 
   steps.push(
     buildStep("app_auth_login", "Authenticated app journey", "pass", {
@@ -375,11 +510,24 @@ async function runAuthenticatedJourney(page, steps, config) {
     }),
   );
 
-  await page.goto(new URL("/account/billing", config.appBaseUrl).toString(), {
+  const billingResponse = await page.goto(new URL("/account/billing", config.appBaseUrl).toString(), {
     waitUntil: "networkidle",
     timeout: config.timeoutMs,
   });
   await assertVisibleText(page, "Billing and Subscriptions", config.timeoutMs);
+  if (!config.hostSplitSkipped) {
+    const billingRobotsHeader = billingResponse?.headers()?.["x-robots-tag"] ?? null;
+    if (billingRobotsHeader !== "noindex, nofollow") {
+      throw new Error(`Expected /account/billing to emit x-robots-tag=noindex, nofollow, got ${billingRobotsHeader ?? "missing"}.`);
+    }
+  }
+  const billingHeadSnapshot = await collectHeadSnapshot(page);
+  if (billingHeadSnapshot.canonicalHref !== new URL("/account/billing", config.expectedAppCanonicalBaseUrl).toString()) {
+    throw new Error(`Expected /account/billing canonical to stay on the app host, got ${billingHeadSnapshot.canonicalHref ?? "missing"}.`);
+  }
+  if (normalizeCompact(billingHeadSnapshot.robotsContent ?? "") !== "noindex,nofollow") {
+    throw new Error(`Expected /account/billing robots meta noindex,nofollow, got ${billingHeadSnapshot.robotsContent ?? "missing"}.`);
+  }
   steps.push(
     buildStep("app_billing", "Billing page", "pass", {
       url: page.url(),
@@ -420,6 +568,20 @@ export async function runBrowserCustomerJourneyAudit(options = {}) {
   const appBaseUrl =
     options.appBaseUrl ??
     (explicitAppBaseUrl || (!explicitMarketingBaseUrl && compatibilityBaseUrl) || "https://app.zokorp.com");
+  const expectedMarketingCanonicalBaseUrl =
+    options.expectedMarketingCanonicalBaseUrl ??
+    resolveExpectedCanonicalBaseUrl({
+      observedBaseUrl: marketingBaseUrl,
+      explicitBaseUrl: readSetting("JOURNEY_EXPECTED_MARKETING_CANONICAL_BASE_URL", ""),
+      defaultBaseUrl: "https://www.zokorp.com",
+    });
+  const expectedAppCanonicalBaseUrl =
+    options.expectedAppCanonicalBaseUrl ??
+    resolveExpectedCanonicalBaseUrl({
+      observedBaseUrl: appBaseUrl,
+      explicitBaseUrl: readSetting("JOURNEY_EXPECTED_APP_CANONICAL_BASE_URL", ""),
+      defaultBaseUrl: "https://app.zokorp.com",
+    });
   const outputDir =
     options.outputDir ??
     resolveOutputPath(readSetting("JOURNEY_OUTPUT_DIR", "output/playwright/customer-journey-audit"));
@@ -443,6 +605,8 @@ export async function runBrowserCustomerJourneyAudit(options = {}) {
     loginEmail,
     loginPassword,
     hostSplitSkipped,
+    expectedMarketingCanonicalBaseUrl,
+    expectedAppCanonicalBaseUrl,
     marketingHost: new URL(marketingBaseUrl).host,
     appHost: new URL(appBaseUrl).host,
     productionMarketingBlockAllowed: expectedProductionMarketingBlock(marketingBaseUrl, appBaseUrl),

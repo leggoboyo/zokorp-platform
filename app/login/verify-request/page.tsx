@@ -2,6 +2,13 @@ import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { buildAppPageMetadata } from "@/lib/site";
+
+export const metadata = buildAppPageMetadata({
+  title: "Sign-In Instructions",
+  description: "ZoKorp uses business-email password sign-in. Return to the login page to continue.",
+  path: "/login/verify-request",
+});
 
 export default function VerifyRequestPage() {
   return (

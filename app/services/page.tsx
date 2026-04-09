@@ -106,7 +106,7 @@ export default async function ServicesPage() {
             </div>
           </div>
 
-          <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+          <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
             <CardHeader className="gap-2 px-0">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Founder-led scope</p>
               <h2 className="font-display text-3xl font-semibold text-slate-950">
@@ -157,7 +157,7 @@ export default async function ServicesPage() {
         </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-5">
           {CONSULTING_PRICE_OPTIONS.map((item) => (
-            <Card key={item.title} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-none">
+            <Card tone="plain" key={item.title} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-none">
               <CardHeader className="gap-2 px-0">
                 <h3 className="text-lg font-semibold text-slate-950">{item.title}</h3>
                 <p className="text-sm font-semibold text-slate-700">{item.price}</p>
@@ -173,6 +173,7 @@ export default async function ServicesPage() {
       <section className="grid gap-4 lg:grid-cols-4">
         {CONSULTING_OFFERS.map((offer) => (
           <Card
+            tone="plain"
             key={offer.slug}
             className={`rounded-[1.6rem] border border-slate-200 p-6 shadow-none ${offer.slug === "architecture-review-remediation" ? "bg-[#111827] text-slate-50 lg:col-span-2" : "bg-white"}`}
           >
@@ -209,7 +210,7 @@ export default async function ServicesPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
+        <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Good fit</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">When to use ZoKorp services</h2>
@@ -224,7 +225,7 @@ export default async function ServicesPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+        <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Engagement flow</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">A clear process from review to follow-through.</h2>
@@ -252,7 +253,7 @@ export default async function ServicesPage() {
       />
 
       <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+        <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">FAQ</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">What buyers usually need clarified</h2>
@@ -267,7 +268,7 @@ export default async function ServicesPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
+        <Card tone="plain" className="rounded-[1.8rem] border border-slate-900 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Next step</p>
             <h2 className="font-display text-3xl font-semibold">Start publicly, create an account only when it actually helps.</h2>

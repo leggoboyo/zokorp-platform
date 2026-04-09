@@ -3,14 +3,17 @@ import type { Metadata } from "next";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { buildAppPageMetadata } from "@/lib/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildAppPageMetadata({
   title: "Access Denied",
+  description: "This admin workspace is limited to authorized ZoKorp admin accounts.",
+  path: "/access-denied",
   robots: {
     index: false,
     follow: false,
   },
-};
+});
 
 function formatWorkspace(from: string | undefined) {
   if (!from || !from.startsWith("/admin/")) {

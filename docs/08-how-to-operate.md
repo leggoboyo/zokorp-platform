@@ -44,6 +44,8 @@
 - What it verifies:
   - the configured marketing host serves the current public pages
   - the configured app host serves product and auth routes without breaking the split
+  - app-host duplicate and protected routes emit the expected noindex header
+  - app-only metadata routes keep their canonical and robots meta tags intact
   - public product pages render their expected unsigned state
   - authenticated product pages render their expected signed-in state when creds are provided
 - Optional authenticated checks:
@@ -53,6 +55,8 @@
 - Optional runtime controls:
   - `JOURNEY_MARKETING_BASE_URL` to target a preview or local marketing host
   - `JOURNEY_APP_BASE_URL` to target a preview or local app host
+  - `JOURNEY_EXPECTED_MARKETING_CANONICAL_BASE_URL` to keep asserting the real public marketing canonical host during preview/local runs
+  - `JOURNEY_EXPECTED_APP_CANONICAL_BASE_URL` to keep asserting the real public app canonical host during preview/local runs
   - `JOURNEY_BASE_URL` remains a compatibility fallback when both hosts are the same
   - `JOURNEY_HEADED=true` to watch the browser run
   - `JOURNEY_BROWSER_CHANNEL=chrome` to prefer local Chrome, with bundled Chromium fallback
@@ -72,6 +76,8 @@
 - What it verifies:
   - the same host preflight as the standard browser audit
   - desktop and mobile marketing browsing
+  - stable visual screenshots of the homepage hero and services request panel
+  - landmark and heading baselines on the main public pages
   - public app browsing on `app.zokorp.com`
   - manual or credential-driven app login
   - low-risk synthetic service-request submission when `JOURNEY_MUTATION_MODE=low-risk`
