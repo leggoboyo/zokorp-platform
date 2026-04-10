@@ -40,10 +40,13 @@ export default async function LoginPage({
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <Card tone="glass" className="animate-fade-up rounded-2xl p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Account Access</p>
+      <Card
+        tone="plain"
+        className="animate-fade-up rounded-2xl border border-slate-200 bg-white p-8 shadow-[0_18px_36px_rgba(8,31,61,0.08)]"
+      >
+        <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Account Access</p>
         <h1 className="font-display mt-2 text-4xl font-semibold text-slate-900">Sign in</h1>
-        <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
+        <p className="enterprise-copy mt-3 text-sm md:text-base">
           Sign in with your business email and password.
         </p>
 
@@ -69,7 +72,7 @@ export default async function LoginPage({
         </div>
       </Card>
 
-      <Card tone="muted" lift className="rounded-2xl p-6">
+      <Card tone="plain" lift className="rounded-2xl border border-slate-200 bg-slate-50/95 p-6 shadow-none">
         <h2 className="font-display text-2xl font-semibold text-slate-900">Requirements</h2>
         <ul className="mt-3 space-y-2 text-sm text-slate-700">
           <li>Business email domains only</li>

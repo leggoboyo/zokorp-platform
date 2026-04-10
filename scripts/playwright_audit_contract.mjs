@@ -61,6 +61,15 @@ export const MARKETING_ROUTE_EXPECTATIONS = [
   },
 ];
 
+export const APP_ROOT_EXPECTATION = {
+  path: "/",
+  label: "App landing",
+  marker: "Account access and software live here. Company browsing and services stay on",
+  expectedCanonicalHost: "app",
+  expectedRobotsHeader: "noindex, nofollow",
+  expectedRobotsContent: "noindex,nofollow",
+};
+
 export const APP_ROUTE_EXPECTATIONS = [
   {
     path: "/login",
@@ -91,6 +100,32 @@ export const APP_ROUTE_EXPECTATIONS = [
     marker: "Architecture Diagram Reviewer Sample Report",
     expectedCanonicalHost: "marketing",
     expectedRobotsHeader: "noindex, follow",
+  },
+];
+
+export const APP_HOST_MARKETING_REDIRECT_EXPECTATIONS = [
+  { path: "/services", label: "Services" },
+  { path: "/about", label: "About" },
+  { path: "/contact", label: "Contact" },
+  { path: "/pricing", label: "Pricing" },
+  { path: "/media", label: "Insights" },
+  { path: "/privacy", label: "Privacy" },
+  { path: "/terms", label: "Terms" },
+  { path: "/refunds", label: "Refunds" },
+  { path: "/security", label: "Security" },
+  { path: "/support", label: "Support" },
+];
+
+export const APP_SIGNED_OUT_REDIRECT_EXPECTATIONS = [
+  {
+    path: "/account",
+    label: "Account",
+    expectedLocation: "/login?callbackUrl=%2Faccount",
+  },
+  {
+    path: "/account/billing",
+    label: "Billing",
+    expectedLocation: "/login?callbackUrl=%2Faccount%2Fbilling",
   },
 ];
 

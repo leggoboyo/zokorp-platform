@@ -21,7 +21,7 @@ import { shouldHidePublicProductPricing } from "@/lib/billing-readiness";
 import { CatalogUnavailableError, getProductBySlugCached } from "@/lib/catalog";
 import { validatorPriceTierFromAmount, validatorProfileCreditsFromTiers, validatorTierLabel } from "@/lib/credit-tiers";
 import { db } from "@/lib/db";
-import { buildMarketingPageMetadata } from "@/lib/site";
+import { buildMarketingPageMetadata, toMarketingSiteUrl } from "@/lib/site";
 import { isCheckoutEnabledStripePriceId } from "@/lib/stripe-price-id";
 import { getToolDefinition } from "@/lib/tool-registry";
 import { cn } from "@/lib/utils";
@@ -299,7 +299,7 @@ export default async function SoftwareDetailPage({
           <Link href="/software" className={buttonVariants()}>
             Return to software
           </Link>
-          <Link href="/pricing" className={buttonVariants({ variant: "secondary" })}>
+          <Link href={toMarketingSiteUrl("/pricing")} className={buttonVariants({ variant: "secondary" })}>
             View pricing
           </Link>
         </div>
@@ -482,10 +482,10 @@ export default async function SoftwareDetailPage({
             </p>
           </CardContent>
           <CardFooter>
-            <Link href="/services#service-request" className={buttonVariants()}>
+            <Link href={toMarketingSiteUrl("/services#service-request")} className={buttonVariants()}>
               Request pilot access
             </Link>
-            <Link href="/pricing" className={buttonVariants({ variant: "secondary" })}>
+            <Link href={toMarketingSiteUrl("/pricing")} className={buttonVariants({ variant: "secondary" })}>
               Review approved pricing
             </Link>
           </CardFooter>
@@ -545,7 +545,7 @@ export default async function SoftwareDetailPage({
             </p>
           </CardContent>
           <CardFooter>
-            <Link href="/pricing" className={buttonVariants({ variant: "secondary" })}>
+            <Link href={toMarketingSiteUrl("/pricing")} className={buttonVariants({ variant: "secondary" })}>
               View pricing overview
             </Link>
           </CardFooter>
@@ -592,10 +592,10 @@ export default async function SoftwareDetailPage({
           </p>
         </CardContent>
         <CardFooter>
-          <Link href="/services#service-request" className={buttonVariants()}>
+          <Link href={toMarketingSiteUrl("/services#service-request")} className={buttonVariants()}>
             Request services
           </Link>
-          <Link href="/support" className={buttonVariants({ variant: "secondary" })}>
+          <Link href={toMarketingSiteUrl("/support")} className={buttonVariants({ variant: "secondary" })}>
             Contact support
           </Link>
         </CardFooter>

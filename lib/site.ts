@@ -41,6 +41,14 @@ export function getAppSiteUrl() {
   return normalizeOrigin(siteConfig.appUrl, DEFAULT_APP_SITE_URL);
 }
 
+export function toMarketingSiteUrl(path: string) {
+  return new URL(path, getMarketingSiteUrl()).toString();
+}
+
+export function toAppSiteUrl(path: string) {
+  return new URL(path, getAppSiteUrl()).toString();
+}
+
 /**
  * @deprecated Prefer getMarketingSiteUrl() or getAppSiteUrl() explicitly so
  * route ownership stays obvious.

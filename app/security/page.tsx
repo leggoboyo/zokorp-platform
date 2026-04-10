@@ -39,9 +39,9 @@ export default function SecurityPage() {
   return (
     <div className="space-y-8">
       <Card tone="glass" className="animate-fade-up rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Security</p>
+        <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Security</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold text-slate-900">Current platform security posture</h1>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
+        <p className="enterprise-copy mt-4 max-w-3xl text-sm md:text-base">
           ZoKorp focuses on practical controls that protect account access, billing actions, and uploaded inputs.
           This page describes the platform as it is implemented today, not a certification claim.
         </p>

@@ -1,56 +1,60 @@
 @import "tailwindcss";
+@import "../styles/zokorp-tokens.css";
 
 :root {
   color-scheme: light;
-  --background: #edf2f7;
-  --background-elevated: #fbf8f2;
-  --background-emphasis: #dde6f0;
-  --foreground: #0b1324;
-  --foreground-muted: #495a74;
-  --foreground-subtle: #6b7c95;
-  --surface: #ffffff;
-  --surface-muted: #f2f5f8;
+  --background: rgb(var(--z-page));
+  --background-elevated: rgb(var(--z-panel-muted));
+  --background-emphasis: rgb(229 236 245);
+  --foreground: rgb(var(--z-ink));
+  --foreground-muted: rgb(var(--z-ink-soft));
+  --foreground-subtle: rgb(var(--z-ink-muted));
+  --surface: rgb(var(--z-panel));
+  --surface-muted: rgb(245 247 250);
   --surface-glass-start: rgba(255, 255, 255, 0.86);
-  --surface-glass-end: rgba(247, 244, 237, 0.92);
-  --border: #d3dce7;
-  --border-strong: #afbdd1;
-  --brand: #103a67;
-  --brand-strong: #081f3d;
-  --brand-soft: #e9f0f8;
-  --brand-accent: #0f8ea9;
+  --surface-glass-end: rgba(247, 244, 237, 0.94);
+  --border: rgba(148, 163, 184, 0.38);
+  --border-strong: rgba(71, 85, 105, 0.4);
+  --brand: rgb(var(--z-accent));
+  --brand-strong: rgb(30 64 175);
+  --brand-soft: rgb(219 234 254);
+  --brand-accent: rgb(var(--z-accent-2));
   --brand-gold: #b88d3a;
-  --success: #177764;
+  --success: rgb(var(--z-success));
   --warning: #a86512;
-  --danger: #b94f67;
-  --info: #2f74bb;
-  --ring: rgba(16, 58, 103, 0.24);
-  --radius-panel: 1.1rem;
-  --radius-panel-lg: 1.6rem;
-  --radius-pill: 999px;
-  --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
-  --shadow-card:
-    0 1px 0 rgba(255, 255, 255, 0.82) inset,
-    0 18px 36px rgba(8, 31, 61, 0.07);
-  --shadow-card-hover:
-    0 1px 0 rgba(255, 255, 255, 0.82) inset,
-    0 20px 44px rgba(8, 31, 61, 0.13);
-  --shadow-glass:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 18px 34px rgba(8, 31, 61, 0.08);
-  --shadow-hero:
-    0 1px 0 rgba(255, 255, 255, 0.16) inset,
-    0 24px 50px rgba(5, 21, 43, 0.28);
-  --gradient-page:
-    radial-gradient(circle at 8% 0%, rgba(15, 142, 169, 0.15), transparent 28%),
-    radial-gradient(circle at 92% 6%, rgba(184, 141, 58, 0.11), transparent 32%),
-    linear-gradient(180deg, #f6f8fb 0%, #eef2f7 40%, #e7edf4 100%);
-  --gradient-hero:
-    radial-gradient(circle at 18% 16%, rgba(121, 225, 255, 0.18), transparent 44%),
-    radial-gradient(circle at 82% 10%, rgba(255, 211, 132, 0.16), transparent 42%),
-    linear-gradient(136deg, #07192f 0%, #123762 52%, #0f6e87 100%);
+  --danger: rgb(var(--z-danger));
+  --info: rgb(37 99 235);
+  --ring: rgb(var(--z-focus) / 0.28);
+  --radius-panel: var(--z-radius-panel);
+  --radius-panel-lg: var(--z-radius-panel-lg);
+  --radius-pill: var(--z-radius-pill);
+  --shadow-soft: var(--z-shadow-soft);
+  --shadow-card: var(--z-shadow-card);
+  --shadow-card-hover: var(--z-shadow-card-hover);
+  --shadow-glass: var(--z-shadow-glass);
+  --shadow-hero: var(--z-shadow-hero);
+  --gradient-page: var(--z-gradient-page);
+  --gradient-hero: var(--z-gradient-hero);
 }
 
 @theme inline {
+  --color-z-bg: rgb(var(--z-bg));
+  --color-z-surface: rgb(var(--z-surface));
+  --color-z-surface-2: rgb(var(--z-surface-2));
+  --color-z-border: rgb(var(--z-border));
+  --color-z-text: rgb(var(--z-text));
+  --color-z-muted: rgb(var(--z-muted));
+  --color-z-accent: rgb(var(--z-accent));
+  --color-z-accent-2: rgb(var(--z-accent-2));
+  --color-z-danger: rgb(var(--z-danger));
+  --color-z-success: rgb(var(--z-success));
+  --color-z-page: rgb(var(--z-page));
+  --color-z-panel: rgb(var(--z-panel));
+  --color-z-panel-muted: rgb(var(--z-panel-muted));
+  --color-z-ink: rgb(var(--z-ink));
+  --color-z-ink-soft: rgb(var(--z-ink-soft));
+  --color-z-ink-muted: rgb(var(--z-ink-muted));
+  --color-z-ink-label: rgb(var(--z-ink-label));
   --color-background: var(--background);
   --color-background-elevated: var(--background-elevated);
   --color-background-emphasis: var(--background-emphasis);
@@ -79,6 +83,33 @@
   --shadow-card-hover: var(--shadow-card-hover);
   --shadow-glass: var(--shadow-glass);
   --shadow-hero: var(--shadow-hero);
+  --text-z-xs: 0.8125rem;
+  --text-z-xs--line-height: 1.25rem;
+  --text-z-sm: 0.875rem;
+  --text-z-sm--line-height: 1.375rem;
+  --text-z-base: 1rem;
+  --text-z-base--line-height: 1.625rem;
+  --text-z-lg: 1.125rem;
+  --text-z-lg--line-height: 1.75rem;
+  --text-z-xl: 1.25rem;
+  --text-z-xl--line-height: 1.875rem;
+  --text-z-2xl: 1.5rem;
+  --text-z-2xl--line-height: 2.125rem;
+  --text-z-3xl: 1.875rem;
+  --text-z-3xl--line-height: 2.5rem;
+  --text-z-4xl: 2.25rem;
+  --text-z-4xl--line-height: 2.75rem;
+  --text-z-5xl: 3rem;
+  --text-z-5xl--line-height: 3.5rem;
+  --spacing-z-1: 0.25rem;
+  --spacing-z-2: 0.5rem;
+  --spacing-z-3: 0.75rem;
+  --spacing-z-4: 1rem;
+  --spacing-z-5: 1.5rem;
+  --spacing-z-6: 2rem;
+  --spacing-z-7: 3rem;
+  --spacing-z-8: 4rem;
+  --spacing-z-9: 6rem;
 }
 
 html {
@@ -128,10 +159,10 @@ h3,
 
 .lift-card {
   transition:
-    transform 260ms ease,
-    box-shadow 260ms ease,
-    border-color 260ms ease,
-    background-color 260ms ease;
+    transform var(--z-dur-slow) var(--z-ease),
+    box-shadow var(--z-dur-slow) var(--z-ease),
+    border-color var(--z-dur-slow) var(--z-ease),
+    background-color var(--z-dur-slow) var(--z-ease);
 }
 
 .lift-card:hover {
@@ -155,6 +186,49 @@ h3,
   inset: 0;
   pointer-events: none;
   background: linear-gradient(112deg, transparent 0%, rgba(255, 255, 255, 0.07) 42%, transparent 62%);
+}
+
+.enterprise-shell {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(247, 244, 238, 0.92) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: var(--radius-panel-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.enterprise-kicker {
+  color: rgb(var(--z-ink-label));
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.enterprise-copy {
+  color: rgb(var(--z-ink-soft));
+}
+
+.enterprise-dark {
+  background: linear-gradient(160deg, rgb(var(--z-bg)) 0%, rgb(var(--z-surface)) 58%, rgb(var(--z-surface-2)) 100%);
+  border-color: rgb(var(--z-border) / 0.3);
+  color: rgb(var(--z-text));
+  box-shadow: var(--shadow-hero);
+}
+
+.enterprise-dark p,
+.enterprise-dark li,
+.enterprise-dark a {
+  color: inherit;
+}
+
+.portrait-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--radius-panel) + 0.35rem);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: linear-gradient(180deg, rgb(226 232 240) 0%, rgb(203 213 225) 100%);
+  aspect-ratio: 4 / 5;
+  min-height: 0;
 }
 
 .section-divider {

@@ -102,13 +102,13 @@ export default function SupportPage() {
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {SOFT_LAUNCH_RESPONSE_WINDOWS.map((item) => (
             <div key={item.title} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{item.title}</p>
+              <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">{item.title}</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">{item.detail}</p>
             </div>
           ))}
         </div>
         <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-5 py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">What to include</p>
+          <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">What to include</p>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {intakeChecklist.map((item) => (
               <div key={item} className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
@@ -127,7 +127,7 @@ export default function SupportPage() {
           <Link href="/security" className={buttonVariants({ variant: "secondary" })}>
             Security overview
           </Link>
-          <Link href="/contact" className={buttonVariants()}>
+          <Link href="/contact" className={buttonVariants({ variant: "secondary" })}>
             Contact page
           </Link>
         </div>

@@ -41,6 +41,9 @@ type ServiceRequestPanelProps = {
   accountHref?: string;
 };
 
+const fieldLabelClassName = "enterprise-kicker text-[rgb(var(--z-ink-label))]";
+const fieldHelpClassName = "block text-xs leading-5 text-[rgb(var(--z-ink-soft))]";
+
 export function ServiceRequestPanel({
   signedIn = false,
   currentEmail = null,
@@ -124,16 +127,19 @@ export function ServiceRequestPanel({
   }
 
   return (
-    <section id="service-request" className="surface lift-card rounded-2xl p-6 md:p-7">
+    <section
+      id="service-request"
+      className="surface lift-card rounded-[1.8rem] border border-[rgb(var(--z-border)/0.55)] bg-[rgb(var(--z-panel))] p-6 md:p-7"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Service Hub</p>
+          <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Service Hub</p>
           <h2 className="font-display mt-1 text-3xl font-semibold text-slate-900">Request consultation or delivery</h2>
         </div>
         <Badge variant="secondary">{isSignedIn ? "Tracked in account" : "No account required"}</Badge>
       </div>
 
-      <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+      <p className="enterprise-copy mt-3 max-w-3xl text-sm">
         Submit this form to start a service conversation immediately. Signed-in customers get an account-linked request right away, and public prospects can submit first and attach account history later using the same email.
       </p>
 
@@ -198,7 +204,7 @@ export function ServiceRequestPanel({
       ) : (
         <form onSubmit={onSubmit} className="mt-5 grid gap-4 md:grid-cols-2">
           <label className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Request type</span>
+            <span className={fieldLabelClassName}>Request type</span>
             <Select
               name="type"
               defaultValue="CONSULTATION"
@@ -213,7 +219,7 @@ export function ServiceRequestPanel({
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Preferred start date</span>
+            <span className={fieldLabelClassName}>Preferred start date</span>
             <Input
               type="date"
               name="preferredStart"
@@ -223,20 +229,20 @@ export function ServiceRequestPanel({
           {!isSignedIn ? (
             <>
               <label className="space-y-1">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Work email</span>
+                <span className={fieldLabelClassName}>Work email</span>
                 <Input
                   type="email"
                   name="requesterEmail"
                   required
                   placeholder="you@company.com"
                 />
-                <span className="block text-xs leading-5 text-slate-500">
+                <span className={fieldHelpClassName}>
                   Business email only. Personal inbox domains are rejected automatically.
                 </span>
               </label>
 
               <label className="space-y-1">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Your name</span>
+                <span className={fieldLabelClassName}>Your name</span>
                 <Input
                   name="requesterName"
                   maxLength={120}
@@ -245,7 +251,7 @@ export function ServiceRequestPanel({
               </label>
 
               <label className="space-y-1 md:col-span-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Company</span>
+                <span className={fieldLabelClassName}>Company</span>
                 <Input
                   name="requesterCompanyName"
                   maxLength={120}
@@ -256,7 +262,7 @@ export function ServiceRequestPanel({
           ) : null}
 
           <label className="space-y-1 md:col-span-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Request title</span>
+            <span className={fieldLabelClassName}>Request title</span>
             <Input
               ref={titleInputRef}
               name="title"
@@ -268,7 +274,7 @@ export function ServiceRequestPanel({
           </label>
 
           <label className="space-y-1 md:col-span-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">What do you need?</span>
+            <span className={fieldLabelClassName}>What do you need?</span>
             <Textarea
               name="summary"
               required
@@ -279,7 +285,7 @@ export function ServiceRequestPanel({
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Budget range</span>
+            <span className={fieldLabelClassName}>Budget range</span>
             <Select
               name="budgetRange"
               defaultValue="Undecided"

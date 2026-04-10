@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
 import {
+  APP_HOST_MARKETING_REDIRECT_EXPECTATIONS,
   APP_PRODUCT_EXPECTATIONS,
+  APP_ROOT_EXPECTATION,
   APP_ROUTE_EXPECTATIONS,
+  APP_SIGNED_OUT_REDIRECT_EXPECTATIONS,
   APP_META_EXPECTATIONS,
   LEGACY_REDIRECT_EXPECTATIONS,
   MARKETING_ROUTE_EXPECTATIONS,
@@ -68,12 +71,16 @@ function locationsMatch(expectedLocation, actualLocation, options = {}) {
   try {
     const expected = new URL(expectedLocation);
     const actual = new URL(actualLocation, expected);
+    const expectedSearch = new URLSearchParams(expected.search);
+    const actualSearch = new URLSearchParams(actual.search);
+    const expectedEntries = [...expectedSearch.entries()].sort(([left], [right]) => left.localeCompare(right));
+    const actualEntries = [...actualSearch.entries()].sort(([left], [right]) => left.localeCompare(right));
 
     if (
       expected.protocol === actual.protocol &&
       expected.host === actual.host &&
       expected.pathname === actual.pathname &&
-      expected.search === actual.search &&
+      JSON.stringify(expectedEntries) === JSON.stringify(actualEntries) &&
       expected.hash === actual.hash
     ) {
       return true;
@@ -86,7 +93,7 @@ function locationsMatch(expectedLocation, actualLocation, options = {}) {
     return (
       expected.host === actual.host &&
       expected.pathname === actual.pathname &&
-      expected.search === actual.search &&
+      JSON.stringify(expectedEntries) === JSON.stringify(actualEntries) &&
       expected.hash === actual.hash
     );
   } catch {
@@ -268,7 +275,7 @@ async function runPageCheck({
         });
       }
 
-      if (canonicalUrl !== expectedCanonicalUrl) {
+      if (!locationsMatch(expectedCanonicalUrl, canonicalUrl, { ignoreProtocol: shouldUseCompatibilityBaseUrl(baseUrl) })) {
         return buildStep(id, label, "fail", {
           url,
           statusCode: response.status,
@@ -347,7 +354,7 @@ async function runMetaCheck({
         path,
         expectedCanonicalHost,
       );
-      if (canonicalUrl !== expectedCanonicalUrl) {
+      if (!locationsMatch(expectedCanonicalUrl, canonicalUrl, { ignoreProtocol: shouldUseCompatibilityBaseUrl(baseUrl) })) {
         return buildStep(id, label, "fail", {
           url,
           statusCode: response.status,
@@ -383,34 +390,7 @@ async function runMetaCheck({
   }
 }
 
-async function runHeaderCheck({ id, label, url, timeoutMs, expectedHeader, expectedValue }) {
-  try {
-    const response = await followFetch(url, timeoutMs, smokeUserAgent);
-    const actualValue = response.headers[expectedHeader.toLowerCase()] ?? null;
-    if (actualValue !== expectedValue) {
-      return buildStep(id, label, "fail", {
-        url,
-        statusCode: response.status,
-        finalUrl: response.finalUrl,
-        detail: `Expected header ${expectedHeader}=${expectedValue}, got ${actualValue ?? "missing"}.`,
-      });
-    }
-
-    return buildStep(id, label, "pass", {
-      url,
-      statusCode: response.status,
-      finalUrl: response.finalUrl,
-    });
-  } catch (error) {
-    return buildStep(id, label, "fail", {
-      url,
-      failureCode: String(getErrorCode(error)),
-      detail: "Header check failed because the destination could not be reached.",
-    });
-  }
-}
-
-async function runSeoCheck({ marketingBaseUrl, timeoutMs }) {
+async function runMarketingSeoCheck({ marketingBaseUrl, timeoutMs }) {
   const robotsUrl = toAbsoluteUrl("/robots.txt", marketingBaseUrl);
   const sitemapUrl = toAbsoluteUrl("/sitemap.xml", marketingBaseUrl);
 
@@ -424,13 +404,13 @@ async function runSeoCheck({ marketingBaseUrl, timeoutMs }) {
     if (robotsResponse.status !== 200) {
       issues.push(`robots.txt returned ${robotsResponse.status}`);
     }
-    if (!robotsResponse.body.includes("Sitemap: https://www.zokorp.com/sitemap.xml")) {
+    if (!robotsResponse.body.includes(`Sitemap: ${marketingBaseUrl}/sitemap.xml`)) {
       issues.push("robots.txt missing canonical sitemap URL");
     }
     if (sitemapResponse.status !== 200) {
       issues.push(`sitemap.xml returned ${sitemapResponse.status}`);
     }
-    if (!sitemapResponse.body.includes("<loc>https://www.zokorp.com/</loc>")) {
+    if (!sitemapResponse.body.includes(`<loc>${marketingBaseUrl}/</loc>`)) {
       issues.push("sitemap.xml missing canonical homepage URL");
     }
     if (sitemapResponse.body.includes("https://app.zokorp.com")) {
@@ -453,6 +433,73 @@ async function runSeoCheck({ marketingBaseUrl, timeoutMs }) {
       failureCode: String(getErrorCode(error)),
       detail: "Unable to fetch robots.txt or sitemap.xml.",
     });
+  }
+}
+
+async function runAppSeoChecks({ appBaseUrl, timeoutMs }) {
+  const appHost = new URL(appBaseUrl).host;
+  const robotsUrl = toAbsoluteUrl("/robots.txt", appBaseUrl);
+  const sitemapUrl = toAbsoluteUrl("/sitemap.xml", appBaseUrl);
+
+  try {
+    const [robotsResponse, sitemapResponse] = await Promise.all([
+      followFetch(robotsUrl, timeoutMs, smokeUserAgent),
+      followFetch(sitemapUrl, timeoutMs, smokeUserAgent),
+    ]);
+
+    const robotsIssues = [];
+    if (robotsResponse.status !== 200) {
+      robotsIssues.push(`robots.txt returned ${robotsResponse.status}`);
+    }
+    if (robotsResponse.body.includes("Sitemap:")) {
+      robotsIssues.push("robots.txt should not declare a sitemap on the app host");
+    }
+    if (robotsResponse.body.includes("Host:")) {
+      robotsIssues.push("robots.txt should not declare a host on the app host");
+    }
+    if (!robotsResponse.body.includes("Disallow: /account")) {
+      robotsIssues.push("robots.txt should keep account routes disallowed");
+    }
+
+    const sitemapIssues = [];
+    if (sitemapResponse.status !== 404) {
+      sitemapIssues.push(`sitemap.xml returned ${sitemapResponse.status}`);
+    }
+    if (new URL(sitemapResponse.finalUrl).host !== appHost) {
+      sitemapIssues.push(`sitemap.xml resolved on unexpected host ${new URL(sitemapResponse.finalUrl).host}`);
+    }
+
+    return [
+      robotsIssues.length > 0
+        ? buildStep("app_robots", "App robots contract", "fail", {
+            url: robotsUrl,
+            detail: robotsIssues.join("; "),
+          })
+        : buildStep("app_robots", "App robots contract", "pass", {
+            url: robotsUrl,
+          }),
+      sitemapIssues.length > 0
+        ? buildStep("app_sitemap_absent", "App sitemap removed from crawl surface", "fail", {
+            url: sitemapUrl,
+            detail: sitemapIssues.join("; "),
+          })
+        : buildStep("app_sitemap_absent", "App sitemap removed from crawl surface", "pass", {
+            url: sitemapUrl,
+          }),
+    ];
+  } catch (error) {
+    return [
+      buildStep("app_robots", "App robots contract", "fail", {
+        url: robotsUrl,
+        failureCode: String(getErrorCode(error)),
+        detail: "Unable to fetch app-host robots.txt.",
+      }),
+      buildStep("app_sitemap_absent", "App sitemap removed from crawl surface", "fail", {
+        url: sitemapUrl,
+        failureCode: String(getErrorCode(error)),
+        detail: "Unable to fetch app-host sitemap.xml.",
+      }),
+    ];
   }
 }
 
@@ -544,6 +591,8 @@ export async function runProductionSmokeCheck(options = {}) {
   const hostSplitSkipped = sameOrigin(marketingBaseUrl, appBaseUrl);
   const localSameOriginRun =
     hostSplitSkipped && isLocalHostUrl(marketingBaseUrl) && isLocalHostUrl(appBaseUrl);
+  const compatibilityHostSplit =
+    shouldUseCompatibilityBaseUrl(marketingBaseUrl) || shouldUseCompatibilityBaseUrl(appBaseUrl);
 
   if (apexBaseUrl && !sameOrigin(apexBaseUrl, marketingBaseUrl)) {
     const apexExpectedLocation = toAbsoluteUrl("/", marketingBaseUrl);
@@ -573,18 +622,25 @@ export async function runProductionSmokeCheck(options = {}) {
 
   if (hostSplitSkipped) {
     steps.push(
-      buildStep("app_root_redirect", "App root redirects to /software", "skipped", {
+      buildStep("app_root_landing", "App root renders the app landing page", "skipped", {
         detail: "Skipped because marketing and app are using the same origin for this run.",
       }),
     );
   } else {
     steps.push(
-      await runRedirectCheck({
-        id: "app_root_redirect",
-        label: "App root redirects to /software",
-        sourceUrl: appBaseUrl,
-        expectedLocation: toAbsoluteUrl("/software", appBaseUrl),
+      await runPageCheck({
+        id: "app_root_landing",
+        label: "App root renders the app landing page",
+        baseUrl: appBaseUrl,
+        marketingBaseUrl: expectedMarketingCanonicalBaseUrl,
+        appBaseUrl: expectedAppCanonicalBaseUrl,
+        path: APP_ROOT_EXPECTATION.path,
+        marker: APP_ROOT_EXPECTATION.marker,
         timeoutMs,
+        expectedHost: appHost,
+        expectedCanonicalHost: APP_ROOT_EXPECTATION.expectedCanonicalHost,
+        expectedRobotsHeader: APP_ROOT_EXPECTATION.expectedRobotsHeader,
+        expectedRobotsContent: APP_ROOT_EXPECTATION.expectedRobotsContent,
       }),
     );
   }
@@ -674,32 +730,80 @@ export async function runProductionSmokeCheck(options = {}) {
           productionMarketingBlockAllowed &&
           marketingHost !== appHost &&
           toAbsoluteUrl(redirectExpectation.to, appBaseUrl),
-        ignoreProtocol: localSameOriginRun,
+        ignoreProtocol: localSameOriginRun || compatibilityHostSplit,
       }),
     );
   }
 
   if (hostSplitSkipped) {
+    for (const route of APP_HOST_MARKETING_REDIRECT_EXPECTATIONS) {
+      steps.push(
+        buildStep(
+          `app_marketing_redirect_${route.label.toLowerCase().replaceAll(/\s+/g, "_")}`,
+          `App host redirects marketing route: ${route.label}`,
+          "skipped",
+          {
+            detail: "Skipped because marketing and app are using the same origin for this run.",
+          },
+        ),
+      );
+    }
+
+    for (const route of APP_SIGNED_OUT_REDIRECT_EXPECTATIONS) {
+      steps.push(
+        buildStep(
+          `app_${route.label.toLowerCase().replaceAll(/\s+/g, "_")}_redirect_to_login`,
+          `Signed-out ${route.label.toLowerCase()} redirects to login`,
+          "skipped",
+          {
+            detail: "Skipped because marketing and app are using the same origin for this run.",
+          },
+        ),
+      );
+    }
+
     steps.push(
-      buildStep("app_noindex", "App-host marketing pages emit noindex", "skipped", {
+      buildStep("app_robots", "App robots contract", "skipped", {
+        detail: "Skipped because marketing and app are using the same origin for this run.",
+      }),
+    );
+    steps.push(
+      buildStep("app_sitemap_absent", "App sitemap removed from crawl surface", "skipped", {
         detail: "Skipped because marketing and app are using the same origin for this run.",
       }),
     );
   } else {
-    steps.push(
-      await runHeaderCheck({
-        id: "app_noindex",
-        label: "App-host marketing pages emit noindex",
-        url: toAbsoluteUrl("/contact", appBaseUrl),
-        timeoutMs,
-        expectedHeader: "x-robots-tag",
-        expectedValue: "noindex, follow",
-      }),
-    );
+    for (const route of APP_HOST_MARKETING_REDIRECT_EXPECTATIONS) {
+      steps.push(
+        await runRedirectCheck({
+          id: `app_marketing_redirect_${route.label.toLowerCase().replaceAll(/\s+/g, "_")}`,
+          label: `App host redirects marketing route: ${route.label}`,
+          sourceUrl: toAbsoluteUrl(route.path, appBaseUrl),
+          expectedLocation: toAbsoluteUrl(route.path, marketingBaseUrl),
+          timeoutMs,
+          ignoreProtocol: compatibilityHostSplit,
+        }),
+      );
+    }
+
+    for (const route of APP_SIGNED_OUT_REDIRECT_EXPECTATIONS) {
+      steps.push(
+        await runRedirectCheck({
+          id: `app_${route.label.toLowerCase().replaceAll(/\s+/g, "_")}_redirect_to_login`,
+          label: `Signed-out ${route.label.toLowerCase()} redirects to login`,
+          sourceUrl: toAbsoluteUrl(route.path, appBaseUrl),
+          expectedLocation: toAbsoluteUrl(route.expectedLocation, appBaseUrl),
+          timeoutMs,
+          ignoreProtocol: compatibilityHostSplit,
+        }),
+      );
+    }
+
+    steps.push(...(await runAppSeoChecks({ appBaseUrl, timeoutMs })));
   }
 
   steps.push(
-    await runSeoCheck({
+    await runMarketingSeoCheck({
       marketingBaseUrl,
       timeoutMs,
     }),

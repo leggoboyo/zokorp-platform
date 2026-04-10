@@ -67,8 +67,8 @@ export default function AboutPage() {
   });
 
   return (
-    <div className="space-y-10 md:space-y-12">
-      <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f7f5f1_100%)] px-6 py-8 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:px-8 md:py-10">
+    <div className="enterprise-shell space-y-10 md:space-y-12">
+      <section className="rounded-[2rem] border border-[rgb(var(--z-border)/0.55)] bg-[image:var(--z-gradient-hero)] px-6 py-8 shadow-[var(--z-shadow-panel)] md:px-8 md:py-10">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start">
           <div>
             <Badge variant="secondary" className="border-slate-200 bg-white text-slate-700">
@@ -77,7 +77,7 @@ export default function AboutPage() {
             <h1 className="font-display mt-5 max-w-4xl text-balance text-4xl font-semibold leading-tight text-slate-950 md:text-6xl">
               Built by a technical founder who has spent time inside AWS, Microsoft, and real delivery work.
             </h1>
-            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
+            <p className="enterprise-copy mt-5 max-w-3xl text-base md:text-lg">
               ZoKorp exists for teams that need serious technical judgment, a bounded path from review to execution,
               and software that supports the work instead of dressing it up. The company is founder-led on purpose:
               direct conversations, clear scope, and no fake proof wall.
@@ -96,13 +96,13 @@ export default function AboutPage() {
           </div>
 
           <Card tone="plain" className="overflow-hidden rounded-[1.85rem] border border-slate-200 bg-white shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
-            <div className="grid gap-5 p-4 md:grid-cols-[0.8fr_1.2fr] md:p-5">
-              <div className="relative min-h-[340px] overflow-hidden rounded-[1.45rem] bg-[linear-gradient(180deg,#e2e8f4_0%,#cad4e5_100%)]">
+            <div className="grid gap-5 p-4 md:grid-cols-[minmax(240px,300px)_1fr] md:p-5">
+              <div className="portrait-frame relative min-h-[340px] overflow-hidden rounded-[1.45rem] bg-[linear-gradient(180deg,#e2e8f4_0%,#cad4e5_100%)] md:min-h-[420px]">
                 <Image
                   src={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
                   alt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
                   fill
-                  className="object-cover object-[center_18%]"
+                  className="object-cover object-[center_12%]"
                   sizes="(max-width: 768px) 100vw, 320px"
                 />
               </div>
@@ -117,15 +117,15 @@ export default function AboutPage() {
                     sizes="148px"
                   />
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Founder</p>
+                    <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Founder</p>
                     <h2 className="font-display text-3xl font-semibold text-slate-950">
                       {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
                     </h2>
                   </div>
                 </div>
                 <p className="mt-3 text-sm font-medium text-slate-700">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
-                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{PUBLIC_LAUNCH_CONTACT.location}</p>
-                <p className="mt-4 text-sm leading-7 text-slate-600">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
+                <p className="enterprise-kicker mt-1 text-[rgb(var(--z-ink-label))]">{PUBLIC_LAUNCH_CONTACT.location}</p>
+                <p className="enterprise-copy mt-4 text-sm">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials.map((credential) => (
                     <Badge key={credential} variant="secondary" className="border border-slate-200 bg-slate-50 text-slate-700">
@@ -133,7 +133,7 @@ export default function AboutPage() {
                     </Badge>
                   ))}
                 </div>
-                <div className="mt-5 space-y-2 text-sm text-slate-600">
+                <div className="mt-5 space-y-2 text-sm text-[rgb(var(--z-ink-soft))]">
                   <p>{PUBLIC_LAUNCH_CONTACT.location}</p>
                   <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className="font-medium text-slate-900">
                     {PUBLIC_LAUNCH_CONTACT.primaryEmail}
@@ -149,11 +149,11 @@ export default function AboutPage() {
         {backgroundChapters.map((chapter) => (
           <Card tone="plain" key={chapter.company} className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-none">
             <CardHeader className="gap-2 px-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{chapter.company}</p>
+              <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">{chapter.company}</p>
               <h2 className="font-display text-2xl font-semibold text-slate-950">{chapter.role}</h2>
             </CardHeader>
             <CardContent className="px-0">
-              <p className="text-sm leading-7 text-slate-600">{chapter.detail}</p>
+              <p className="enterprise-copy text-sm">{chapter.detail}</p>
             </CardContent>
           </Card>
         ))}
@@ -162,22 +162,22 @@ export default function AboutPage() {
       <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
         <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">How ZoKorp operates</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">How ZoKorp operates</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">Clear trust posture instead of inflated positioning.</h2>
           </CardHeader>
           <CardContent className="grid gap-4 px-0 md:grid-cols-3">
             {operatingPrinciples.map((item) => (
               <div key={item.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <h3 className="text-lg font-semibold text-slate-950">{item.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-600">{item.detail}</p>
+                <p className="enterprise-copy mt-2 text-sm">{item.detail}</p>
               </div>
             ))}
           </CardContent>
         </Card>
 
-        <Card tone="plain" className="rounded-[1.8rem] border border-slate-900 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
+        <Card tone="plain" className="enterprise-dark rounded-[1.8rem] p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Public proof posture</p>
+            <p className="enterprise-kicker text-white/72">Public proof posture</p>
             <h2 className="font-display text-3xl font-semibold">{PUBLIC_LAUNCH_PROOF_ASSET.title}</h2>
           </CardHeader>
           <CardContent className="space-y-3 px-0">
@@ -194,7 +194,7 @@ export default function AboutPage() {
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Who this is for</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Who this is for</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">Buyers who want real technical judgment before they buy more work.</h2>
           </CardHeader>
           <CardContent className="space-y-3 px-0">
@@ -208,15 +208,15 @@ export default function AboutPage() {
 
         <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Background summary</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Background summary</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">The company is small on purpose, not vague by accident.</h2>
           </CardHeader>
           <CardContent className="space-y-4 px-0">
-            <p className="text-sm leading-7 text-slate-600 md:text-base">
+            <p className="enterprise-copy text-sm md:text-base">
               ZoKorp is not trying to imitate a large consultancy. It is a focused company built around one founder,
               one clear consulting catalog, and software that supports the same operating model.
             </p>
-            <p className="text-sm leading-7 text-slate-600 md:text-base">
+            <p className="enterprise-copy text-sm md:text-base">
               That means direct access, tighter scope control, clearer accountability, and a lower tolerance for vague
               positioning. If a service or product is still maturing, the site says so plainly.
             </p>

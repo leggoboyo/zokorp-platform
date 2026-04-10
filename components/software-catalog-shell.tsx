@@ -114,9 +114,9 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
       <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5 md:p-6">
         <CardHeader className="gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Catalog Filters</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Catalog Filters</p>
             <h2 className="font-display text-3xl font-semibold text-slate-900">Browse by access model or intent</h2>
-            <p className="max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="enterprise-copy max-w-2xl text-sm">
               Search product names and descriptions, then narrow the list to the pricing model your team wants.
             </p>
           </div>
@@ -155,7 +155,7 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
               );
             })}
           </div>
-          <p className="text-sm text-slate-500" aria-live="polite">
+          <p className="text-sm text-[rgb(var(--z-ink-soft))]" aria-live="polite">
             Showing {filteredProducts.length} of {products.length} product{products.length === 1 ? "" : "s"}.
           </p>
         </CardContent>
@@ -168,7 +168,7 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
               <CardHeader className="gap-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Software Product</p>
+                    <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Software Product</p>
                     <h3 className="font-display text-2xl font-semibold text-slate-900">
                       {getCatalogPresentation(product).name}
                     </h3>
@@ -177,13 +177,13 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
                 </div>
               </CardHeader>
               <CardContent className="space-y-5">
-                <p className="text-sm leading-6 text-slate-600">{getCatalogPresentation(product).description}</p>
+                <p className="enterprise-copy text-sm">{getCatalogPresentation(product).description}</p>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/85 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pricing Snapshot</p>
+                  <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Pricing Snapshot</p>
                   <p className="mt-2 font-display text-3xl font-semibold text-slate-900">{getPriceSummary(product)}</p>
                   {product.prices.length > 0 ? (
-                    <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                    <ul className="mt-3 space-y-2 text-sm text-[rgb(var(--z-ink-soft))]">
                       {product.prices.slice(0, 3).map((price) => (
                         <li key={price.id} className="flex items-center justify-between gap-4">
                           <span>{price.kind.replaceAll("_", " ")}</span>
@@ -192,7 +192,7 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-3 text-sm text-slate-600">
+                    <p className="mt-3 text-sm text-[rgb(var(--z-ink-soft))]">
                       {product.accessModel === "FREE"
                         ? "Launch the tool directly. Account sign-in adds usage history where supported."
                         : "Pricing is configured per product in the admin dashboard."}
@@ -214,11 +214,11 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
       ) : (
         <Card tone="muted" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
           <CardHeader>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No Matches</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">No Matches</p>
             <h3 className="font-display text-2xl font-semibold text-slate-900">No software fits the current filters</h3>
           </CardHeader>
           <CardContent>
-            <p className="text-sm leading-6 text-slate-600">
+            <p className="enterprise-copy text-sm">
               Clear the search term or switch back to all access models to see the full catalog.
             </p>
           </CardContent>

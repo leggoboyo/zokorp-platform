@@ -12,6 +12,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test --reporter=list",
+    "test:e2e:local": "JOURNEY_MARKETING_BASE_URL=http://127.0.0.1:3000 JOURNEY_APP_BASE_URL=http://127.0.0.1:3000 E2E_MUTATION_MODE=readonly playwright test --reporter=list",
+    "test:e2e:preview": "E2E_MUTATION_MODE=readonly playwright test --reporter=list",
+    "test:e2e:production": "E2E_MUTATION_MODE=readonly playwright test --reporter=list",
     "smoke:production": "node scripts/production_smoke_check.mjs",
     "ops:audit:production": "node scripts/production_provider_audit.mjs",
     "ops:proof:production": "node scripts/production_operational_proof.mjs",
@@ -22,6 +26,7 @@
     "journey:walkthrough": "node scripts/full_gui_walkthrough.mjs",
     "journey:walkthrough:low-risk": "JOURNEY_MUTATION_MODE=low-risk node scripts/full_gui_walkthrough.mjs",
     "journey:walkthrough:production": "node scripts/full_gui_walkthrough.mjs",
+    "journey:a11y": "node scripts/accessibility_audit.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
@@ -48,6 +53,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^20",

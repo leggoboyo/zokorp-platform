@@ -189,6 +189,7 @@ export function createBrowserDiagnostics() {
     consoleMessages: [],
     pageErrors: [],
     requestFailures: [],
+    ignoredRequestFailures: [],
     responseFailures: [],
   };
 }
@@ -205,6 +206,11 @@ function shouldRecordResponseFailure(response) {
   const request = response.request();
   const resourceType = request.resourceType();
   return response.status() >= 400 && ["document", "xhr", "fetch"].includes(resourceType);
+}
+
+function shouldIgnoreRequestFailure(request) {
+  const failureText = request.failure()?.errorText ?? "";
+  return failureText === "net::ERR_ABORTED";
 }
 
 export function attachContextDiagnostics(context, diagnostics) {
@@ -228,11 +234,20 @@ export function attachContextDiagnostics(context, diagnostics) {
     });
 
     page.on("requestfailed", (request) => {
-      diagnostics.requestFailures.push({
+      const entry = {
         url: request.url(),
         method: request.method(),
         resourceType: request.resourceType(),
         failureText: request.failure()?.errorText ?? "unknown",
+      };
+
+      if (shouldIgnoreRequestFailure(request)) {
+        diagnostics.ignoredRequestFailures.push(entry);
+        return;
+      }
+
+      diagnostics.requestFailures.push({
+        ...entry,
       });
     });
 
@@ -269,6 +284,7 @@ export function persistDiagnostics(outputDir, diagnostics) {
   writeTextFile(consolePath, consoleText ? `${consoleText}\n` : "");
   writeJsonFile(networkPath, {
     requestFailures: diagnostics.requestFailures,
+    ignoredRequestFailures: diagnostics.ignoredRequestFailures,
     responseFailures: diagnostics.responseFailures,
   });
 

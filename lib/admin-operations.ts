@@ -136,6 +136,13 @@ const INTERNAL_FAILURE_CONFIGS = [
     statusTone: "warning" as const,
   },
   {
+    action: "service.request_operator_email_failed",
+    title: "Service request notification email failed",
+    href: "/admin/service-requests",
+    statusLabel: "email failed",
+    statusTone: "warning" as const,
+  },
+  {
     action: "auth.register_failed",
     title: "Account registration failed",
     href: "/admin/readiness",

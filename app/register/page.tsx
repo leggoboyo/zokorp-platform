@@ -25,10 +25,13 @@ export default async function RegisterPage({
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <Card tone="glass" className="animate-fade-up rounded-2xl p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Account Access</p>
+      <Card
+        tone="plain"
+        className="animate-fade-up rounded-2xl border border-slate-200 bg-white p-8 shadow-[0_18px_36px_rgba(8,31,61,0.08)]"
+      >
+        <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Account Access</p>
         <h1 className="font-display mt-2 text-4xl font-semibold text-slate-900">Create account</h1>
-        <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
+        <p className="enterprise-copy mt-3 text-sm md:text-base">
           Register with a business email and strong password. Email verification is required before sign-in.
         </p>
 
@@ -41,7 +44,7 @@ export default async function RegisterPage({
         )}
       </Card>
 
-      <Card tone="muted" lift className="rounded-2xl p-6">
+      <Card tone="plain" lift className="rounded-2xl border border-slate-200 bg-slate-50/95 p-6 shadow-none">
         <p className="text-sm text-slate-700">
           Already have an account?{" "}
           <Link href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`} className={buttonVariants({ variant: "link", size: "sm" })}>

@@ -3,20 +3,21 @@ import Link from "next/link";
 
 import { SiteHeaderShell } from "@/components/site-header-shell";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
+import { buildCalendlyBookingUrl } from "@/lib/calendly";
 import { PUBLIC_LAUNCH_FOUNDER_PROFILE } from "@/lib/public-launch-contract";
-import { getAppSiteUrl, getMarketingSiteUrl } from "@/lib/site";
+import { getAppSiteUrl, getMarketingSiteUrl, toMarketingSiteUrl } from "@/lib/site";
 
 const primaryLinks = [
-  { href: "/services", label: "Services" },
+  { href: toMarketingSiteUrl("/services"), label: "Services" },
   { href: "/software", label: "Software" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
+  { href: toMarketingSiteUrl("/pricing"), label: "Pricing" },
+  { href: toMarketingSiteUrl("/about"), label: "About" },
+  { href: toMarketingSiteUrl("/contact"), label: "Contact" },
 ];
 
 const secondaryLinks = [
-  { href: "/media", label: "Insights" },
-  { href: "/support", label: "Support" },
+  { href: toMarketingSiteUrl("/media"), label: "Insights" },
+  { href: toMarketingSiteUrl("/support"), label: "Support" },
   { href: `${getAppSiteUrl()}/account`, label: "Account" },
 ];
 
@@ -24,16 +25,20 @@ export function SiteHeader() {
   const authRuntimeReady = isPasswordAuthEnabled() && Boolean(process.env.NEXTAUTH_SECRET);
   const appSiteUrl = getAppSiteUrl();
   const marketingSiteUrl = getMarketingSiteUrl();
+  const bookCallHref = buildCalendlyBookingUrl({
+    baseUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${marketingSiteUrl}/services#service-request`,
+    utmMedium: "header",
+  });
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-[rgba(247,245,241,0.92)] backdrop-blur-xl">
-      <div className="border-b border-slate-200 bg-slate-950 px-4 py-2 text-center text-xs tracking-[0.12em] text-slate-100">
+    <header className="sticky top-0 z-50 isolate border-b border-[rgb(var(--z-border)/0.45)] bg-[rgba(248,246,242,0.92)] backdrop-blur-xl">
+      <div className="border-b border-[rgb(var(--z-border)/0.35)] bg-[rgb(var(--z-bg))] px-4 py-2 text-center text-xs tracking-[0.12em] text-[rgb(var(--z-text))]">
         Founder-led AWS architecture, AI/ML advisory, and software delivery.
       </div>
 
       <div className="mx-auto w-full max-w-7xl px-4 py-4 md:px-6">
-        <div className="relative flex items-center justify-between gap-4">
-          <Link href="/" className="font-display inline-flex min-w-0 items-center gap-3 text-slate-950">
+        <div className="relative z-10 flex items-center justify-between gap-4 rounded-[1.65rem] border border-[rgb(var(--z-border)/0.4)] bg-[rgba(255,255,255,0.72)] px-3 py-3 shadow-[0_16px_32px_rgba(15,23,42,0.04)] backdrop-blur-xl md:px-4">
+          <Link href="/" className="font-display inline-flex min-w-0 items-center gap-3 text-[rgb(var(--z-ink))]">
             <span className="flex items-center">
               <Image
                 src={PUBLIC_LAUNCH_FOUNDER_PROFILE.logoPath}
@@ -46,19 +51,19 @@ export function SiteHeader() {
               />
             </span>
             <span className="min-w-0">
-              <span className="hidden text-xs uppercase tracking-[0.18em] text-slate-500 lg:block">Architecture-first consulting and software</span>
+              <span className="hidden text-xs uppercase tracking-[0.18em] text-[rgb(var(--z-ink-soft))] lg:block">
+                Architecture-first consulting and software
+              </span>
             </span>
           </Link>
 
           <SiteHeaderShell
             primaryLinks={primaryLinks}
             secondaryLinks={secondaryLinks}
-            isAdmin={false}
-            userEmail={null}
             authRuntimeReady={authRuntimeReady}
+            bookCallHref={bookCallHref}
             loginHref={`${appSiteUrl}/login?callbackUrl=/software`}
             registerHref={`${appSiteUrl}/register`}
-            signOutHref={`${appSiteUrl}/api/auth/signout?callbackUrl=${encodeURIComponent(marketingSiteUrl)}`}
           />
         </div>
       </div>

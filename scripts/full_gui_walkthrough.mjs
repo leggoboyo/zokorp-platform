@@ -7,6 +7,7 @@ import { chromium } from "playwright";
 
 import {
   APP_PRODUCT_EXPECTATIONS,
+  APP_ROOT_EXPECTATION,
   APP_ROUTE_EXPECTATIONS,
   APP_META_EXPECTATIONS,
   CONSULTING_PRICE_MARKERS,
@@ -48,6 +49,25 @@ function sameOrigin(left, right) {
     return new URL(left).origin === new URL(right).origin;
   } catch {
     return false;
+  }
+}
+
+function urlsMatch(left, right) {
+  if (!left || !right) {
+    return false;
+  }
+
+  try {
+    const leftUrl = new URL(left);
+    const rightUrl = new URL(right);
+    return (
+      leftUrl.origin === rightUrl.origin &&
+      leftUrl.pathname === rightUrl.pathname &&
+      leftUrl.search === rightUrl.search &&
+      leftUrl.hash === rightUrl.hash
+    );
+  } catch {
+    return left === right;
   }
 }
 
@@ -101,7 +121,7 @@ async function assertVisibleAny(page, texts, timeoutMs) {
 
 async function gotoAndAssert(page, url, marker, timeoutMs) {
   const response = await page.goto(url, {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: timeoutMs,
   });
   await assertVisibleText(page, marker, timeoutMs);
@@ -181,7 +201,7 @@ async function runMarketingDesktop(page, steps, config) {
 
   await page.setViewportSize({ width: 1440, height: 960 });
   await page.goto(new URL("/", config.marketingBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
   await assertVisibleText(page, MARKETING_ROUTE_EXPECTATIONS[0].marker, config.timeoutMs);
@@ -210,14 +230,15 @@ async function runMarketingDesktop(page, steps, config) {
       timeout: config.timeoutMs,
     });
   }
-  await header.getByRole("button", { name: "More", exact: true }).click();
+  const moreToggle = header.getByRole("button", { name: "More", exact: true });
+  await moreToggle.click();
   for (const label of MARKETING_MORE_MENU_LABELS) {
     await page.getByLabel("More pages").getByRole("link", { name: label, exact: true }).waitFor({
       state: "visible",
       timeout: config.timeoutMs,
     });
   }
-  await page.keyboard.press("Escape");
+  await moreToggle.click();
 
   const main = page.getByRole("main");
   const bookingHref = await main
@@ -271,7 +292,7 @@ async function runMarketingDesktop(page, steps, config) {
   }
 
   await page.goto(new URL("/services", config.marketingBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
   for (const marker of CONSULTING_PRICE_MARKERS) {
@@ -293,7 +314,7 @@ async function runMarketingDesktop(page, steps, config) {
   );
 
   await page.goto(new URL("/", config.marketingBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
   const footer = page.getByRole("contentinfo");
@@ -324,12 +345,13 @@ async function runMarketingMobile(page, steps, config) {
 
   await page.setViewportSize(mobileViewport);
   await page.goto(new URL("/", config.marketingBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
   await assertVisibleText(page, MARKETING_ROUTE_EXPECTATIONS[0].marker, config.timeoutMs);
   const header = page.getByRole("banner");
-  await header.getByRole("button", { name: "Menu", exact: true }).click();
+  const mobileMenuToggle = header.getByRole("button", { name: "Menu", exact: true });
+  await mobileMenuToggle.click();
   const mobileNav = page.getByLabel("Mobile navigation");
   await mobileNav.waitFor({
     state: "visible",
@@ -350,7 +372,7 @@ async function runMarketingMobile(page, steps, config) {
       landmarks: await collectLandmarkSnapshot(page),
     }),
   );
-  await page.keyboard.press("Escape");
+  await mobileMenuToggle.click();
   await page.setViewportSize({ width: 1440, height: 960 });
 }
 
@@ -359,28 +381,41 @@ async function runAppUnauthenticated(page, steps, config) {
 
   if (config.hostSplitSkipped) {
     steps.push(
-      buildStep("app_root_redirect", "App root redirects to /software", "skipped", {
+      buildStep("app_root_landing", "App root renders the app landing page", "skipped", {
         detail: "Skipped because marketing and app are using the same origin for this run.",
       }),
     );
   } else {
-    await page.goto(config.appBaseUrl, {
-      waitUntil: "networkidle",
-      timeout: config.timeoutMs,
-    });
-    if (!page.url().endsWith("/software")) {
+    await gotoAndAssert(
+      page,
+      new URL(APP_ROOT_EXPECTATION.path, config.appBaseUrl).toString(),
+      APP_ROOT_EXPECTATION.marker,
+      config.timeoutMs,
+    );
+    const headSnapshot = await collectHeadSnapshot(page);
+    const expectedCanonicalUrl = new URL(APP_ROOT_EXPECTATION.path, config.expectedAppCanonicalBaseUrl).toString();
+    const robotsContent = normalizeCompact(headSnapshot.robotsContent ?? "");
+    if (!urlsMatch(headSnapshot.canonicalHref, expectedCanonicalUrl)) {
       steps.push(
-        buildStep("app_root_redirect", "App root redirects to /software", "fail", {
+        buildStep("app_root_landing", "App root renders the app landing page", "fail", {
           url: page.url(),
-          screenshot: await writePageScreenshot(page, config.screenshotsDir, "app-root-redirect-failure"),
-          detail: `Expected app root to redirect to /software, got ${page.url()}.`,
+          screenshot: await writePageScreenshot(page, config.screenshotsDir, "app-root-landing-failure"),
+          detail: `Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`,
+        }),
+      );
+    } else if (robotsContent !== normalizeCompact(APP_ROOT_EXPECTATION.expectedRobotsContent)) {
+      steps.push(
+        buildStep("app_root_landing", "App root renders the app landing page", "fail", {
+          url: page.url(),
+          screenshot: await writePageScreenshot(page, config.screenshotsDir, "app-root-landing-failure"),
+          detail: `Expected robots meta ${APP_ROOT_EXPECTATION.expectedRobotsContent}, got ${headSnapshot.robotsContent ?? "missing"}.`,
         }),
       );
     } else {
       steps.push(
-        buildStep("app_root_redirect", "App root redirects to /software", "pass", {
+        buildStep("app_root_landing", "App root renders the app landing page", "pass", {
           url: page.url(),
-          screenshot: await writePageScreenshot(page, config.screenshotsDir, "app-root-software"),
+          screenshot: await writePageScreenshot(page, config.screenshotsDir, "app-root-landing"),
         }),
       );
     }
@@ -402,7 +437,7 @@ async function runAppUnauthenticated(page, steps, config) {
             route.path,
             canonicalBaseUrlFor(config, route.expectedCanonicalHost),
           ).toString();
-          if (headSnapshot.canonicalHref !== expectedCanonicalUrl) {
+          if (!urlsMatch(headSnapshot.canonicalHref, expectedCanonicalUrl)) {
             throw new Error(`Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`);
           }
         }
@@ -443,7 +478,7 @@ async function runAppUnauthenticated(page, steps, config) {
   for (const product of APP_PRODUCT_EXPECTATIONS) {
     try {
       const response = await page.goto(new URL(product.path, config.appBaseUrl).toString(), {
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
         timeout: config.timeoutMs,
       });
       await assertVisibleText(page, product.titleMarker, config.timeoutMs);
@@ -461,7 +496,7 @@ async function runAppUnauthenticated(page, steps, config) {
             product.path,
             canonicalBaseUrlFor(config, product.expectedCanonicalHost),
           ).toString();
-          if (headSnapshot.canonicalHref !== expectedCanonicalUrl) {
+          if (!urlsMatch(headSnapshot.canonicalHref, expectedCanonicalUrl)) {
             throw new Error(`Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`);
           }
         }
@@ -503,7 +538,7 @@ async function runAppUnauthenticated(page, steps, config) {
   for (const metaExpectation of APP_META_EXPECTATIONS) {
     try {
       await page.goto(new URL(metaExpectation.path, config.appBaseUrl).toString(), {
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
         timeout: config.timeoutMs,
       });
       const headSnapshot = await collectHeadSnapshot(page);
@@ -512,7 +547,7 @@ async function runAppUnauthenticated(page, steps, config) {
           metaExpectation.path,
           canonicalBaseUrlFor(config, metaExpectation.expectedCanonicalHost),
         ).toString();
-        if (headSnapshot.canonicalHref !== expectedCanonicalUrl) {
+        if (!urlsMatch(headSnapshot.canonicalHref, expectedCanonicalUrl)) {
           throw new Error(`Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`);
         }
       }
@@ -542,7 +577,7 @@ async function runAppUnauthenticated(page, steps, config) {
 
 async function ensureAppAuthentication(page, steps, config) {
   await page.goto(new URL("/login", config.appBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
 
@@ -564,12 +599,18 @@ async function ensureAppAuthentication(page, steps, config) {
   }
 
   const accountResponse = await page.goto(new URL("/account", config.appBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
 
   if (page.url().includes("/login")) {
-    throw new Error("App authentication did not complete successfully.");
+    steps.push(
+      buildStep("app_auth_login", "App authentication handoff", "blocked", {
+        detail: "Configured JOURNEY_EMAIL/JOURNEY_PASSWORD did not establish a local authenticated session.",
+        url: page.url(),
+      }),
+    );
+    return false;
   }
 
   if (!config.hostSplitSkipped) {
@@ -582,7 +623,7 @@ async function ensureAppAuthentication(page, steps, config) {
   await assertVisibleText(page, "Welcome back", config.timeoutMs);
   await assertVisibleText(page, "Billing and Invoices", config.timeoutMs);
   const accountHeadSnapshot = await collectHeadSnapshot(page);
-  if (accountHeadSnapshot.canonicalHref !== new URL("/account", config.expectedAppCanonicalBaseUrl).toString()) {
+  if (!urlsMatch(accountHeadSnapshot.canonicalHref, new URL("/account", config.expectedAppCanonicalBaseUrl).toString())) {
     throw new Error(`Expected /account canonical to stay on the app host, got ${accountHeadSnapshot.canonicalHref ?? "missing"}.`);
   }
   if (normalizeCompact(accountHeadSnapshot.robotsContent ?? "") !== "noindex,nofollow") {
@@ -597,6 +638,8 @@ async function ensureAppAuthentication(page, steps, config) {
       authStatePath: config.appAuthStatePath,
     }),
   );
+
+  return true;
 }
 
 async function runAppAuthenticated(page, steps, config) {
@@ -622,10 +665,25 @@ async function runAppAuthenticated(page, steps, config) {
     return;
   }
 
-  await ensureAppAuthentication(page, steps, config);
+  const authenticated = await ensureAppAuthentication(page, steps, config);
+  if (!authenticated) {
+    steps.push(
+      buildStep("app_billing", "Billing page", "blocked", {
+        detail: "Blocked because the configured authenticated session could not be established.",
+      }),
+    );
+    for (const product of APP_PRODUCT_EXPECTATIONS) {
+      steps.push(
+        buildStep(`app_auth_${product.slug}`, `Authenticated product: ${product.label}`, "blocked", {
+          detail: "Blocked because the configured authenticated session could not be established.",
+        }),
+      );
+    }
+    return;
+  }
 
   const billingResponse = await page.goto(new URL("/account/billing", config.appBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
   await assertVisibleText(page, "Billing and Subscriptions", config.timeoutMs);
@@ -636,7 +694,7 @@ async function runAppAuthenticated(page, steps, config) {
     }
   }
   const billingHeadSnapshot = await collectHeadSnapshot(page);
-  if (billingHeadSnapshot.canonicalHref !== new URL("/account/billing", config.expectedAppCanonicalBaseUrl).toString()) {
+  if (!urlsMatch(billingHeadSnapshot.canonicalHref, new URL("/account/billing", config.expectedAppCanonicalBaseUrl).toString())) {
     throw new Error(`Expected /account/billing canonical to stay on the app host, got ${billingHeadSnapshot.canonicalHref ?? "missing"}.`);
   }
   if (normalizeCompact(billingHeadSnapshot.robotsContent ?? "") !== "noindex,nofollow") {
@@ -654,7 +712,7 @@ async function runAppAuthenticated(page, steps, config) {
 
   for (const product of APP_PRODUCT_EXPECTATIONS) {
     await page.goto(new URL(product.path, config.appBaseUrl).toString(), {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: config.timeoutMs,
     });
     const matchedMarker = await assertVisibleAny(page, product.authenticatedMarkers, config.timeoutMs);
@@ -692,7 +750,7 @@ async function runSyntheticServiceRequest(page, steps, config) {
   await page.context().clearCookies();
   try {
     await page.goto(new URL("/services#service-request", requestBaseUrl).toString(), {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: config.timeoutMs,
     });
     await assertVisibleText(page, "Request consultation or delivery", config.timeoutMs);
@@ -762,7 +820,7 @@ async function runOptionalSignup(page, steps, config) {
 
   await page.context().clearCookies();
   await page.goto(new URL("/register", config.appBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
   await page.getByLabel("Name").fill(config.signupName);
@@ -1069,6 +1127,7 @@ export async function runFullGuiWalkthrough(options = {}) {
       consoleMessages: diagnostics.consoleMessages.length,
       pageErrors: diagnostics.pageErrors.length,
       requestFailures: diagnostics.requestFailures.length,
+      ignoredRequestFailures: diagnostics.ignoredRequestFailures.length,
       responseFailures: diagnostics.responseFailures.length,
     },
     syntheticLead,

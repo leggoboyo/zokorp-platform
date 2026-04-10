@@ -47,15 +47,15 @@ export default async function ContactPage() {
   });
 
   return (
-    <div className="space-y-10 md:space-y-12">
-      <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f7f5f1_100%)] px-6 py-8 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:px-8 md:py-10">
+    <div className="enterprise-shell space-y-10 md:space-y-12">
+      <section className="rounded-[2rem] border border-[rgb(var(--z-border)/0.55)] bg-[image:var(--z-gradient-hero)] px-6 py-8 shadow-[var(--z-shadow-panel)] md:px-8 md:py-10">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] lg:items-start">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Contact ZoKorp</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Contact ZoKorp</p>
             <h1 className="font-display mt-4 max-w-4xl text-balance text-4xl font-semibold leading-tight text-slate-950 md:text-6xl">
               Start the right conversation without getting pushed into signup first.
             </h1>
-            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
+            <p className="enterprise-copy mt-5 max-w-3xl text-base md:text-lg">
               ZoKorp keeps contact simple: direct founder calls, quote requests, software exploration, and a public
               email path. Browse first, contact when ready, create an account only if you want to use the app.
             </p>
@@ -74,22 +74,22 @@ export default async function ContactPage() {
 
           <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
             <CardHeader className="gap-2 px-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Direct details</p>
+              <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Direct details</p>
               <h2 className="font-display text-3xl font-semibold text-slate-950">Founder-led contact paths</h2>
             </CardHeader>
             <CardContent className="space-y-4 px-0">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Email</p>
+                <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Email</p>
                 <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className="mt-2 block text-lg font-semibold text-slate-950">
                   {PUBLIC_LAUNCH_CONTACT.primaryEmail}
                 </a>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Location</p>
+                <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Location</p>
                 <p className="mt-2 text-sm font-medium text-slate-900">{PUBLIC_LAUNCH_CONTACT.location}</p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">LinkedIn</p>
+                <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">LinkedIn</p>
                 <a href={PUBLIC_LAUNCH_CONTACT.linkedInUrl} className="mt-2 block text-sm font-medium text-slate-900">
                   {PUBLIC_LAUNCH_CONTACT.linkedInUrl.replace("https://", "")}
                 </a>
@@ -106,16 +106,16 @@ export default async function ContactPage() {
               <h2 className="font-display text-2xl font-semibold text-slate-950">{item.title}</h2>
             </CardHeader>
             <CardContent className="px-0">
-              <p className="text-sm leading-7 text-slate-600">{item.detail}</p>
+              <p className="enterprise-copy text-sm">{item.detail}</p>
             </CardContent>
           </Card>
         ))}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
+        <Card className="enterprise-dark rounded-[1.8rem] p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Response posture</p>
+            <p className="enterprise-kicker text-white/72">Response posture</p>
             <h2 className="font-display text-3xl font-semibold">Direct contact is preferred. Hidden funnels are not.</h2>
           </CardHeader>
           <CardContent className="space-y-4 px-0">
@@ -127,7 +127,7 @@ export default async function ContactPage() {
             <div className="grid gap-3 md:grid-cols-3">
               {SOFT_LAUNCH_RESPONSE_WINDOWS.map((item) => (
                 <div key={item.title} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">{item.title}</p>
+                  <p className="enterprise-kicker text-white/72">{item.title}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-100">{item.detail}</p>
                 </div>
               ))}
@@ -137,7 +137,7 @@ export default async function ContactPage() {
 
         <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">What to include</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">What to include</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">A little context makes follow-up faster.</h2>
           </CardHeader>
           <CardContent className="space-y-3 px-0">

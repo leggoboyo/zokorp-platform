@@ -8,6 +8,7 @@ const {
   userFindUniqueMock,
   createServiceRequestMock,
   auditCreateMock,
+  sendServiceRequestOperatorNotificationMock,
   upsertLeadMock,
   isSchemaDriftErrorMock,
   isTransientDatabaseConnectionErrorMock,
@@ -19,6 +20,7 @@ const {
   userFindUniqueMock: vi.fn(),
   createServiceRequestMock: vi.fn(),
   auditCreateMock: vi.fn(),
+  sendServiceRequestOperatorNotificationMock: vi.fn(),
   upsertLeadMock: vi.fn(),
   isSchemaDriftErrorMock: vi.fn(),
   isTransientDatabaseConnectionErrorMock: vi.fn(),
@@ -44,6 +46,10 @@ vi.mock("@/lib/service-requests", () => ({
 
 vi.mock("@/lib/privacy-leads", () => ({
   upsertLead: upsertLeadMock,
+}));
+
+vi.mock("@/lib/service-request-email", () => ({
+  sendServiceRequestOperatorNotification: sendServiceRequestOperatorNotificationMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -89,6 +95,11 @@ describe("service requests route", () => {
       title: "ATLAS-AUDIT-2026-03-26 service request",
     });
     auditCreateMock.mockRejectedValue(new Error("audit unavailable"));
+    sendServiceRequestOperatorNotificationMock.mockResolvedValue({
+      ok: true,
+      provider: "smtp",
+      error: undefined,
+    });
     upsertLeadMock.mockResolvedValue(undefined);
     isSchemaDriftErrorMock.mockReturnValue(false);
     isTransientDatabaseConnectionErrorMock.mockReturnValue(false);
@@ -134,6 +145,13 @@ describe("service requests route", () => {
         type: "CONSULTATION",
       }),
     );
+    expect(sendServiceRequestOperatorNotificationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trackingCode: "SR-260326-ABCDE",
+        requesterEmail: "consulting@zokorp.com",
+        requesterSource: "account",
+      }),
+    );
     expect(upsertLeadMock).not.toHaveBeenCalled();
     expect(auditCreateMock).toHaveBeenCalledTimes(2);
     expect(auditCreateMock).toHaveBeenCalledWith(
@@ -143,6 +161,11 @@ describe("service requests route", () => {
           metadataJson: expect.objectContaining({
             trackingCode: "SR-260326-ABCDE",
             zohoSyncQueued: true,
+            operatorEmailStatus: expect.objectContaining({
+              attempted: true,
+              ok: true,
+              provider: "smtp",
+            }),
           }),
         }),
       }),
@@ -197,6 +220,12 @@ describe("service requests route", () => {
       name: "Customer Founder",
       companyName: "CustomerCo",
     });
+    expect(sendServiceRequestOperatorNotificationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requesterEmail: "founder@customerco.com",
+        requesterSource: "public_form",
+      }),
+    );
     expect(auditCreateMock).toHaveBeenCalledTimes(1);
     expect(auditCreateMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -205,6 +234,11 @@ describe("service requests route", () => {
           metadataJson: expect.objectContaining({
             requesterSource: "public_form",
             zohoSyncQueued: true,
+            operatorEmailStatus: expect.objectContaining({
+              attempted: true,
+              ok: true,
+              provider: "smtp",
+            }),
           }),
         }),
       }),

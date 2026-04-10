@@ -57,15 +57,15 @@ export default async function PricingPage() {
   }
 
   return (
-    <div className="space-y-10 md:space-y-12">
-      <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f7f5f1_100%)] px-6 py-8 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:px-8 md:py-10">
+    <div className="enterprise-shell space-y-10 md:space-y-12">
+      <section className="rounded-[2rem] border border-[rgb(var(--z-border)/0.55)] bg-[image:var(--z-gradient-hero)] px-6 py-8 shadow-[var(--z-shadow-panel)] md:px-8 md:py-10">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pricing</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Pricing</p>
             <h1 className="font-display mt-4 max-w-4xl text-balance text-4xl font-semibold leading-tight text-slate-950 md:text-6xl">
               Public price anchors for consulting, and straightforward pricing for the software that is ready.
             </h1>
-            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
+            <p className="enterprise-copy mt-5 max-w-3xl text-base md:text-lg">
               ZoKorp shows enough pricing to help buyers make a decision without pretending every engagement is fixed,
               or every product is already mature enough for public subscription packaging.
             </p>
@@ -84,7 +84,7 @@ export default async function PricingPage() {
 
           <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
             <CardHeader className="gap-2 px-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pricing posture</p>
+              <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Pricing posture</p>
               <h2 className="font-display text-3xl font-semibold text-slate-950">Visible enough to be useful, bounded enough to stay honest.</h2>
             </CardHeader>
             <CardContent className="space-y-3 px-0">
@@ -101,10 +101,10 @@ export default async function PricingPage() {
       <section className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Consulting</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Consulting</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">Public consulting pricing</h2>
           </div>
-          <p className="max-w-xl text-sm leading-6 text-slate-600">
+          <p className="enterprise-copy max-w-xl text-sm">
             {PUBLIC_LAUNCH_POLICY_NOTES.services} Contact{" "}
             <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className="font-medium text-slate-900">
               {PUBLIC_LAUNCH_CONTACT.primaryEmail}
@@ -120,7 +120,7 @@ export default async function PricingPage() {
                 <p className="text-sm font-semibold text-slate-700">{item.price}</p>
               </CardHeader>
               <CardContent className="px-0">
-                <p className="text-sm leading-7 text-slate-600">{item.summary}</p>
+                <p className="enterprise-copy text-sm">{item.summary}</p>
               </CardContent>
             </Card>
           ))}
@@ -128,10 +128,10 @@ export default async function PricingPage() {
         <div className="mt-6 grid gap-4 lg:grid-cols-4">
           {CONSULTING_OFFERS.map((offer) => (
             <div key={offer.slug} className="rounded-2xl border border-slate-200 bg-white px-5 py-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{offer.eyebrow}</p>
+              <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">{offer.eyebrow}</p>
               <h3 className="mt-2 text-xl font-semibold text-slate-950">{offer.title}</h3>
               <p className="mt-2 text-sm font-medium text-slate-700">{offer.priceAnchor}</p>
-              <p className="mt-3 text-sm leading-7 text-slate-600">{offer.summary}</p>
+              <p className="enterprise-copy mt-3 text-sm">{offer.summary}</p>
             </div>
           ))}
         </div>
@@ -140,10 +140,10 @@ export default async function PricingPage() {
       <section className="space-y-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Software</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Software</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">Software pricing and access</h2>
           </div>
-          <p className="max-w-xl text-sm leading-6 text-slate-600">
+          <p className="enterprise-copy max-w-xl text-sm">
             Products stay public. Account creation becomes useful when you want usage history, billing, or protected access inside the app.
           </p>
         </div>
@@ -164,7 +164,7 @@ export default async function PricingPage() {
                     <h3 className="font-display text-2xl font-semibold text-slate-950">{product.name}</h3>
                     <Badge variant="secondary">{accessLabels[product.accessModel]}</Badge>
                   </div>
-                  <p className="text-sm leading-7 text-slate-600">{product.description}</p>
+                  <p className="enterprise-copy text-sm">{product.description}</p>
                 </CardHeader>
                 <CardContent className="px-0">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -204,9 +204,9 @@ export default async function PricingPage() {
         )}
       </section>
 
-      <Card className="rounded-[1.8rem] border border-slate-200 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
+      <Card className="enterprise-dark rounded-[1.8rem] p-6 shadow-none md:p-8">
         <CardHeader className="gap-2 px-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Need help deciding?</p>
+          <p className="enterprise-kicker text-white/72">Need help deciding?</p>
           <h2 className="font-display text-3xl font-semibold">Use the pricing page to orient yourself, not to skip the scoping conversation.</h2>
         </CardHeader>
         <CardContent className="space-y-3 px-0">
@@ -216,10 +216,10 @@ export default async function PricingPage() {
           </p>
         </CardContent>
         <CardFooter className="px-0">
-          <Link href="/services#service-request" className={buttonVariants({ variant: "secondary" })}>
+          <Link href="/services#service-request" className={buttonVariants()}>
             Request services
           </Link>
-          <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className={buttonVariants({ variant: "ghost" })}>
+          <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className={buttonVariants({ variant: "inverse" })}>
             Email ZoKorp
           </a>
         </CardFooter>

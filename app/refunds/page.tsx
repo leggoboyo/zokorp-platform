@@ -61,9 +61,9 @@ export default function RefundsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <Card tone="glass" className="animate-fade-up rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Refunds</p>
+        <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Refunds</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold text-slate-900">Refund posture</h1>
-        <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base">
+        <p className="enterprise-copy mt-4 text-sm md:text-base">
           ZoKorp uses a conservative review-first refund posture. Software, credits, subscriptions, and scoped services are handled differently, and any exception depends on actual usage and delivery state.
         </p>
       </Card>

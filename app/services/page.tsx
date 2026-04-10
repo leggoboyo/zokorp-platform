@@ -70,8 +70,8 @@ export default async function ServicesPage() {
   });
 
   return (
-    <div className="space-y-10 md:space-y-12">
-      <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f7f5f1_100%)] px-6 py-8 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:px-8 md:py-10">
+    <div className="enterprise-shell space-y-10 md:space-y-12">
+      <section className="rounded-[2rem] border border-[rgb(var(--z-border)/0.55)] bg-[image:var(--z-gradient-hero)] px-6 py-8 shadow-[var(--z-shadow-panel)] md:px-8 md:py-10">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start">
           <div>
             <Badge variant="secondary" className="border-slate-200 bg-white text-slate-700">
@@ -80,7 +80,7 @@ export default async function ServicesPage() {
             <h1 className="font-display mt-5 max-w-4xl text-balance text-4xl font-semibold leading-tight text-slate-950 md:text-6xl">
               Architecture review first. Remediation, readiness, and implementation when the next step is real.
             </h1>
-            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
+            <p className="enterprise-copy mt-5 max-w-3xl text-base md:text-lg">
               ZoKorp is a founder-led consultancy for teams that want clear AWS architecture judgment, AI/ML advisory,
               readiness support, and software-backed follow-through. You do not need an account to understand the
               offers or request a quote.
@@ -106,15 +106,15 @@ export default async function ServicesPage() {
             </div>
           </div>
 
-          <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
-            <CardHeader className="gap-2 px-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Founder-led scope</p>
-              <h2 className="font-display text-3xl font-semibold text-slate-950">
-                Direct technical work, not generic “transformation” consulting.
-              </h2>
-            </CardHeader>
-            <CardContent className="space-y-4 px-0">
-              <p className="text-sm leading-7 text-slate-600">
+        <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+          <CardHeader className="gap-2 px-0">
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Founder-led scope</p>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">
+              Direct technical work, not generic “transformation” consulting.
+            </h2>
+          </CardHeader>
+          <CardContent className="space-y-4 px-0">
+              <p className="enterprise-copy text-sm">
                 {PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -148,10 +148,10 @@ export default async function ServicesPage() {
       <section className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pricing anchors</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Pricing anchors</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">Visible consulting pricing without pretending every job is identical.</h2>
           </div>
-          <p className="max-w-xl text-sm leading-6 text-slate-600">
+          <p className="enterprise-copy max-w-xl text-sm">
             The anchors below are public on purpose. Anything broader still gets scoped before paid work begins.
           </p>
         </div>
@@ -163,7 +163,7 @@ export default async function ServicesPage() {
                 <p className="text-sm font-semibold text-slate-700">{item.price}</p>
               </CardHeader>
               <CardContent className="px-0">
-                <p className="text-sm leading-7 text-slate-600">{item.summary}</p>
+                <p className="enterprise-copy text-sm">{item.summary}</p>
               </CardContent>
             </Card>
           ))}
@@ -175,11 +175,11 @@ export default async function ServicesPage() {
           <Card
             tone="plain"
             key={offer.slug}
-            className={`rounded-[1.6rem] border border-slate-200 p-6 shadow-none ${offer.slug === "architecture-review-remediation" ? "bg-[#111827] text-slate-50 lg:col-span-2" : "bg-white"}`}
+            className={`rounded-[1.6rem] border border-slate-200 p-6 shadow-none ${offer.slug === "architecture-review-remediation" ? "enterprise-dark lg:col-span-2" : "bg-white"}`}
           >
             <CardHeader className="gap-2 px-0">
               <p
-                className={`text-xs font-semibold uppercase tracking-[0.16em] ${offer.slug === "architecture-review-remediation" ? "text-slate-300" : "text-slate-500"}`}
+                className={`enterprise-kicker ${offer.slug === "architecture-review-remediation" ? "text-white/72" : "text-[rgb(var(--z-ink-label))]"}`}
               >
                 {offer.eyebrow}
               </p>
@@ -191,7 +191,7 @@ export default async function ServicesPage() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4 px-0">
-              <p className={`text-sm leading-7 ${offer.slug === "architecture-review-remediation" ? "text-slate-200" : "text-slate-600"}`}>
+              <p className={`text-sm leading-7 ${offer.slug === "architecture-review-remediation" ? "text-slate-200" : "text-[rgb(var(--z-ink-soft))]"}`}>
                 {offer.summary}
               </p>
               <ul className="space-y-2">
@@ -212,14 +212,14 @@ export default async function ServicesPage() {
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Good fit</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Good fit</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">When to use ZoKorp services</h2>
           </CardHeader>
           <CardContent className="space-y-3 px-0">
             {fitScenarios.map((scenario) => (
               <div key={scenario.title} className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                 <h3 className="text-lg font-semibold text-slate-950">{scenario.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-600">{scenario.detail}</p>
+                <p className="enterprise-copy mt-2 text-sm">{scenario.detail}</p>
               </div>
             ))}
           </CardContent>
@@ -227,17 +227,17 @@ export default async function ServicesPage() {
 
         <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Engagement flow</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Engagement flow</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">A clear process from review to follow-through.</h2>
           </CardHeader>
           <CardContent className="grid gap-4 px-0 md:grid-cols-2">
             {DELIVERY_PROCESS_STEPS.map((step, index) => (
               <div key={step.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">
                   Step {String(index + 1).padStart(2, "0")}
                 </p>
                 <h3 className="mt-2 text-xl font-semibold text-slate-950">{step.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-600">{step.detail}</p>
+                <p className="enterprise-copy mt-2 text-sm">{step.detail}</p>
               </div>
             ))}
           </CardContent>
@@ -255,22 +255,22 @@ export default async function ServicesPage() {
       <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
         <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">FAQ</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">FAQ</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">What buyers usually need clarified</h2>
           </CardHeader>
           <CardContent className="space-y-4 px-0">
             {serviceFaq.map((item) => (
               <div key={item.question} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <h3 className="text-lg font-semibold text-slate-950">{item.question}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-600">{item.answer}</p>
+                <p className="enterprise-copy mt-2 text-sm">{item.answer}</p>
               </div>
             ))}
           </CardContent>
         </Card>
 
-        <Card tone="plain" className="rounded-[1.8rem] border border-slate-900 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
+        <Card tone="plain" className="enterprise-dark rounded-[1.8rem] p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Next step</p>
+            <p className="enterprise-kicker text-white/72">Next step</p>
             <h2 className="font-display text-3xl font-semibold">Start publicly, create an account only when it actually helps.</h2>
           </CardHeader>
           <CardContent className="space-y-3 px-0">
@@ -283,10 +283,10 @@ export default async function ServicesPage() {
             </div>
           </CardContent>
           <CardFooter className="px-0">
-            <Link href={`${appSiteUrl}/register`} className={buttonVariants({ variant: "secondary" })}>
+            <Link href={`${appSiteUrl}/register`} className={buttonVariants()}>
               Create account
             </Link>
-            <Link href="/contact" className={buttonVariants({ variant: "ghost" })}>
+            <Link href="/contact" className={buttonVariants({ variant: "inverse" })}>
               Contact ZoKorp
             </Link>
           </CardFooter>

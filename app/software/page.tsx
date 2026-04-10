@@ -9,7 +9,7 @@ import { isPublicSubscriptionPricingApproved } from "@/lib/billing-readiness";
 import { CatalogUnavailableError, getSoftwareCatalogCached } from "@/lib/catalog";
 import { SOFTWARE_HIGHLIGHTS } from "@/lib/marketing-content";
 import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
-import { buildMarketingPageMetadata, getAppSiteUrl, getMarketingSiteUrl } from "@/lib/site";
+import { buildMarketingPageMetadata, getAppSiteUrl, getMarketingSiteUrl, toMarketingSiteUrl } from "@/lib/site";
 import { getToolDefinitions } from "@/lib/tool-registry";
 
 export const revalidate = 300;
@@ -66,15 +66,15 @@ export default async function SoftwarePage() {
     : "Subscription pricing stays gated until approved";
 
   return (
-    <div className="space-y-10 md:space-y-12">
-      <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f7f5f1_100%)] px-6 py-8 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:px-8 md:py-10">
+    <div className="enterprise-shell space-y-10 md:space-y-12">
+      <section className="rounded-[2rem] border border-[rgb(var(--z-border)/0.55)] bg-[image:var(--z-gradient-hero)] px-6 py-8 shadow-[var(--z-shadow-panel)] md:px-8 md:py-10">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">ZoKorp software</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">ZoKorp software</p>
             <h1 className="font-display mt-4 max-w-4xl text-balance text-4xl font-semibold leading-tight text-slate-950 md:text-6xl">
               Software that supports the consulting model instead of pretending to replace it.
             </h1>
-            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
+            <p className="enterprise-copy mt-5 max-w-3xl text-base md:text-lg">
               The product side of ZoKorp exists to remove repetitive review work, make findings easier to act on, and
               give buyers a self-serve way to understand the company before committing to a call.
             </p>
@@ -82,10 +82,10 @@ export default async function SoftwarePage() {
               <Link href={`${appSiteUrl}/register`} className={buttonVariants({ size: "lg" })}>
                 Create account
               </Link>
-              <Link href="/pricing" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+              <Link href={toMarketingSiteUrl("/pricing")} className={buttonVariants({ variant: "secondary", size: "lg" })}>
                 Review pricing
               </Link>
-              <Link href="/services" className={buttonVariants({ variant: "ghost", size: "lg" })}>
+              <Link href={toMarketingSiteUrl("/services")} className={buttonVariants({ variant: "ghost", size: "lg" })}>
                 View services
               </Link>
             </div>
@@ -104,14 +104,14 @@ export default async function SoftwarePage() {
 
           <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
             <CardHeader className="gap-2 px-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">How to use this page</p>
+              <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">How to use this page</p>
               <h2 className="font-display text-3xl font-semibold text-slate-950">Browse publicly. Use the app when you are ready.</h2>
             </CardHeader>
             <CardContent className="space-y-3 px-0">
               {productModelNotes.map((note) => (
                 <div key={note.title} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                   <h3 className="text-lg font-semibold text-slate-950">{note.title}</h3>
-                  <p className="mt-2 text-sm leading-7 text-slate-600">{note.detail}</p>
+                  <p className="enterprise-copy mt-2 text-sm">{note.detail}</p>
                 </div>
               ))}
             </CardContent>
@@ -141,10 +141,10 @@ export default async function SoftwarePage() {
       <section className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Current product surfaces</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Current product surfaces</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">Three public product paths, one company narrative.</h2>
           </div>
-          <Link href="/services#service-request" className={buttonVariants({ variant: "secondary" })}>
+          <Link href={toMarketingSiteUrl("/services#service-request")} className={buttonVariants({ variant: "secondary" })}>
             Request product help
           </Link>
         </div>
@@ -152,11 +152,11 @@ export default async function SoftwarePage() {
           {spotlightItems.map((item) => (
             <Card key={item.title} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-none">
               <CardHeader className="gap-2 px-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{item.status}</p>
+                <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">{item.status}</p>
                 <h3 className="font-display text-2xl font-semibold text-slate-950">{item.title}</h3>
               </CardHeader>
               <CardContent className="px-0">
-                <p className="text-sm leading-7 text-slate-600">{item.summary}</p>
+                <p className="enterprise-copy text-sm">{item.summary}</p>
               </CardContent>
               <CardFooter className="px-0">
                 <Link href={item.href} className={buttonVariants()}>
@@ -171,7 +171,7 @@ export default async function SoftwarePage() {
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Software bridge</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Software bridge</p>
             <h2 className="font-display text-3xl font-semibold text-slate-950">What each product is for right now.</h2>
           </CardHeader>
           <CardContent className="space-y-3 px-0">
@@ -180,7 +180,7 @@ export default async function SoftwarePage() {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-950">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-7 text-slate-600">{item.summary}</p>
+                    <p className="enterprise-copy mt-2 text-sm">{item.summary}</p>
                   </div>
                   <Link href={item.href} className={buttonVariants({ variant: "secondary", size: "sm" })}>
                     {item.cta}
@@ -191,9 +191,9 @@ export default async function SoftwarePage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#111827] p-6 text-slate-50 shadow-none md:p-8">
+        <Card className="enterprise-dark rounded-[1.8rem] p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Why the split matters</p>
+            <p className="enterprise-kicker text-white/72">Why the split matters</p>
             <h2 className="font-display text-3xl font-semibold">Marketing lives on `www`. The app stays on `app`.</h2>
           </CardHeader>
           <CardContent className="space-y-3 px-0">
@@ -207,10 +207,10 @@ export default async function SoftwarePage() {
             </div>
           </CardContent>
           <CardFooter className="px-0">
-            <Link href={`${appSiteUrl}/register`} className={buttonVariants({ variant: "secondary" })}>
+            <Link href={`${appSiteUrl}/register`} className={buttonVariants()}>
               Create account
             </Link>
-            <Link href="/contact" className={buttonVariants({ variant: "ghost" })}>
+            <Link href={toMarketingSiteUrl("/contact")} className={buttonVariants({ variant: "inverse" })}>
               Contact ZoKorp
             </Link>
           </CardFooter>

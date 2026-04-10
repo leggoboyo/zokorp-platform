@@ -17,7 +17,7 @@ describe("host routing proxy", () => {
     expect(response.headers.get("location")).toBe("https://www.zokorp.com/pricing?plan=ftr");
   });
 
-  it("redirects app root traffic into the software hub", () => {
+  it("rewrites app root traffic into the app landing page and keeps it noindex", () => {
     const request = new NextRequest("https://app.zokorp.com/", {
       headers: {
         host: "app.zokorp.com",
@@ -26,8 +26,9 @@ describe("host routing proxy", () => {
 
     const response = proxy(request);
 
-    expect(response.status).toBe(308);
-    expect(response.headers.get("location")).toBe("https://app.zokorp.com/software");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
   });
 
   it("redirects legacy Squarespace pages to the current marketing IA", () => {
@@ -69,7 +70,7 @@ describe("host routing proxy", () => {
     expect(response.headers.get("location")).toBe("https://app.zokorp.com/register?callbackUrl=%2Fsoftware");
   });
 
-  it("marks app-host page responses as noindex", () => {
+  it("redirects app-host marketing pages to the canonical marketing host", () => {
     const request = new NextRequest("https://app.zokorp.com/contact", {
       headers: {
         host: "app.zokorp.com",
@@ -78,8 +79,8 @@ describe("host routing proxy", () => {
 
     const response = proxy(request);
 
-    expect(response.headers.get("location")).toBeNull();
-    expect(response.headers.get("x-robots-tag")).toBe("noindex, follow");
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe("https://www.zokorp.com/contact");
   });
 
   it.each(["/login", "/register", "/account"])("marks protected app route %s as noindex", (path) => {

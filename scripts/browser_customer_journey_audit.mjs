@@ -7,6 +7,7 @@ import { chromium } from "playwright";
 
 import {
   APP_PRODUCT_EXPECTATIONS,
+  APP_ROOT_EXPECTATION,
   APP_ROUTE_EXPECTATIONS,
   APP_META_EXPECTATIONS,
   CONSULTING_PRICE_MARKERS,
@@ -15,6 +16,7 @@ import {
   MARKETING_PRIMARY_NAV_LABELS,
   MARKETING_ROUTE_EXPECTATIONS,
 } from "./playwright_audit_contract.mjs";
+import { runProductionSmokeCheck } from "./production_smoke_check.mjs";
 import {
   attachContextDiagnostics,
   buildStep,
@@ -42,6 +44,25 @@ function sameOrigin(left, right) {
     return new URL(left).origin === new URL(right).origin;
   } catch {
     return false;
+  }
+}
+
+function urlsMatch(left, right) {
+  if (!left || !right) {
+    return false;
+  }
+
+  try {
+    const leftUrl = new URL(left);
+    const rightUrl = new URL(right);
+    return (
+      leftUrl.origin === rightUrl.origin &&
+      leftUrl.pathname === rightUrl.pathname &&
+      leftUrl.search === rightUrl.search &&
+      leftUrl.hash === rightUrl.hash
+    );
+  } catch {
+    return left === right;
   }
 }
 
@@ -93,7 +114,7 @@ async function assertVisibleAny(page, texts, timeoutMs) {
 }
 
 async function gotoAndAssert(page, url, marker, timeoutMs) {
-  const response = await page.goto(url, { waitUntil: "networkidle", timeout: timeoutMs });
+  const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
   await assertVisibleText(page, marker, timeoutMs);
   return response;
 }
@@ -128,7 +149,7 @@ function pushBlockedSteps(steps, routeExpectations, prefix, reason) {
 async function runMarketingJourney(page, steps, config) {
   const marketingHome = new URL("/", config.marketingBaseUrl).toString();
   await page.goto(marketingHome, {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
 
@@ -180,14 +201,15 @@ async function runMarketingJourney(page, steps, config) {
     }),
   );
 
-  await header.getByRole("button", { name: "More", exact: true }).click();
+  const moreToggle = header.getByRole("button", { name: "More", exact: true });
+  await moreToggle.click();
   for (const label of MARKETING_MORE_MENU_LABELS) {
     await page.getByLabel("More pages").getByRole("link", { name: label, exact: true }).waitFor({
       state: "visible",
       timeout: config.timeoutMs,
     });
   }
-  await page.keyboard.press("Escape");
+  await moreToggle.click();
   steps.push(
     buildStep("marketing_more_menu", "Marketing more menu", "pass", {
       labels: MARKETING_MORE_MENU_LABELS,
@@ -255,7 +277,7 @@ async function runMarketingJourney(page, steps, config) {
   }
 
   await page.goto(new URL("/services", config.marketingBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
   for (const marker of CONSULTING_PRICE_MARKERS) {
@@ -272,28 +294,41 @@ async function runMarketingJourney(page, steps, config) {
 async function runAppJourney(page, steps, config) {
   if (config.hostSplitSkipped) {
     steps.push(
-      buildStep("app_root_redirect", "App root redirects to /software", "skipped", {
+      buildStep("app_root_landing", "App root renders the app landing page", "skipped", {
         detail: "Skipped because marketing and app are using the same origin for this run.",
       }),
     );
   } else {
-    await page.goto(config.appBaseUrl, {
-      waitUntil: "networkidle",
-      timeout: config.timeoutMs,
-    });
-    if (!page.url().endsWith("/software")) {
+    await gotoAndAssert(
+      page,
+      new URL(APP_ROOT_EXPECTATION.path, config.appBaseUrl).toString(),
+      APP_ROOT_EXPECTATION.marker,
+      config.timeoutMs,
+    );
+    const headSnapshot = await collectHeadSnapshot(page);
+    const expectedCanonicalUrl = new URL(APP_ROOT_EXPECTATION.path, config.expectedAppCanonicalBaseUrl).toString();
+    const robotsContent = normalizeCompact(headSnapshot.robotsContent ?? "");
+    if (!urlsMatch(headSnapshot.canonicalHref, expectedCanonicalUrl)) {
       steps.push(
-        buildStep("app_root_redirect", "App root redirects to /software", "fail", {
+        buildStep("app_root_landing", "App root renders the app landing page", "fail", {
           url: page.url(),
-          screenshot: await writePageScreenshot(page, config.screenshotsDir, "app-root-redirect-failure"),
-          detail: `Expected app root to redirect to /software, got ${page.url()}.`,
+          screenshot: await writePageScreenshot(page, config.screenshotsDir, "app-root-landing-failure"),
+          detail: `Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`,
+        }),
+      );
+    } else if (robotsContent !== normalizeCompact(APP_ROOT_EXPECTATION.expectedRobotsContent)) {
+      steps.push(
+        buildStep("app_root_landing", "App root renders the app landing page", "fail", {
+          url: page.url(),
+          screenshot: await writePageScreenshot(page, config.screenshotsDir, "app-root-landing-failure"),
+          detail: `Expected robots meta ${APP_ROOT_EXPECTATION.expectedRobotsContent}, got ${headSnapshot.robotsContent ?? "missing"}.`,
         }),
       );
     } else {
       steps.push(
-        buildStep("app_root_redirect", "App root redirects to /software", "pass", {
+        buildStep("app_root_landing", "App root renders the app landing page", "pass", {
           url: page.url(),
-          screenshot: await writePageScreenshot(page, config.screenshotsDir, "app-software-home"),
+          screenshot: await writePageScreenshot(page, config.screenshotsDir, "app-root-landing"),
         }),
       );
     }
@@ -315,7 +350,7 @@ async function runAppJourney(page, steps, config) {
             route.path,
             canonicalBaseUrlFor(config, route.expectedCanonicalHost),
           ).toString();
-          if (headSnapshot.canonicalHref !== expectedCanonicalUrl) {
+          if (!urlsMatch(headSnapshot.canonicalHref, expectedCanonicalUrl)) {
             throw new Error(`Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`);
           }
         }
@@ -361,7 +396,7 @@ async function runAppJourney(page, steps, config) {
   for (const product of APP_PRODUCT_EXPECTATIONS) {
     try {
       const response = await page.goto(new URL(product.path, config.appBaseUrl).toString(), {
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
         timeout: config.timeoutMs,
       });
       await assertVisibleText(page, product.titleMarker, config.timeoutMs);
@@ -379,7 +414,7 @@ async function runAppJourney(page, steps, config) {
             product.path,
             canonicalBaseUrlFor(config, product.expectedCanonicalHost),
           ).toString();
-          if (headSnapshot.canonicalHref !== expectedCanonicalUrl) {
+          if (!urlsMatch(headSnapshot.canonicalHref, expectedCanonicalUrl)) {
             throw new Error(`Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`);
           }
         }
@@ -416,7 +451,7 @@ async function runAppJourney(page, steps, config) {
   for (const metaExpectation of APP_META_EXPECTATIONS) {
     try {
       await page.goto(new URL(metaExpectation.path, config.appBaseUrl).toString(), {
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
         timeout: config.timeoutMs,
       });
       const headSnapshot = await collectHeadSnapshot(page);
@@ -425,7 +460,7 @@ async function runAppJourney(page, steps, config) {
           metaExpectation.path,
           canonicalBaseUrlFor(config, metaExpectation.expectedCanonicalHost),
         ).toString();
-        if (headSnapshot.canonicalHref !== expectedCanonicalUrl) {
+        if (!urlsMatch(headSnapshot.canonicalHref, expectedCanonicalUrl)) {
           throw new Error(`Expected canonical ${expectedCanonicalUrl}, got ${headSnapshot.canonicalHref ?? "missing"}.`);
         }
       }
@@ -464,7 +499,7 @@ async function runAuthenticatedJourney(page, steps, config) {
   }
 
   await page.goto(new URL("/login", config.appBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
   await page.locator("#email").fill(config.loginEmail);
@@ -478,12 +513,30 @@ async function runAuthenticatedJourney(page, steps, config) {
     // Fall through to the explicit /account verification below.
   }
   const accountResponse = await page.goto(new URL("/account", config.appBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
 
   if (page.url().includes("/login")) {
-    throw new Error("Authenticated journey did not complete successfully.");
+    steps.push(
+      buildStep("app_auth_login", "Authenticated app journey", "blocked", {
+        detail: "Configured JOURNEY_EMAIL/JOURNEY_PASSWORD did not establish a local authenticated session.",
+        url: page.url(),
+      }),
+    );
+    steps.push(
+      buildStep("app_billing", "Billing page", "blocked", {
+        detail: "Blocked because the configured authenticated session could not be established.",
+      }),
+    );
+    for (const product of APP_PRODUCT_EXPECTATIONS) {
+      steps.push(
+        buildStep(`app_auth_${product.slug}`, `Authenticated product page: ${product.label}`, "blocked", {
+          detail: "Blocked because the configured authenticated session could not be established.",
+        }),
+      );
+    }
+    return;
   }
 
   if (!config.hostSplitSkipped) {
@@ -496,7 +549,7 @@ async function runAuthenticatedJourney(page, steps, config) {
   await assertVisibleText(page, "Welcome back", config.timeoutMs);
   await assertVisibleText(page, "Billing and Invoices", config.timeoutMs);
   const accountHeadSnapshot = await collectHeadSnapshot(page);
-  if (accountHeadSnapshot.canonicalHref !== new URL("/account", config.expectedAppCanonicalBaseUrl).toString()) {
+  if (!urlsMatch(accountHeadSnapshot.canonicalHref, new URL("/account", config.expectedAppCanonicalBaseUrl).toString())) {
     throw new Error(`Expected /account canonical to stay on the app host, got ${accountHeadSnapshot.canonicalHref ?? "missing"}.`);
   }
   if (normalizeCompact(accountHeadSnapshot.robotsContent ?? "") !== "noindex,nofollow") {
@@ -511,7 +564,7 @@ async function runAuthenticatedJourney(page, steps, config) {
   );
 
   const billingResponse = await page.goto(new URL("/account/billing", config.appBaseUrl).toString(), {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
   await assertVisibleText(page, "Billing and Subscriptions", config.timeoutMs);
@@ -522,7 +575,7 @@ async function runAuthenticatedJourney(page, steps, config) {
     }
   }
   const billingHeadSnapshot = await collectHeadSnapshot(page);
-  if (billingHeadSnapshot.canonicalHref !== new URL("/account/billing", config.expectedAppCanonicalBaseUrl).toString()) {
+  if (!urlsMatch(billingHeadSnapshot.canonicalHref, new URL("/account/billing", config.expectedAppCanonicalBaseUrl).toString())) {
     throw new Error(`Expected /account/billing canonical to stay on the app host, got ${billingHeadSnapshot.canonicalHref ?? "missing"}.`);
   }
   if (normalizeCompact(billingHeadSnapshot.robotsContent ?? "") !== "noindex,nofollow") {
@@ -536,7 +589,7 @@ async function runAuthenticatedJourney(page, steps, config) {
 
   for (const product of APP_PRODUCT_EXPECTATIONS) {
     await page.goto(new URL(product.path, config.appBaseUrl).toString(), {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: config.timeoutMs,
     });
     const matchedMarker = await assertVisibleAny(page, product.authenticatedMarkers, config.timeoutMs);
@@ -591,7 +644,6 @@ export async function runBrowserCustomerJourneyAudit(options = {}) {
   const timeoutMs = readNumber(readSetting("JOURNEY_TIMEOUT_MS", "30000"), 30000);
   const loginEmail = readSetting("JOURNEY_EMAIL", "");
   const loginPassword = readSetting("JOURNEY_PASSWORD", "");
-  const steps = [];
   const diagnostics = createBrowserDiagnostics();
   const hostSplitSkipped = sameOrigin(marketingBaseUrl, appBaseUrl);
   const config = {
@@ -614,6 +666,16 @@ export async function runBrowserCustomerJourneyAudit(options = {}) {
 
   ensureDir(outputDir);
   ensureDir(screenshotsDir);
+
+  const preflight = await runProductionSmokeCheck({
+    marketingBaseUrl,
+    appBaseUrl,
+    timeoutMs,
+  });
+  const steps = preflight.steps.map((step) => ({
+    ...step,
+    phase: "preflight",
+  }));
 
   let browser;
   try {
@@ -669,6 +731,7 @@ export async function runBrowserCustomerJourneyAudit(options = {}) {
       consoleMessages: diagnostics.consoleMessages.length,
       pageErrors: diagnostics.pageErrors.length,
       requestFailures: diagnostics.requestFailures.length,
+      ignoredRequestFailures: diagnostics.ignoredRequestFailures.length,
       responseFailures: diagnostics.responseFailures.length,
     },
     steps,

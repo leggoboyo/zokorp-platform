@@ -7,6 +7,7 @@ const APEX_HOST = "zokorp.com";
 const MARKETING_HOST = new URL(getMarketingSiteUrl()).host;
 const APP_HOST = new URL(getAppSiteUrl()).host;
 const STATIC_FILE_PATH = /\.[a-z0-9]+$/i;
+const APP_INTERNAL_LANDING_PATH = "/app-home";
 const APP_ONLY_PATH_PREFIXES = [
   "/login",
   "/register",
@@ -21,6 +22,18 @@ const LEGACY_PAGE_REDIRECTS = new Map([
   ["/our-services", "/services"],
   ["/contact-us", "/contact"],
 ]);
+const APP_HOST_MARKETING_PATH_PREFIXES = [
+  "/about",
+  "/contact",
+  "/media",
+  "/pricing",
+  "/privacy",
+  "/refunds",
+  "/security",
+  "/services",
+  "/support",
+  "/terms",
+];
 
 function redirectToHost(request: NextRequest, nextHost: string, pathname: string, status = 308) {
   const destination = request.nextUrl.clone();
@@ -57,8 +70,40 @@ function isAppOnlyPage(pathname: string) {
   return APP_ONLY_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
+function isAppLandingPath(pathname: string) {
+  return pathname === "/" || pathname === APP_INTERNAL_LANDING_PATH;
+}
+
+function isAppHostMarketingPage(pathname: string) {
+  return APP_HOST_MARKETING_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 function isRenderablePage(pathname: string) {
   return !pathname.startsWith("/_next/") && !pathname.startsWith("/api/") && !STATIC_FILE_PATH.test(pathname);
+}
+
+function buildAppHostRobotsBody() {
+  return [
+    "User-agent: *",
+    "Allow: /",
+    "Disallow: /api/",
+    "Disallow: /account",
+    "Disallow: /admin",
+    "Disallow: /email-preferences",
+    "Disallow: /access-denied",
+    "Disallow: /forbidden",
+    "",
+  ].join("\n");
+}
+
+function appRobotsHeaderValue(pathname: string) {
+  if (isAppOnlyPage(pathname) || isAppLandingPath(pathname)) {
+    return "noindex, nofollow";
+  }
+
+  return "noindex, follow";
 }
 
 export function proxy(request: NextRequest) {
@@ -74,22 +119,54 @@ export function proxy(request: NextRequest) {
     return redirectToHost(request, MARKETING_HOST, nextPathname, 301);
   }
 
+  if (host === APP_HOST && pathname === "/robots.txt") {
+    return new NextResponse(buildAppHostRobotsBody(), {
+      status: 200,
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "x-robots-tag": "noindex, follow",
+      },
+    });
+  }
+
+  if (host === APP_HOST && pathname === "/sitemap.xml") {
+    return new NextResponse("Not Found\n", {
+      status: 404,
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+      },
+    });
+  }
+
   if (host === MARKETING_HOST && isAppOnlyPage(nextPathname)) {
     return redirectToHost(request, APP_HOST, nextPathname);
   }
 
-  if (host === APP_HOST && pathname === "/") {
-    return redirectToHost(request, APP_HOST, "/software");
+  if (host === MARKETING_HOST && nextPathname === APP_INTERNAL_LANDING_PATH) {
+    return redirectToHost(request, APP_HOST, "/");
+  }
+
+  if (host === APP_HOST && pathname === APP_INTERNAL_LANDING_PATH) {
+    return redirectToHost(request, APP_HOST, "/");
+  }
+
+  if (host === APP_HOST && isAppHostMarketingPage(nextPathname)) {
+    return redirectToHost(request, MARKETING_HOST, nextPathname);
   }
 
   if (nextPathname !== pathname) {
     return redirectToHost(request, host, nextPathname);
   }
 
-  const response = NextResponse.next();
+  const response =
+    host === APP_HOST && pathname === "/"
+      ? NextResponse.rewrite(new URL(APP_INTERNAL_LANDING_PATH, request.url))
+      : NextResponse.next();
 
   if (host === APP_HOST && isRenderablePage(pathname)) {
-    response.headers.set("x-robots-tag", isAppOnlyPage(pathname) ? "noindex, nofollow" : "noindex, follow");
+    response.headers.set("x-robots-tag", appRobotsHeaderValue(pathname));
   }
 
   return response;

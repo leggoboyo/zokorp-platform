@@ -79,9 +79,9 @@ export default function TermsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <Card tone="glass" className="animate-fade-up rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Terms</p>
+        <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Terms</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold text-slate-900">Platform terms</h1>
-        <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base">
+        <p className="enterprise-copy mt-4 text-sm md:text-base">
           These short-form launch terms describe the core operating rules for using ZoKorp during the founder-led launch.
         </p>
       </Card>

@@ -26,7 +26,7 @@ import {
   SERVICE_REQUEST_STATUS_STYLE,
   SERVICE_REQUEST_TYPE_LABEL,
 } from "@/lib/service-requests";
-import { buildAppPageMetadata } from "@/lib/site";
+import { buildAppPageMetadata, toMarketingSiteUrl } from "@/lib/site";
 
 import { saveAccountEmailPreferencesAction } from "./actions";
 
@@ -689,7 +689,7 @@ export default async function AccountPage() {
             <Link href="/account/billing" className={buttonVariants()}>
               Billing and Invoices
             </Link>
-            <Link href="/services#service-request" className={buttonVariants({ variant: "secondary" })}>
+            <Link href={toMarketingSiteUrl("/services#service-request")} className={buttonVariants({ variant: "secondary" })}>
               New Service Request
             </Link>
           </div>
@@ -759,7 +759,7 @@ export default async function AccountPage() {
                 <p className="text-sm text-slate-600">
                   Track customer-visible request status, delivery notes, and preferred timing in one timeline. Requests submitted before account creation also appear here when they match this business email.
                 </p>
-                <Link href="/services#service-request" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                <Link href={toMarketingSiteUrl("/services#service-request")} className={buttonVariants({ variant: "secondary", size: "sm" })}>
                   Submit another request
                 </Link>
               </div>
@@ -815,7 +815,7 @@ export default async function AccountPage() {
                 <p className="text-sm text-slate-600">
                   Review booked-call signals and estimate-linked follow-up events tied back into your account.
                 </p>
-                <Link href="/services" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                <Link href={toMarketingSiteUrl("/services")} className={buttonVariants({ variant: "secondary", size: "sm" })}>
                   Return to services
                 </Link>
               </div>
@@ -1119,7 +1119,7 @@ export default async function AccountPage() {
                       <button type="submit" className={buttonVariants()}>
                         Save preferences
                       </button>
-                      <Link href="/support" className={buttonVariants({ variant: "secondary" })}>
+                      <Link href={toMarketingSiteUrl("/support")} className={buttonVariants({ variant: "secondary" })}>
                         Contact support
                       </Link>
                     </div>

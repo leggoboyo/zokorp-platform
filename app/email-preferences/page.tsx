@@ -3,7 +3,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getUserEmailPreferencesByToken } from "@/lib/email-preferences";
-import { buildAppPageMetadata } from "@/lib/site";
+import { buildAppPageMetadata, toMarketingSiteUrl } from "@/lib/site";
 
 import { saveEmailPreferencesByTokenAction } from "./actions";
 
@@ -48,7 +48,7 @@ export default async function EmailPreferencesPage({
               <Link href="/account" className={buttonVariants()}>
                 Open account
               </Link>
-              <Link href="/support" className={buttonVariants({ variant: "secondary" })}>
+              <Link href={toMarketingSiteUrl("/support")} className={buttonVariants({ variant: "secondary" })}>
                 Contact support
               </Link>
             </div>
@@ -113,7 +113,7 @@ export default async function EmailPreferencesPage({
             <button type="submit" className={buttonVariants()}>
               Save preferences
             </button>
-            <Link href="/support" className={buttonVariants({ variant: "secondary" })}>
+            <Link href={toMarketingSiteUrl("/support")} className={buttonVariants({ variant: "secondary" })}>
               Contact support
             </Link>
           </div>

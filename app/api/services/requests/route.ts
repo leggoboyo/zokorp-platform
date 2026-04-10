@@ -4,12 +4,13 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isSchemaDriftError, isTransientDatabaseConnectionError } from "@/lib/db-errors";
-import { jsonNoStore } from "@/lib/internal-route";
+import { createInternalAuditLog, jsonNoStore } from "@/lib/internal-route";
 import { recordOperationalIssue } from "@/lib/operational-issues";
 import { upsertLead } from "@/lib/privacy-leads";
 import { requireSameOrigin } from "@/lib/request-origin";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { BUSINESS_EMAIL_REQUIRED_MESSAGE, isBusinessEmail } from "@/lib/security";
+import { sendServiceRequestOperatorNotification } from "@/lib/service-request-email";
 import { createServiceRequest } from "@/lib/service-requests";
 
 const requestSchema = z.object({
@@ -104,6 +105,12 @@ export async function POST(request: Request) {
     const requesterSource = signedInUser ? "account" : "public_form";
     const requesterName = signedInUser?.name ?? parsed.data.requesterName ?? null;
     const requesterCompanyName = parsed.data.requesterCompanyName ?? null;
+    let operatorEmailStatus: {
+      attempted: boolean;
+      ok: boolean;
+      provider: string | null;
+      error: string | null;
+    } | null = null;
 
     if (!signedInUser) {
       try {
@@ -126,6 +133,55 @@ export async function POST(request: Request) {
     }
 
     try {
+      const sendResult = await sendServiceRequestOperatorNotification({
+        trackingCode: created.trackingCode,
+        type: created.type,
+        title: created.title,
+        summary: created.summary,
+        requesterEmail,
+        requesterName,
+        requesterCompanyName,
+        requesterSource,
+        preferredStart: created.preferredStart,
+        budgetRange: created.budgetRange,
+      });
+
+      operatorEmailStatus = {
+        attempted: true,
+        ok: sendResult.ok,
+        provider: sendResult.provider,
+        error: sendResult.error ?? null,
+      };
+
+      if (!sendResult.ok) {
+        await createInternalAuditLog("service.request_operator_email_failed", {
+          severity: "warning",
+          trackingCode: created.trackingCode,
+          requesterEmail,
+          provider: sendResult.provider,
+          error: sendResult.error ?? null,
+        });
+      }
+    } catch (emailError) {
+      operatorEmailStatus = {
+        attempted: true,
+        ok: false,
+        provider: null,
+        error: emailError instanceof Error ? emailError.message : "SERVICE_REQUEST_EMAIL_UNKNOWN",
+      };
+
+      await recordOperationalIssue({
+        action: "service.request_operator_email_failed",
+        area: "service-requests",
+        error: emailError,
+        metadata: {
+          requesterEmail,
+          trackingCode: created.trackingCode,
+        },
+      });
+    }
+
+    try {
       await db.auditLog.create({
         data: {
           userId: signedInUser?.id ?? null,
@@ -137,6 +193,7 @@ export async function POST(request: Request) {
             requesterEmail,
             requesterSource,
             zohoSyncQueued: true,
+            operatorEmailStatus,
           },
         },
       });

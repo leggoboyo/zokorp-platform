@@ -1,0 +1,55 @@
+:root {
+  --z-bg: 11 15 26;
+  --z-surface: 17 24 39;
+  --z-surface-2: 30 41 59;
+  --z-border: 51 65 85;
+  --z-text: 248 250 252;
+  --z-muted: 203 213 225;
+  --z-accent: 29 78 216;
+  --z-accent-2: 56 189 248;
+  --z-danger: 220 38 38;
+  --z-success: 22 163 74;
+
+  --z-page: 243 247 252;
+  --z-panel: 255 255 255;
+  --z-panel-muted: 247 244 238;
+  --z-ink: 11 19 36;
+  --z-ink-soft: 58 72 92;
+  --z-ink-muted: 71 85 105;
+  --z-ink-label: 51 65 85;
+  --z-focus: 37 99 235;
+
+  --z-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --z-dur-fast: 120ms;
+  --z-dur-base: 180ms;
+  --z-dur-slow: 240ms;
+
+  --z-radius-panel: 1.15rem;
+  --z-radius-panel-lg: 1.8rem;
+  --z-radius-pill: 999px;
+
+  --z-shadow-soft:
+    0 1px 0 rgba(255, 255, 255, 0.72) inset,
+    0 10px 24px rgba(15, 23, 42, 0.04);
+  --z-shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.86) inset,
+    0 18px 42px rgba(15, 23, 42, 0.08);
+  --z-shadow-card-hover:
+    0 1px 0 rgba(255, 255, 255, 0.88) inset,
+    0 24px 52px rgba(15, 23, 42, 0.14);
+  --z-shadow-glass:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 18px 34px rgba(15, 23, 42, 0.08);
+  --z-shadow-hero:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 26px 54px rgba(5, 21, 43, 0.24);
+
+  --z-gradient-page:
+    radial-gradient(circle at 8% 0%, rgba(56, 189, 248, 0.12), transparent 28%),
+    radial-gradient(circle at 92% 6%, rgba(37, 99, 235, 0.08), transparent 34%),
+    linear-gradient(180deg, rgb(247 250 252) 0%, rgb(241 245 249) 44%, rgb(236 242 248) 100%);
+  --z-gradient-hero:
+    radial-gradient(circle at 16% 14%, rgba(56, 189, 248, 0.14), transparent 40%),
+    radial-gradient(circle at 82% 10%, rgba(29, 78, 216, 0.14), transparent 36%),
+    linear-gradient(140deg, rgb(11 15 26) 0%, rgb(17 24 39) 48%, rgb(30 41 59) 100%);
+}

@@ -4,11 +4,14 @@ import { cn } from "@/lib/utils";
 
 const variantClasses = {
   primary:
-    "border-transparent bg-brand text-white shadow-[0_10px_24px_rgba(16,58,103,0.18)] hover:bg-brand-strong",
+    "border-transparent bg-brand text-white shadow-[0_14px_30px_rgb(var(--z-accent)/0.22)] hover:bg-brand-strong",
   secondary:
-    "border-slate-300 bg-white text-foreground shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] hover:border-slate-400 hover:bg-slate-50",
-  outline: "border-slate-300 bg-white/75 text-foreground hover:border-slate-400 hover:bg-slate-50",
-  ghost: "border-transparent bg-transparent text-foreground hover:bg-background-elevated/80",
+    "border-[rgba(148,163,184,0.32)] bg-white text-foreground shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] hover:border-[rgba(71,85,105,0.4)] hover:bg-background-elevated",
+  outline:
+    "border-[rgba(148,163,184,0.32)] bg-white/80 text-foreground hover:border-[rgba(71,85,105,0.4)] hover:bg-background-elevated",
+  ghost: "border-transparent bg-transparent text-foreground hover:bg-background-elevated/90",
+  inverse:
+    "border-white/15 bg-white/[0.08] text-white shadow-[0_1px_0_rgba(255,255,255,0.06)_inset] hover:border-white/25 hover:bg-white/[0.14]",
   destructive: "border-transparent bg-danger text-white hover:brightness-95",
   link: "border-transparent bg-transparent px-0 py-0 text-brand shadow-none hover:text-brand-strong hover:underline",
 } as const;

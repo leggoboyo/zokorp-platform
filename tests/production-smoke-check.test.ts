@@ -3,8 +3,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  APP_HOST_MARKETING_REDIRECT_EXPECTATIONS,
   APP_PRODUCT_EXPECTATIONS,
+  APP_ROOT_EXPECTATION,
   APP_ROUTE_EXPECTATIONS,
+  APP_SIGNED_OUT_REDIRECT_EXPECTATIONS,
   APP_META_EXPECTATIONS,
   LEGACY_REDIRECT_EXPECTATIONS,
   MARKETING_ROUTE_EXPECTATIONS,
@@ -82,14 +85,14 @@ describe("runProductionSmokeCheck", () => {
       if (url.endsWith("/robots.txt")) {
         return mockResponse({
           url,
-          body: "User-agent: *\nSitemap: https://www.zokorp.com/sitemap.xml\n",
+          body: `User-agent: *\nSitemap: ${localBaseUrl}/sitemap.xml\n`,
         });
       }
 
       if (url.endsWith("/sitemap.xml")) {
         return mockResponse({
           url,
-          body: "<urlset><url><loc>https://www.zokorp.com/</loc></url></urlset>",
+          body: `<urlset><url><loc>${localBaseUrl}/</loc></url></urlset>`,
         });
       }
 
@@ -169,8 +172,9 @@ describe("runProductionSmokeCheck", () => {
     });
 
     expect(summary.outcome).toBe("pass");
-    expect(summary.steps.find((step) => step.id === "app_root_redirect")?.status).toBe("skipped");
-    expect(summary.steps.find((step) => step.id === "app_noindex")?.status).toBe("skipped");
+    expect(summary.steps.find((step) => step.id === "app_root_landing")?.status).toBe("skipped");
+    expect(summary.steps.find((step) => step.id === "app_robots")?.status).toBe("skipped");
+    expect(summary.steps.find((step) => step.id === "app_sitemap_absent")?.status).toBe("skipped");
     expect(summary.steps.find((step) => step.id === "app_email_preferences_canonical")?.status).toBe("pass");
     expect(summary.steps.find((step) => step.id === "app_access_denied_robots")?.status).toBe("pass");
   });
@@ -196,14 +200,6 @@ describe("runProductionSmokeCheck", () => {
           });
         }
 
-        if (url === "https://app.zokorp.com") {
-          return mockResponse({
-            status: 308,
-            url,
-            headers: { location: "https://app.zokorp.com/software" },
-          });
-        }
-
         for (const redirect of LEGACY_REDIRECT_EXPECTATIONS) {
           if (url === `https://www.zokorp.com${redirect.from}`) {
             return mockResponse({
@@ -213,19 +209,54 @@ describe("runProductionSmokeCheck", () => {
             });
           }
         }
+
+        for (const redirect of APP_HOST_MARKETING_REDIRECT_EXPECTATIONS) {
+          if (url === `https://app.zokorp.com${redirect.path}`) {
+            return mockResponse({
+              status: 308,
+              url,
+              headers: { location: `https://www.zokorp.com${redirect.path}` },
+            });
+          }
+        }
+
+        for (const redirect of APP_SIGNED_OUT_REDIRECT_EXPECTATIONS) {
+          if (url === `https://app.zokorp.com${redirect.path}`) {
+            return mockResponse({
+              status: 307,
+              url,
+              headers: { location: `https://app.zokorp.com${redirect.expectedLocation}` },
+            });
+          }
+        }
       }
 
-      if (url.endsWith("/robots.txt")) {
+      if (url === `${marketingBaseUrl}/robots.txt`) {
         return mockResponse({
-          url: `${appBaseUrl}/robots.txt`,
+          url,
           body: "User-agent: *\nSitemap: https://www.zokorp.com/sitemap.xml\n",
         });
       }
 
-      if (url.endsWith("/sitemap.xml")) {
+      if (url === `${marketingBaseUrl}/sitemap.xml`) {
         return mockResponse({
-          url: `${appBaseUrl}/sitemap.xml`,
+          url,
           body: "<urlset><url><loc>https://www.zokorp.com/</loc></url></urlset>",
+        });
+      }
+
+      if (url === `${appBaseUrl}/robots.txt`) {
+        return mockResponse({
+          url,
+          body: "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /account\n",
+        });
+      }
+
+      if (url === `${appBaseUrl}/sitemap.xml`) {
+        return mockResponse({
+          status: 404,
+          url,
+          body: "Not Found",
         });
       }
 
@@ -236,6 +267,16 @@ describe("runProductionSmokeCheck", () => {
             body: route.marker,
           });
         }
+      }
+
+      if (url === `${appBaseUrl}${APP_ROOT_EXPECTATION.path}`) {
+        return htmlResponse({
+          url,
+          body: APP_ROOT_EXPECTATION.marker,
+          canonicalUrl: `${appBaseUrl}${APP_ROOT_EXPECTATION.path}`,
+          robotsContent: APP_ROOT_EXPECTATION.expectedRobotsContent,
+          headers: { "x-robots-tag": APP_ROOT_EXPECTATION.expectedRobotsHeader },
+        });
       }
 
       for (const route of APP_ROUTE_EXPECTATIONS) {
@@ -278,14 +319,6 @@ describe("runProductionSmokeCheck", () => {
         }
       }
 
-      if (url === `${appBaseUrl}/contact`) {
-        return htmlResponse({
-          url,
-          body: "Start the right conversation without getting pushed into signup first.",
-          headers: { "x-robots-tag": "noindex, follow" },
-        });
-      }
-
       throw new Error(`Unexpected fetch URL in blocked smoke test: ${url}`);
     });
 
@@ -298,6 +331,9 @@ describe("runProductionSmokeCheck", () => {
 
     expect(summary.outcome).toBe("blocked");
     expect(summary.steps.find((step) => step.id === "marketing_homepage")?.status).toBe("blocked");
+    expect(summary.steps.find((step) => step.id === "app_root_landing")?.status).toBe("pass");
+    expect(summary.steps.find((step) => step.id === "app_marketing_redirect_contact")?.status).toBe("pass");
+    expect(summary.steps.find((step) => step.id === "app_account_redirect_to_login")?.status).toBe("pass");
     expect(summary.steps.find((step) => step.id === "app_login")?.status).toBe("pass");
     expect(summary.steps.some((step) => step.status === "fail")).toBe(false);
   });

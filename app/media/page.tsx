@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
 import { getMediaArticles } from "@/data/media-articles";
-import { cn } from "@/lib/utils";
 import { buildMarketingPageMetadata } from "@/lib/site";
 
 export const metadata = buildMarketingPageMetadata({
@@ -17,11 +16,11 @@ export default function MediaPage() {
   return (
     <div className="space-y-8">
       <section className="glass-surface animate-fade-up rounded-2xl p-6 md:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Insights</p>
+        <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Insights</p>
         <h1 className="font-display mt-2 text-balance text-4xl font-semibold text-slate-900">
           Guides, notes, and operating perspectives
         </h1>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
+        <p className="enterprise-copy mt-4 max-w-3xl text-sm md:text-base">
           ZoKorp publishes practical guidance around architecture reviews, AWS readiness, and the operating decisions
           behind a small consulting-and-software company.
         </p>
@@ -30,10 +29,10 @@ export default function MediaPage() {
       <section className="grid gap-4 md:grid-cols-3">
         {articles.map((article) => (
           <article key={article.slug} className="surface lift-card rounded-2xl p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{article.category}</p>
+            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">{article.category}</p>
             <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">{article.title}</h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">{article.description}</p>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-500">
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-[rgb(var(--z-ink-soft))]">
               <span>{article.readTime}</span>
               <span>{new Date(article.publishedAt).toLocaleDateString("en-US")}</span>
             </div>
@@ -54,10 +53,7 @@ export default function MediaPage() {
           <Link href="/software" className={buttonVariants({ variant: "secondary" })}>
             Browse software
           </Link>
-          <Link
-            href="/services"
-            className={cn(buttonVariants({ variant: "ghost" }), "border border-white/30 text-white hover:bg-white/10")}
-          >
+          <Link href="/services" className={buttonVariants({ variant: "inverse" })}>
             Browse services
           </Link>
         </div>
