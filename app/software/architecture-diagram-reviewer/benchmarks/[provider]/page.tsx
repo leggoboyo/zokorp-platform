@@ -54,7 +54,7 @@ export default async function ProviderBenchmarkPage({
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{providerLibrary.description}</p>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-          Benchmark pages are directional. They do not override the current launch scope of the live reviewer, which remains AWS-only.
+          Benchmark pages are directional. Live reviews still depend on the actual evidence extracted from the uploaded diagram and narrative.
         </p>
       </section>
 

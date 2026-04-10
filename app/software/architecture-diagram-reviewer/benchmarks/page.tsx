@@ -66,7 +66,7 @@ export default function ArchitectureBenchmarkLibraryPage() {
           before your next review.
         </p>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-200/90">
-          The live Architecture Diagram Reviewer is AWS-only today. Azure and GCP pages in this library are benchmark and research material, not active submission support.
+          The live reviewer supports AWS, Azure, GCP, and explicit multi-cloud scope, with Snowflake available as an add-on when the submitted evidence shows it.
         </p>
         <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-100">
           <Badge className="border-white/30 bg-white/10 text-white">Anonymized aggregates</Badge>

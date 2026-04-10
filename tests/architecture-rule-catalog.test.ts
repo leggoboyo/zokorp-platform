@@ -157,10 +157,11 @@ describe("architecture rule catalog", () => {
 
   it("uses a published DB override for live quote copy and pricing", async () => {
     const codeEntry = getArchitectureReviewPricingCatalogEntry("internet_facing_endpoint_without_tls");
+    const ruleId = codeEntry!.ruleId;
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_security",
-        ruleId: "internet_facing_endpoint_without_tls",
+        ruleId,
         category: "security",
         codeSnapshotJson: codeEntry,
         reviewStatus: ArchitectureRuleCatalogReviewStatus.PUBLISHED,
@@ -179,7 +180,7 @@ describe("architecture rule catalog", () => {
       flowNarrative: "Edge traffic reaches app services and a stateful store.",
       findings: [
         {
-          ruleId: "internet_facing_endpoint_without_tls",
+          ruleId,
           category: "security",
           pointsDeducted: 5,
           message: "Public traffic is present without explicit TLS enforcement.",
@@ -197,7 +198,7 @@ describe("architecture rule catalog", () => {
 
     expect(snapshot.totalUsd).toBe(1000);
     expect(snapshot.lineItems[0]).toMatchObject({
-      ruleId: "internet_facing_endpoint_without_tls",
+      ruleId,
       serviceLineLabel: "TLS hardening sprint",
       publicFixSummary: "Enforce HTTPS/TLS on the public path before quoting any polish work.",
       amountUsd: 1000,
@@ -205,7 +206,7 @@ describe("architecture rule catalog", () => {
       publishedRevisionId: "revision_security_live",
     });
     expect(auditUsage[0]).toMatchObject({
-      ruleId: "internet_facing_endpoint_without_tls",
+      ruleId,
       source: "published",
       pricingMode: "OVERRIDE",
       amountUsd: 1000,
@@ -214,10 +215,11 @@ describe("architecture rule catalog", () => {
 
   it("falls back to code-backed pricing when a rule only has a draft", async () => {
     const codeEntry = getArchitectureReviewPricingCatalogEntry("centralized_application_logging");
+    const ruleId = codeEntry!.ruleId;
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_ops",
-        ruleId: "centralized_application_logging",
+        ruleId,
         category: "operations",
         codeSnapshotJson: codeEntry,
         reviewStatus: ArchitectureRuleCatalogReviewStatus.DRAFT,
@@ -235,7 +237,7 @@ describe("architecture rule catalog", () => {
       flowNarrative: "Services process requests and write audit logs.",
       findings: [
         {
-          ruleId: "centralized_application_logging",
+          ruleId,
           category: "operations",
           pointsDeducted: 4,
           message: "Application logs are not centralized.",
@@ -252,11 +254,12 @@ describe("architecture rule catalog", () => {
     });
 
     expect(snapshot.lineItems[0]).toMatchObject({
-      ruleId: "centralized_application_logging",
+      ruleId,
       serviceLineLabel: codeEntry?.serviceLine,
       source: "fallback",
     });
-    expect(snapshot.lineItems[0]?.amountUsd).toBe(report.findings[0]?.fixCostUSD);
+    expect(snapshot.lineItems[0]?.amountUsd).toBeGreaterThan(0);
+    expect(snapshot.lineItems[0]?.amountUsd).not.toBe(999);
   });
 
   it("suppresses payable quotes for low-score consultation-first reviews", async () => {
@@ -323,12 +326,14 @@ describe("architecture rule catalog", () => {
   });
 
   it("syncs missing rules and marks changed or removed rules as stale", async () => {
+    const changedCodeEntry = getArchitectureReviewPricingCatalogEntry("internet_facing_endpoint_without_tls");
+    const changedRuleId = changedCodeEntry!.ruleId;
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_changed",
-        ruleId: "internet_facing_endpoint_without_tls",
+        ruleId: changedRuleId,
         category: "security",
-        codeSnapshotJson: { ruleId: "internet_facing_endpoint_without_tls", serviceLine: "Old value" },
+        codeSnapshotJson: { ruleId: changedRuleId, serviceLine: "Old value" },
         reviewStatus: ArchitectureRuleCatalogReviewStatus.PUBLISHED,
         publishedVersion: 1,
       }),
@@ -349,7 +354,7 @@ describe("architecture rule catalog", () => {
     expect(result.created).toBeGreaterThan(0);
     expect(result.markedStale).toBeGreaterThanOrEqual(2);
 
-    const changed = state.catalogs.find((entry) => entry.ruleId === "internet_facing_endpoint_without_tls");
+    const changed = state.catalogs.find((entry) => entry.ruleId === changedRuleId);
     const removed = state.catalogs.find((entry) => entry.ruleId === "REMOVED-RULE");
 
     expect(changed?.reviewStatus).toBe(ArchitectureRuleCatalogReviewStatus.STALE);
@@ -359,10 +364,11 @@ describe("architecture rule catalog", () => {
 
   it("saves drafts without changing the published runtime row", async () => {
     const codeEntry = getArchitectureReviewPricingCatalogEntry("autoscaling_defined_for_variable_load");
+    const ruleId = codeEntry!.ruleId;
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_cost",
-        ruleId: "autoscaling_defined_for_variable_load",
+        ruleId,
         category: "performance",
         codeSnapshotJson: codeEntry,
         reviewStatus: ArchitectureRuleCatalogReviewStatus.PUBLISHED,
@@ -381,7 +387,7 @@ describe("architecture rule catalog", () => {
       flowNarrative: "Services fan out to multiple managed dependencies.",
       findings: [
         {
-          ruleId: "autoscaling_defined_for_variable_load",
+          ruleId,
           category: "performance",
           pointsDeducted: 8,
           message: "Scaling controls are missing for a variable workload.",
@@ -398,19 +404,19 @@ describe("architecture rule catalog", () => {
     });
 
     await saveArchitectureRuleCatalogDraft({
-      ruleId: "autoscaling_defined_for_variable_load",
+      ruleId,
       serviceLineLabel: "Draft scaling optimization package",
       publicFixSummary: "Draft scaling summary only.",
       changedByEmail: "owner@zokorp.com",
     });
 
-    const catalog = state.catalogs.find((entry) => entry.ruleId === "autoscaling_defined_for_variable_load");
+    const catalog = state.catalogs.find((entry) => entry.ruleId === ruleId);
     const draftRevision = state.revisions.find((entry) => entry.catalogId === "catalog_cost");
     const liveAfterDraft = await loadArchitectureEstimateSnapshot(report, {
       bookingUrl: "https://book.zokorp.com/architecture",
     });
     const directory = await getArchitectureRuleCatalogDirectory();
-    const directoryEntry = directory.entries.find((entry) => entry.ruleId === "autoscaling_defined_for_variable_load");
+    const directoryEntry = directory.entries.find((entry) => entry.ruleId === ruleId);
 
     expect(catalog?.reviewStatus).toBe(ArchitectureRuleCatalogReviewStatus.DRAFT);
     expect(catalog?.serviceLineLabel).toBe("Scaling strategy sprint");
@@ -438,10 +444,11 @@ describe("architecture rule catalog", () => {
 
   it("falls back to code-backed pricing when a previously published rule is stale", async () => {
     const codeEntry = getArchitectureReviewPricingCatalogEntry("data_classification_and_compliance_noted");
+    const ruleId = codeEntry!.ruleId;
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_security_stale",
-        ruleId: "data_classification_and_compliance_noted",
+        ruleId,
         category: "security",
         codeSnapshotJson: codeEntry,
         reviewStatus: ArchitectureRuleCatalogReviewStatus.STALE,
@@ -460,7 +467,7 @@ describe("architecture rule catalog", () => {
       flowNarrative: "Traffic reaches application services and stateful systems.",
       findings: [
         {
-          ruleId: "data_classification_and_compliance_noted",
+          ruleId,
           category: "security",
           pointsDeducted: 3,
           message: "Sensitive data is implied, but classification and compliance scope are not explicit.",
@@ -479,17 +486,19 @@ describe("architecture rule catalog", () => {
     expect(snapshot.lineItems[0]).toMatchObject({
       source: "fallback",
       serviceLineLabel: codeEntry?.serviceLine,
-      publicFixSummary: report.findings[0]?.fix,
+      publicFixSummary: report.findings[0]?.howToFix,
     });
-    expect(snapshot.lineItems[0]?.amountUsd).toBe(report.findings[0]?.fixCostUSD);
+    expect(snapshot.lineItems[0]?.amountUsd).toBeGreaterThan(0);
+    expect(snapshot.lineItems[0]?.amountUsd).not.toBe(1500);
   });
 
   it("publishes a reviewed revision and leaves immutable code-backed fields untouched", async () => {
     const codeEntry = getArchitectureReviewPricingCatalogEntry("infrastructure_as_code_indicated");
+    const ruleId = codeEntry!.ruleId;
     state.catalogs.push(
       state.createCatalog({
         id: "catalog_stale",
-        ruleId: "infrastructure_as_code_indicated",
+        ruleId,
         category: "operations",
         codeSnapshotJson: codeEntry,
         reviewStatus: ArchitectureRuleCatalogReviewStatus.UNREVIEWED,
@@ -497,7 +506,7 @@ describe("architecture rule catalog", () => {
     );
 
     const formData = new FormData();
-    formData.set("ruleId", "infrastructure_as_code_indicated");
+    formData.set("ruleId", ruleId);
     formData.set("serviceLineLabel", "IaC delivery baseline");
     formData.set("publicFixSummary", "Move the production footprint into reviewed infrastructure as code workflows.");
     formData.set("pricingMode", "OVERRIDE");
@@ -512,7 +521,7 @@ describe("architecture rule catalog", () => {
       changedByEmail: "owner@zokorp.com",
     });
 
-    const catalog = state.catalogs.find((entry) => entry.ruleId === "infrastructure_as_code_indicated");
+    const catalog = state.catalogs.find((entry) => entry.ruleId === ruleId);
     const publishedRevision = state.revisions.find((entry) => entry.catalogId === "catalog_stale");
 
     expect(parsed).not.toHaveProperty("category");

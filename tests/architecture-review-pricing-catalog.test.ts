@@ -4,6 +4,7 @@ import {
   AWS_ARCHITECTURE_LAUNCH_V1_RULES,
   getAwsArchitectureLaunchV1Rule,
 } from "@/lib/architecture-review/aws-launch-v1-catalog";
+import { ARCHITECTURE_REVIEW_RULES } from "@/lib/architecture-review/rules";
 import {
   ARCHITECTURE_REVIEW_PACKAGE_CATALOG,
   ARCHITECTURE_REVIEW_PRICING_CATALOG,
@@ -12,10 +13,12 @@ import {
 import { calculateFixCostUSD } from "@/lib/architecture-review/quote";
 
 describe("architecture review pricing catalog", () => {
-  it("covers the AWS launch-v1 rule catalog without duplicate rule ids", () => {
+  it("covers the full live rule catalog without duplicate rule ids", () => {
     const ruleIds = ARCHITECTURE_REVIEW_PRICING_CATALOG.map((entry) => entry.ruleId);
     expect(new Set(ruleIds).size).toBe(ruleIds.length);
-    expect(ruleIds).toEqual(AWS_ARCHITECTURE_LAUNCH_V1_RULES.map((rule) => rule.id));
+    expect(ruleIds).toEqual(
+      ARCHITECTURE_REVIEW_RULES.filter((rule) => rule.provider !== "shared").map((rule) => rule.id),
+    );
   });
 
   it("captures pricing ranges from the AWS rule weights and partial-credit rules", () => {

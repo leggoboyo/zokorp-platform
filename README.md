@@ -57,6 +57,12 @@ Without email, Stripe, or Zoho credentials, the UI can still run locally, but ve
 - [`docs/08-how-to-operate.md`](docs/08-how-to-operate.md): operator workflow notes
 - [`docs/09-codex-parallel-workflow.md`](docs/09-codex-parallel-workflow.md): worktree and automation branch workflow
 
+## Architecture reviewer maintenance
+- Add new provider or platform rules in the provider catalogs under [`lib/architecture-review`](lib/architecture-review) and register them through [`lib/architecture-review/rules.ts`](lib/architecture-review/rules.ts). Rule IDs must stay namespaced, for example `aws:...`, `azure:...`, `gcp:...`, `snowflake:...`, or `shared:...`.
+- Every full-deduction rule must be reproducible from direct evidence. Use exact evidence matchers or an explicit diagram-versus-narrative contradiction path before emitting a `Fix`; otherwise downgrade the outcome to `Clarify` or `Optional`.
+- Official citations are code-owned. Each rule must include `officialSourceLinks`, and those links stay immutable through the admin rule-catalog UI. Admin edits may change customer-facing service-line copy and price override ranges, but not rule version, remediation hours, or official references.
+- Keep quote data defensible. New rules must include `remediationHoursLow`, `remediationHoursHigh`, `estimatePolicyBand`, and confidence/partial-credit guidance so the hours-based estimate snapshot and customer email stay evidence-backed.
+
 ## Known human-owned blockers
 - Final live Stripe pricing, refund posture, and tax/legal configuration
 - Final privacy policy and terms approval

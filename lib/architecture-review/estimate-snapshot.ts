@@ -1,13 +1,13 @@
 import type {
-  ArchitectureCategory,
   ArchitectureEstimateLineItem,
   ArchitectureEstimateSnapshot,
   ArchitectureReviewReport,
 } from "@/lib/architecture-review/types";
 import {
   getArchitectureReviewPricingCatalogEntry,
-  type ArchitectureReviewPricingCatalogEntry,
 } from "@/lib/architecture-review/pricing-catalog";
+import { configuredArchitectureRemediationRateUsdPerHour } from "@/lib/architecture-review/quote";
+import { isExpandedReviewScope } from "@/lib/architecture-review/scope";
 import { buildEstimateReferenceCode } from "@/lib/privacy-leads";
 import { getMarketingSiteUrl } from "@/lib/site";
 
@@ -54,23 +54,12 @@ function roundHours(value: number) {
 }
 
 function estimatedHoursForFinding(input: {
-  category: ArchitectureCategory;
-  pointsDeducted: number;
-  amountUsd: number;
+  remediationHoursLow: number;
+  remediationHoursHigh: number;
+  scopeMultiplier: number;
 }) {
-  const categoryMultiplier: Record<ArchitectureCategory, number> = {
-    clarity: 0.3,
-    operations: 0.4,
-    performance: 0.45,
-    cost: 0.4,
-    sustainability: 0.25,
-    reliability: 0.55,
-    security: 0.6,
-  };
-
-  const pointsComponent = input.pointsDeducted * categoryMultiplier[input.category];
-  const amountComponent = input.amountUsd / 300;
-  return roundHours(pointsComponent + amountComponent);
+  const midpoint = (input.remediationHoursLow + input.remediationHoursHigh) / 2;
+  return roundHours(midpoint * input.scopeMultiplier);
 }
 
 function quoteAmountForFinding(input: {
@@ -149,10 +138,20 @@ export function buildArchitectureEstimateSnapshot(
   const publishedOverrides = overrides ?? new Map<string, ArchitectureEstimateOverrideRecord>();
   const bookingUrl = options?.bookingUrl ?? defaultBookingUrl();
   const positiveFindings = report.findings.filter((finding) => finding.pointsDeducted > 0);
+  const scopeMultiplier = isExpandedReviewScope(report.reviewScope) ? 1.15 : 1;
+  const remediationRateUsdPerHour = configuredArchitectureRemediationRateUsdPerHour();
 
   const quoteCandidateLineItems = positiveFindings.map((finding) => {
     const codeEntry = getArchitectureReviewPricingCatalogEntry(finding.ruleId);
     const publishedOverride = publishedOverrides.get(finding.ruleId);
+    const remediationHoursLow = codeEntry?.remediationHoursLow ?? 0.5;
+    const remediationHoursHigh = codeEntry?.remediationHoursHigh ?? 0.5;
+    const estimatedHours = estimatedHoursForFinding({
+      remediationHoursLow,
+      remediationHoursHigh,
+      scopeMultiplier,
+    });
+    const derivedAmountUsd = Math.max(75, roundToNearest(estimatedHours * remediationRateUsdPerHour, 25));
     const baseLineItem: ArchitectureEstimateLineItem = {
       ruleId: finding.ruleId,
       category: finding.category,
@@ -161,19 +160,15 @@ export function buildArchitectureEstimateSnapshot(
         normalizeText(publishedOverride?.serviceLineLabel) ||
         codeEntry?.serviceLine ||
         `Fix ${finding.ruleId}`,
-      publicFixSummary: normalizeText(publishedOverride?.publicFixSummary) || finding.fix,
-      amountUsd: finding.fixCostUSD,
-      estimatedHours: estimatedHoursForFinding({
-        category: finding.category,
-        pointsDeducted: finding.pointsDeducted,
-        amountUsd: finding.fixCostUSD,
-      }),
-      remediationHoursLow: codeEntry?.remediationHoursLow ?? 0.5,
-      remediationHoursHigh: codeEntry?.remediationHoursHigh ?? 0.5,
+      publicFixSummary: normalizeText(publishedOverride?.publicFixSummary) || finding.howToFix || finding.fix,
+      amountUsd: derivedAmountUsd,
+      estimatedHours,
+      remediationHoursLow,
+      remediationHoursHigh,
       officialSourceLinks: codeEntry?.officialSourceLinks ?? [],
       confidenceGuidance:
         codeEntry?.confidenceGuidance ??
-        "Confidence depends on whether the submitted diagram and narrative clearly show the AWS controls being claimed.",
+        "Confidence depends on whether the submitted diagram and narrative clearly show the controls being claimed.",
       partialCreditGuidance:
         codeEntry?.partialCreditGuidance ??
         "Partial credit applies when the reviewer can see the architectural intent but not the exact implementation detail.",
@@ -191,11 +186,6 @@ export function buildArchitectureEstimateSnapshot(
     return {
       ...baseLineItem,
       amountUsd,
-      estimatedHours: estimatedHoursForFinding({
-        category: finding.category,
-        pointsDeducted: finding.pointsDeducted,
-        amountUsd,
-      }),
     };
   });
 
@@ -211,7 +201,7 @@ export function buildArchitectureEstimateSnapshot(
       ? [
           "No payable remediation quote is being issued at this score band.",
           "The architecture needs a consultation-first review to confirm whether the design is feasible, salvageable, or should be redesigned.",
-          "Any future quote depends on validating the intended AWS workload, constraints, and target outcome during the follow-up call.",
+          "Any future quote depends on validating the intended workload, constraints, and target outcome during the follow-up call.",
         ]
       : [
           "Estimated only for the issues visible in the submitted diagram and written narrative.",

@@ -10,6 +10,12 @@ import type {
 } from "@/lib/architecture-review/types";
 import { scaleQuoteLineItems, type QuoteLineItem } from "@/lib/quote-line-items";
 
+type ArchitectureFindingLike = Pick<
+  ArchitectureFinding,
+  "ruleId" | "category" | "pointsDeducted" | "fixCostUSD"
+> &
+  Partial<Pick<ArchitectureFinding, "message" | "fix">>;
+
 export const DEFAULT_REMEDIATION_RATE_USD_PER_HOUR = 225;
 
 const CATEGORY_DEDUCTION_CAPS: Record<ArchitectureCategory, number> = {
@@ -31,6 +37,11 @@ const HIGH_FALSE_POSITIVE_RULE_IDS = new Set([
   "vpc_flow_logs_enabled",
   "infrastructure_as_code_indicated",
 ]);
+
+function stripRuleNamespace(ruleId: string) {
+  const parts = ruleId.split(":");
+  return parts.length > 1 ? parts.slice(1).join(":") : ruleId;
+}
 
 type SeverityBand = "low" | "med" | "high" | "critical";
 
@@ -117,15 +128,17 @@ function requiresCustomScope(context: ArchitectureQuoteContext | undefined) {
   );
 }
 
-function hasHighFalsePositiveRiskFinding(finding: ArchitectureFinding) {
-  if (HIGH_FALSE_POSITIVE_RULE_IDS.has(finding.ruleId)) {
+function hasHighFalsePositiveRiskFinding(
+  finding: Pick<ArchitectureFindingLike, "ruleId" | "category" | "pointsDeducted">,
+) {
+  if (HIGH_FALSE_POSITIVE_RULE_IDS.has(stripRuleNamespace(finding.ruleId))) {
     return true;
   }
 
   return finding.category === "clarity" && finding.pointsDeducted > 0 && finding.pointsDeducted <= 6;
 }
 
-function estimateConfidence(findings: ArchitectureFinding[], context: ArchitectureQuoteContext | undefined) {
+function estimateConfidence(findings: ArchitectureFindingLike[], context: ArchitectureQuoteContext | undefined) {
   let confidence = 1;
   const highFalsePositiveCount = findings.filter(
     (finding) => finding.pointsDeducted > 0 && hasHighFalsePositiveRiskFinding(finding),
@@ -139,12 +152,12 @@ function estimateConfidence(findings: ArchitectureFinding[], context: Architectu
   return clamp(confidence, 0.7, 1.05);
 }
 
-export function calculateConfidenceScore(findings: ArchitectureFinding[], context: ArchitectureQuoteContext | undefined) {
+export function calculateConfidenceScore(findings: ArchitectureFindingLike[], context: ArchitectureQuoteContext | undefined) {
   return estimateConfidence(findings, context);
 }
 
 export function calculateAnalysisConfidence(
-  findings: ArchitectureFinding[],
+  findings: ArchitectureFindingLike[],
   context: ArchitectureQuoteContext | undefined,
 ): ArchitectureAnalysisConfidence {
   const confidence = calculateConfidenceScore(findings, context);
@@ -301,7 +314,7 @@ export function calculateOverallScoreByCategoryCaps(findings: Array<Pick<Archite
 }
 
 export function calculateConsultationQuoteUSD(
-  findings: ArchitectureFinding[],
+  findings: ArchitectureFindingLike[],
   overallScore: number,
   context?: ArchitectureQuoteContext,
 ) {
@@ -355,7 +368,7 @@ export function calculateConsultationQuoteUSD(
 }
 
 export function buildArchitectureConsultationQuote(input: {
-  findings: ArchitectureFinding[];
+  findings: ArchitectureFindingLike[];
   consultationQuoteUSD: number;
   quoteTier: ArchitectureQuoteTier;
   analysisConfidence: ArchitectureAnalysisConfidence;
@@ -394,7 +407,7 @@ export function buildArchitectureConsultationQuote(input: {
         label: architectureServiceLineLabel(finding.category),
         amountLow: Math.max(1, finding.fixCostUSD),
         amountHigh: Math.max(1, finding.fixCostUSD),
-        reason: truncateReason(`${finding.message} Fix focus: ${finding.fix}`),
+        reason: truncateReason(`${finding.message ?? "Architecture issue"} Fix focus: ${finding.fix ?? "Clarify remediation scope."}`),
       })),
     additionalBudget,
     additionalBudget,
@@ -423,15 +436,7 @@ export function categoryDeductionCaps() {
 export function sortWeightForFinding(finding: Pick<ArchitectureFinding, "pointsDeducted" | "ruleId" | "category">) {
   const severityBand = severityFromPoints(finding.pointsDeducted);
   const severityWeight = severityBand === "critical" ? 4 : severityBand === "high" ? 3 : severityBand === "med" ? 2 : 1;
-  const falsePositiveRiskWeight = hasHighFalsePositiveRiskFinding({
-    ...finding,
-    message: "",
-    fix: "",
-    evidence: "",
-    fixCostUSD: 0,
-  })
-    ? 1
-    : 0;
+  const falsePositiveRiskWeight = hasHighFalsePositiveRiskFinding(finding) ? 1 : 0;
 
   return {
     severityWeight,
@@ -452,7 +457,7 @@ export function mergedEvidenceText(values: string[]) {
 }
 
 export function intentGroupForRule(ruleId: string) {
-  const normalized = ruleId.toUpperCase();
+  const normalized = stripRuleNamespace(ruleId).toUpperCase();
 
   if (normalized.includes("DIAGRAM_NARRATIVE") || normalized.startsWith("STATED_")) {
     return "architecture_contradictions";
@@ -538,11 +543,11 @@ export function compareFindingsDeterministically(
   return a.ruleId.localeCompare(b.ruleId);
 }
 
-export function applyCategoryScoreCaps(findings: ArchitectureFinding[]) {
+export function applyCategoryScoreCaps(findings: ArchitectureFindingLike[]) {
   return calculateOverallScoreByCategoryCaps(findings);
 }
 
-export function calculateLegacyConsultationQuoteUSD(findings: ArchitectureFinding[], overallScore: number) {
+export function calculateLegacyConsultationQuoteUSD(findings: ArchitectureFindingLike[], overallScore: number) {
   const repairTotal = findings.reduce((total, finding) => {
     if (finding.pointsDeducted <= 0) {
       return total;

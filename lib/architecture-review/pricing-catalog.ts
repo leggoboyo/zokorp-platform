@@ -1,4 +1,4 @@
-import { AWS_ARCHITECTURE_LAUNCH_V1_RULES } from "@/lib/architecture-review/aws-launch-v1-catalog";
+import { ARCHITECTURE_REVIEW_RULES } from "@/lib/architecture-review/rules";
 import { calculateFixCostUSD } from "@/lib/architecture-review/quote";
 import type { ArchitectureCategory, ArchitectureSourceLink } from "@/lib/architecture-review/types";
 
@@ -51,7 +51,7 @@ function pricingNotesForPolicyBand(policyBand: string) {
     return "Optional polish item. Only quote this after the architecture is already viable.";
   }
 
-  return "Launch v1 remediation item derived from the AWS-only evidence package.";
+  return "Launch v1 remediation item derived from the evidence-backed rule catalog.";
 }
 
 export const ARCHITECTURE_REVIEW_PACKAGE_CATALOG: ArchitectureReviewPackageCatalogEntry[] = [
@@ -66,7 +66,7 @@ export const ARCHITECTURE_REVIEW_PACKAGE_CATALOG: ArchitectureReviewPackageCatal
     label: "Remediation Sprint",
     pricingSummary:
       "Rendered in the email as a bounded estimate derived from the evidence-backed rule catalog, clamped to visible scope only.",
-    deliverySummary: "Hands-on fix package for explicit, predictable AWS remediation work shown by the submission.",
+    deliverySummary: "Hands-on fix package for explicit, predictable remediation work shown by the submission.",
   },
   {
     tier: "implementation-partner",
@@ -76,7 +76,9 @@ export const ARCHITECTURE_REVIEW_PACKAGE_CATALOG: ArchitectureReviewPackageCatal
   },
 ];
 
-export const ARCHITECTURE_REVIEW_PRICING_CATALOG: ArchitectureReviewPricingCatalogEntry[] = AWS_ARCHITECTURE_LAUNCH_V1_RULES.map(
+export const ARCHITECTURE_REVIEW_PRICING_CATALOG: ArchitectureReviewPricingCatalogEntry[] = ARCHITECTURE_REVIEW_RULES.filter(
+  (rule) => rule.provider !== "shared",
+).map(
   (rule) => {
     const partialDeduction = Math.max(0, rule.scoreWeight - rule.maxPartialCredit);
     const maxFixCostUSD = calculateFixCostUSD(rule.category, rule.scoreWeight);
@@ -107,6 +109,32 @@ const pricingCatalogByRuleId = new Map(
   ARCHITECTURE_REVIEW_PRICING_CATALOG.map((entry) => [entry.ruleId, entry]),
 );
 
+export function resolveArchitectureReviewPricingCatalogRuleId(ruleId: string) {
+  const normalized = ruleId.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (pricingCatalogByRuleId.has(normalized)) {
+    return normalized;
+  }
+
+  if (!normalized.includes(":")) {
+    const awsRuleId = `aws:${normalized}`;
+    if (pricingCatalogByRuleId.has(awsRuleId)) {
+      return awsRuleId;
+    }
+  }
+
+  return null;
+}
+
+export function legacyArchitectureReviewPricingCatalogRuleId(ruleId: string) {
+  const resolvedRuleId = resolveArchitectureReviewPricingCatalogRuleId(ruleId) ?? ruleId.trim();
+  return resolvedRuleId.startsWith("aws:") ? resolvedRuleId.slice(4) : null;
+}
+
 export function getArchitectureReviewPricingCatalogEntry(ruleId: string) {
-  return pricingCatalogByRuleId.get(ruleId) ?? null;
+  const resolvedRuleId = resolveArchitectureReviewPricingCatalogRuleId(ruleId);
+  return resolvedRuleId ? pricingCatalogByRuleId.get(resolvedRuleId) ?? null : null;
 }

@@ -3,10 +3,16 @@ import { z } from "zod";
 import { quoteLineItemSchema } from "@/lib/quote-line-items";
 import { toolConsentSchema } from "@/lib/tool-consent";
 
-export const ARCHITECTURE_REVIEW_VERSION = "1.0" as const;
+export const ARCHITECTURE_REVIEW_VERSION = "2.0" as const;
 
-export const architectureProviderSchema = z.enum(["aws", "azure", "gcp"]);
+export const architectureConcreteProviderSchema = z.enum(["aws", "azure", "gcp"]);
+export type ArchitectureConcreteProvider = z.infer<typeof architectureConcreteProviderSchema>;
+
+export const architectureProviderSchema = z.enum(["aws", "azure", "gcp", "multi"]);
 export type ArchitectureProvider = z.infer<typeof architectureProviderSchema>;
+
+export const architecturePlatformSchema = z.enum(["snowflake"]);
+export type ArchitecturePlatform = z.infer<typeof architecturePlatformSchema>;
 
 export const architectureDiagramFormatSchema = z.enum(["png", "jpg", "pdf", "svg"]);
 export type ArchitectureDiagramFormat = z.infer<typeof architectureDiagramFormatSchema>;
@@ -72,12 +78,30 @@ export const architectureEstimatePolicyBandSchema = z.enum([
 ]);
 export type ArchitectureEstimatePolicyBand = z.infer<typeof architectureEstimatePolicyBandSchema>;
 
+export const architectureRecommendationTypeSchema = z.enum(["fix", "clarify", "optional"]);
+export type ArchitectureRecommendationType = z.infer<typeof architectureRecommendationTypeSchema>;
+
+export const architectureReviewScopeSchema = z.object({
+  primaryProvider: architectureProviderSchema,
+  providers: z.array(architectureConcreteProviderSchema).min(1).max(3),
+  additionalProviders: z.array(architectureConcreteProviderSchema).max(3).default([]),
+  platforms: z.array(architecturePlatformSchema).max(8).default([]),
+  additionalPlatforms: z.array(architecturePlatformSchema).max(8).default([]),
+});
+export type ArchitectureReviewScope = z.infer<typeof architectureReviewScopeSchema>;
+
 export const architectureFindingSchema = z.object({
   ruleId: z.string().trim().min(1).max(80),
   category: architectureCategorySchema,
   pointsDeducted: z.number().int().min(0).max(100),
-  message: z.string().trim().min(1).max(120),
-  fix: z.string().trim().min(1).max(160),
+  recommendationType: architectureRecommendationTypeSchema,
+  why: z.string().trim().min(1).max(180),
+  evidenceSeen: z.string().trim().min(1).max(240),
+  howToFix: z.string().trim().min(1).max(320),
+  officialSourceLinks: z.array(architectureSourceLinkSchema).min(1).max(4),
+  ruleVersion: z.string().trim().min(1).max(40),
+  message: z.string().trim().min(1).max(160),
+  fix: z.string().trim().min(1).max(320),
   evidence: z.string().trim().min(1).max(240),
   fixCostUSD: z.number().int().min(0),
 });
@@ -91,6 +115,7 @@ export type ArchitectureFindingDraft = z.infer<typeof architectureFindingDraftSc
 export const architectureReviewReportSchema = z.object({
   reportVersion: z.literal(ARCHITECTURE_REVIEW_VERSION),
   provider: architectureProviderSchema,
+  reviewScope: architectureReviewScopeSchema,
   overallScore: z.number().int().min(0).max(100),
   analysisConfidence: architectureAnalysisConfidenceSchema,
   quoteTier: architectureQuoteTierSchema,
@@ -150,6 +175,10 @@ export const architectureSubmissionContextSchema = z.object({
   landingPage: z.string().trim().max(300).optional(),
   referrer: z.string().trim().max(300).optional(),
   deviceClass: z.enum(["mobile", "tablet", "desktop", "unknown"]).optional(),
+  providerCount: z.number().int().min(1).max(8).optional(),
+  platformCount: z.number().int().min(0).max(8).optional(),
+  catalogCount: z.number().int().min(1).max(16).optional(),
+  ruleCount: z.number().int().min(1).max(500).optional(),
 });
 export type ArchitectureSubmissionContext = z.infer<typeof architectureSubmissionContextSchema>;
 
@@ -185,6 +214,8 @@ export const architectureReviewMetadataSchema = z.object({
   environment: architectureEnvironmentSchema.optional(),
   lifecycleStage: architectureLifecycleStageSchema.optional(),
   desiredEngagement: architectureEngagementPreferenceSchema.optional(),
+  additionalProviders: z.array(architectureConcreteProviderSchema).max(3).default([]),
+  additionalPlatforms: z.array(architecturePlatformSchema).max(8).default([]),
   submissionContext: architectureSubmissionContextSchema.optional(),
   clientTiming: architectureClientTimingSchema.optional(),
   clientPngOcrText: z.string().trim().max(50_000).optional(),
@@ -195,10 +226,46 @@ export const architectureReviewMetadataSchema = z.object({
 });
 export type ArchitectureReviewMetadata = z.infer<typeof architectureReviewMetadataSchema>;
 
-export const submitArchitectureReviewMetadataSchema = architectureReviewMetadataSchema.extend({
-  provider: architectureProviderSchema,
-  paragraphInput: z.string().trim().min(1).max(2000),
-});
+export const submitArchitectureReviewMetadataSchema = architectureReviewMetadataSchema
+  .extend({
+    provider: architectureProviderSchema,
+    paragraphInput: z.string().trim().min(1).max(2000),
+  })
+  .superRefine((value, context) => {
+    const uniqueAdditionalProviders = new Set(value.additionalProviders);
+    if (uniqueAdditionalProviders.size !== value.additionalProviders.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["additionalProviders"],
+        message: "Duplicate cloud providers are not allowed.",
+      });
+    }
+
+    const uniqueAdditionalPlatforms = new Set(value.additionalPlatforms);
+    if (uniqueAdditionalPlatforms.size !== value.additionalPlatforms.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["additionalPlatforms"],
+        message: "Duplicate platform add-ons are not allowed.",
+      });
+    }
+
+    if (value.provider !== "multi" && value.additionalProviders.includes(value.provider)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["additionalProviders"],
+        message: "The primary provider cannot also be selected as an additional provider.",
+      });
+    }
+
+    if (value.provider === "multi" && value.additionalProviders.length < 2) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["additionalProviders"],
+        message: "Multi-cloud reviews require at least two selected cloud providers.",
+      });
+    }
+  });
 export type SubmitArchitectureReviewMetadata = z.infer<typeof submitArchitectureReviewMetadataSchema>;
 
 export const submitArchitectureReviewPayloadSchema = z.object({
@@ -236,6 +303,9 @@ export const architectureReviewPrivacyTelemetrySchema = z.object({
   submissionFingerprintHash: z.string().regex(/^[a-f0-9]{64}$/),
   scoreBand: architectureReviewScoreBandSchema,
   emailDeliveryRequested: z.boolean(),
+  provider: architectureProviderSchema,
+  additionalProviders: z.array(architectureConcreteProviderSchema).max(3).default([]),
+  additionalPlatforms: z.array(architecturePlatformSchema).max(8).default([]),
 });
 export type ArchitectureReviewPrivacyTelemetry = z.infer<typeof architectureReviewPrivacyTelemetrySchema>;
 
@@ -250,6 +320,7 @@ export type ArchitectureReviewPrivacyEmailPayload = z.infer<typeof architectureR
 
 export type ArchitectureEvidenceBundle = {
   provider: ArchitectureProvider;
+  reviewScope?: ArchitectureReviewScope;
   paragraph: string;
   ocrText: string;
   serviceTokens: string[];

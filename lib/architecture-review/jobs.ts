@@ -1,5 +1,6 @@
 import { Prisma, type ArchitectureReviewJob } from "@prisma/client";
 
+import { AWS_ARCHITECTURE_LAUNCH_V1_RULES } from "@/lib/architecture-review/aws-launch-v1-catalog";
 import { buildArchitectureReviewCtaLinks } from "@/lib/architecture-review/cta-links";
 import { buildArchitectureReviewEmailContent, buildMailtoUrl } from "@/lib/architecture-review/email";
 import { evaluateArchitectureReviewInput } from "@/lib/architecture-review/evaluator";
@@ -8,7 +9,9 @@ import { createEmlToken } from "@/lib/architecture-review/eml-token";
 import { calculateLeadScore } from "@/lib/architecture-review/lead";
 import { configuredArchitectureRemediationRateUsdPerHour } from "@/lib/architecture-review/quote";
 import { summarizeTopIssues } from "@/lib/architecture-review/report";
+import { getArchitectureReviewRuleCountForScope } from "@/lib/architecture-review/rules";
 import { sendArchitectureReviewEmail } from "@/lib/architecture-review/sender";
+import { resolveArchitectureReviewScope, reviewScopeLabel, selectedCatalogCount } from "@/lib/architecture-review/scope";
 import {
   architectureReviewMetadataSchema,
   submitArchitectureReviewMetadataSchema,
@@ -30,6 +33,7 @@ import { redactedArchitectureEmailBody } from "@/lib/retention-sweep";
 import { estimateBandForRange, scoreBandForScore } from "@/lib/tool-consent";
 import { recordArchitectureReviewToolRun } from "@/lib/tool-runs";
 import { syncZohoInvoiceEstimate } from "@/lib/zoho-invoice";
+import { getMarketingSiteUrl } from "@/lib/site";
 import {
   archiveArchitectureReviewReportToWorkDrive,
   formatWorkDriveArchiveStatus,
@@ -249,10 +253,21 @@ function estimateEtaSeconds(input: {
   currentPhase: ArchitectureReviewPhase;
   timings: JobPhaseTimings;
   nowMs: number;
+  submissionContext: ReturnType<typeof parseSubmissionContext>;
 }) {
   const baseline = PHASE_BASELINE_MS[input.deviceClass];
   const currentIndex = phaseIndex(input.currentPhase);
   const activePhases = timedPhases();
+  const rulesBaselineMs =
+    input.submissionContext?.ruleCount && input.submissionContext.catalogCount
+      ? Math.round(
+          baseline.rules *
+            Math.max(1, input.submissionContext.ruleCount / AWS_ARCHITECTURE_LAUNCH_V1_RULES.length) *
+            (1 + 0.12 * (input.submissionContext.catalogCount - 1)),
+        )
+      : baseline.rules;
+  const phaseBaseline = (phase: TimedArchitectureReviewPhase) =>
+    phase === "rules" ? rulesBaselineMs : baseline[phase];
 
   const observedRatios: number[] = [];
   for (const phase of activePhases) {
@@ -261,7 +276,7 @@ function estimateEtaSeconds(input: {
       continue;
     }
 
-    const expected = baseline[phase] ?? 1;
+    const expected = phaseBaseline(phase) ?? 1;
     observedRatios.push(Math.max(0.3, Math.min(2.5, timing.durationMs / expected)));
   }
 
@@ -271,14 +286,14 @@ function estimateEtaSeconds(input: {
   const currentExpected =
     input.currentPhase === "completed" || input.currentPhase === "llm-refine"
       ? 0
-      : baseline[input.currentPhase] ?? 0;
+      : phaseBaseline(input.currentPhase) ?? 0;
 
   const currentElapsed = currentTiming?.startedAtISO ? Math.max(0, input.nowMs - new Date(currentTiming.startedAtISO).getTime()) : 0;
   const currentRemaining = Math.max(0, currentExpected * ratio - currentElapsed);
 
   const remainingTail = activePhases
     .slice(Math.min(activePhases.length, currentIndex + 1))
-    .reduce((sum, phase) => sum + baseline[phase] * ratio, 0);
+    .reduce((sum, phase) => sum + phaseBaseline(phase) * ratio, 0);
 
   return Math.max(0, Math.round((currentRemaining + remainingTail) / 1000));
 }
@@ -288,6 +303,7 @@ function estimateProgressPct(input: {
   timings: JobPhaseTimings;
   deviceClass: DeviceClass;
   nowMs: number;
+  submissionContext: ReturnType<typeof parseSubmissionContext>;
 }) {
   const activePhases = timedPhases();
 
@@ -297,7 +313,20 @@ function estimateProgressPct(input: {
 
   const completedCount = activePhases.filter((phase) => input.timings[phase]?.completedAtISO).length;
   const phase = input.currentPhase;
-  const baseline = phase === "llm-refine" ? 1 : (PHASE_BASELINE_MS[input.deviceClass][phase] ?? 1);
+  const rulesBaselineMs =
+    input.submissionContext?.ruleCount && input.submissionContext.catalogCount
+      ? Math.round(
+          PHASE_BASELINE_MS[input.deviceClass].rules *
+            Math.max(1, input.submissionContext.ruleCount / AWS_ARCHITECTURE_LAUNCH_V1_RULES.length) *
+            (1 + 0.12 * (input.submissionContext.catalogCount - 1)),
+        )
+      : PHASE_BASELINE_MS[input.deviceClass].rules;
+  const baseline =
+    phase === "llm-refine"
+      ? 1
+      : phase === "rules"
+        ? rulesBaselineMs
+        : (PHASE_BASELINE_MS[input.deviceClass][phase] ?? 1);
   const startedAt = input.timings[phase]?.startedAtISO;
   const elapsed = startedAt ? Math.max(0, input.nowMs - new Date(startedAt).getTime()) : 0;
   const inPhaseProgress = Math.max(0, Math.min(1, elapsed / baseline));
@@ -378,6 +407,7 @@ async function updatePhase(job: ArchitectureReviewJob, phase: ArchitectureReview
   const nowIso = now.toISOString();
   const timings = parsePhaseTimings(job.phaseTimingsJson);
   const nextTimings = action === "start" ? markPhaseStart(timings, phase, nowIso) : markPhaseComplete(timings, phase, nowIso);
+  const submissionContext = parseSubmissionContext(job);
   const deviceClass = parseDeviceClass(
     (job.submissionContextJson as { deviceClass?: unknown } | null | undefined)?.deviceClass,
   );
@@ -391,6 +421,7 @@ async function updatePhase(job: ArchitectureReviewJob, phase: ArchitectureReview
           timings: nextTimings,
           deviceClass,
           nowMs: now.getTime(),
+          submissionContext,
         });
   const etaSeconds =
     effectivePhase === "completed"
@@ -400,6 +431,7 @@ async function updatePhase(job: ArchitectureReviewJob, phase: ArchitectureReview
           timings: nextTimings,
           deviceClass,
           nowMs: now.getTime(),
+          submissionContext,
         });
 
   const updated = await db.architectureReviewJob.update({
@@ -470,6 +502,8 @@ function wantsCrmFollowUp(metadata: SubmitArchitectureReviewMetadata) {
 function scrubStoredMetadata(metadata: SubmitArchitectureReviewMetadata) {
   return {
     provider: metadata.provider,
+    additionalProviders: metadata.additionalProviders,
+    additionalPlatforms: metadata.additionalPlatforms,
     diagramFormat: metadata.diagramFormat,
     saveForFollowUp: wantsFollowUpArchive(metadata),
     allowCrmFollowUp: wantsCrmFollowUp(metadata),
@@ -529,6 +563,19 @@ export async function createArchitectureReviewJob(input: {
   workdriveDiagramFileId?: string | null;
   workdriveUploadStatus?: string | null;
 }) {
+  const reviewScope = resolveArchitectureReviewScope({
+    provider: input.metadata.provider,
+    additionalProviders: input.metadata.additionalProviders,
+    additionalPlatforms: input.metadata.additionalPlatforms,
+  });
+  const submissionContext = {
+    ...(input.metadata.submissionContext ?? {}),
+    providerCount: reviewScope.providers.length,
+    platformCount: reviewScope.platforms.length,
+    catalogCount: selectedCatalogCount(reviewScope),
+    ruleCount: getArchitectureReviewRuleCountForScope(reviewScope),
+  };
+
   return db.architectureReviewJob.create({
     data: {
       userId: input.userId,
@@ -538,7 +585,7 @@ export async function createArchitectureReviewJob(input: {
       progressPct: 0,
       etaSeconds: 0,
       metadataJson: toInputJsonValue(input.metadata),
-      submissionContextJson: toNullableJsonValue(input.metadata.submissionContext),
+      submissionContextJson: toNullableJsonValue(submissionContext),
       clientTimingJson: toNullableJsonValue(input.metadata.clientTiming),
       diagramFileName: input.diagramFileName,
       diagramMimeType: input.diagramMimeType,
@@ -611,6 +658,8 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
 
     const evaluation = evaluateArchitectureReviewInput({
       provider: metadata.provider,
+      additionalProviders: metadata.additionalProviders,
+      additionalPlatforms: metadata.additionalPlatforms,
       userEmail: job.userEmail,
       paragraphInput: metadata.paragraphInput,
       ocrText,
@@ -772,7 +821,7 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
         ? await syncZohoInvoiceEstimate({
             email: job.userEmail,
             fullName: userName,
-            serviceLabel: `Architecture Diagram Reviewer (${report.provider.toUpperCase()})`,
+            serviceLabel: `Architecture Diagram Reviewer (${reviewScopeLabel(report.reviewScope)})`,
             referenceNumber: estimateSnapshot.referenceCode,
             notes: [
               `Score: ${report.overallScore}/100`,
@@ -792,7 +841,7 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
                 : [
                     {
                       name: "Architecture remediation estimate",
-                      description: `Architecture remediation follow-up for ${report.provider.toUpperCase()} findings.`,
+                      description: `Architecture remediation follow-up for ${reviewScopeLabel(report.reviewScope)} findings.`,
                       rate: estimateSnapshot.totalUsd,
                     },
                   ],
@@ -820,12 +869,18 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
           estimateNumber: null,
           error: quoteCompanionResult.error,
         };
+    const payNowUrl =
+      estimateSnapshot.policy.payableQuoteEnabled && estimateSnapshot.totalUsd > 0
+        ? `${getMarketingSiteUrl()}/api/architecture-review/checkout?jobId=${encodeURIComponent(job.id)}&estimateReferenceCode=${encodeURIComponent(
+            estimateSnapshot.referenceCode,
+          )}`
+        : null;
     try {
       await recordEstimateCompanion({
         userId: job.userId,
         source: "architecture-review",
         sourceRecordKey: job.id,
-        sourceLabel: `Architecture Diagram Reviewer (${report.provider.toUpperCase()})`,
+        sourceLabel: `Architecture Diagram Reviewer (${reviewScopeLabel(report.reviewScope)})`,
         provider: quoteCompanion.provider,
         status: quoteCompanion.status,
         referenceCode: estimateSnapshot.referenceCode,
@@ -852,11 +907,10 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
       console.error("Failed to persist architecture estimate companion", error);
     }
     const emailContent = buildArchitectureReviewEmailContent(report, {
-      ctaLinks: ctaLinks
-        ? {
-            bookArchitectureCallUrl: ctaLinks.bookArchitectureCallUrl,
-          }
-        : undefined,
+      ctaLinks: {
+        ...(ctaLinks ? { bookArchitectureCallUrl: ctaLinks.bookArchitectureCallUrl } : {}),
+        payNowUrl,
+      },
       estimateSnapshot,
       officialEstimateReference: quoteCompanion.status === "created" ? quoteCompanion.estimateNumber : null,
       emailPreferenceLinks: buildEmailPreferenceLinks({
@@ -1066,10 +1120,10 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
         try {
           await recordArchitectureReviewToolRun({
             userId: job.userId,
-            summary: `${report.provider.toUpperCase()} review · ${report.overallScore}/100 · ${report.quoteTier}`,
+            summary: `${reviewScopeLabel(report.reviewScope)} review · ${report.overallScore}/100 · ${report.quoteTier}`,
             inputFileName: job.diagramFileName,
             sourceType: metadata.diagramFormat ?? job.diagramMimeType ?? null,
-            sourceName: report.provider.toUpperCase(),
+            sourceName: reviewScopeLabel(report.reviewScope),
             score: report.overallScore,
             confidenceLabel: report.analysisConfidence,
             deliveryStatus: "sent",
@@ -1222,10 +1276,10 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
       try {
         await recordArchitectureReviewToolRun({
           userId: job.userId,
-          summary: `${report.provider.toUpperCase()} review · ${report.overallScore}/100 · fallback delivery`,
+          summary: `${reviewScopeLabel(report.reviewScope)} review · ${report.overallScore}/100 · fallback delivery`,
           inputFileName: job.diagramFileName,
           sourceType: metadata.diagramFormat ?? job.diagramMimeType ?? null,
-          sourceName: report.provider.toUpperCase(),
+          sourceName: reviewScopeLabel(report.reviewScope),
           score: report.overallScore,
           confidenceLabel: report.analysisConfidence,
           deliveryStatus: "fallback",

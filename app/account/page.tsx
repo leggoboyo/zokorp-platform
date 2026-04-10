@@ -1077,7 +1077,14 @@ export default async function AccountPage() {
                         </>
                       }
                       footer={
-                        <Link href={`/software/${purchase.product.slug}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                        <Link
+                          href={
+                            purchase.product.slug === "architecture-review-remediation"
+                              ? "/software/architecture-diagram-reviewer"
+                              : `/software/${purchase.product.slug}`
+                          }
+                          className={buttonVariants({ variant: "secondary", size: "sm" })}
+                        >
                           Open tool
                         </Link>
                       }

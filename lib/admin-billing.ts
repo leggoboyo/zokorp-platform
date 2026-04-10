@@ -535,7 +535,10 @@ export async function getAdminBillingSnapshot(): Promise<AdminBillingSnapshot> {
       statusTone: "success",
       summary: `Checkout session ${checkout.stripeCheckoutSessionId}`,
       details: [`Product slug ${checkout.product.slug}`],
-      href: `/software/${checkout.product.slug}`,
+      href:
+        checkout.product.slug === "architecture-review-remediation"
+          ? "/software/architecture-diagram-reviewer"
+          : `/software/${checkout.product.slug}`,
     })),
     creditActivity: creditActivity.map(mapCreditActivity),
     attentionSignals: attentionSignals.map(mapBillingSignal),

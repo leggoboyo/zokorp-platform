@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { buildArchitectureReviewReport } from "@/lib/architecture-review/report";
+import { reviewScopeLabel } from "@/lib/architecture-review/scope";
 import { buildMarketingPageMetadata } from "@/lib/site";
 
 export const metadata = buildMarketingPageMetadata({
@@ -22,6 +23,17 @@ const sampleReport = buildArchitectureReviewReport({
       ruleId: "PILLAR-SECURITY",
       category: "security",
       pointsDeducted: 12,
+      recommendationType: "fix",
+      why: "The request path is visible, but concrete identity, secret storage, and encryption controls are not stated.",
+      evidenceSeen: "“Users enter through CloudFront and an ALB ... data persists to RDS ...”",
+      howToFix: "Label the identity boundary for each tier, name the secret store, and mark encryption controls for in-transit and at-rest paths.",
+      officialSourceLinks: [
+        {
+          label: "AWS Well-Architected Security Pillar",
+          url: "https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html",
+        },
+      ],
+      ruleVersion: "sample-v2",
       message: "Document identity, secrets, and encryption controls.",
       fix: "Name IAM boundaries, secret handling, and encryption points for the request path.",
       evidence: "The diagram describes app flow but does not show concrete security controls.",
@@ -30,6 +42,17 @@ const sampleReport = buildArchitectureReviewReport({
       ruleId: "REL-RTO-RPO-MISSING",
       category: "reliability",
       pointsDeducted: 8,
+      recommendationType: "clarify",
+      why: "Stateful services are shown, but recovery targets are not explicit in the visible evidence.",
+      evidenceSeen: "“... data persists to RDS with background workers consuming queue events.”",
+      howToFix: "Add the target RTO/RPO for the primary datastore and the queue-backed recovery behavior expected after failure.",
+      officialSourceLinks: [
+        {
+          label: "AWS Well-Architected Reliability Definitions",
+          url: "https://docs.aws.amazon.com/wellarchitected/latest/framework/definitions.html",
+        },
+      ],
+      ruleVersion: "sample-v2",
       message: "State recovery targets for stateful services.",
       fix: "Add RTO/RPO targets for the primary data stores and queue-backed recovery behavior.",
       evidence: "Stateful services are present without explicit recovery targets.",
@@ -38,6 +61,12 @@ const sampleReport = buildArchitectureReviewReport({
       ruleId: "MSFT-COMPONENT-LABEL-COVERAGE",
       category: "clarity",
       pointsDeducted: 6,
+      recommendationType: "fix",
+      why: "The narrative names the major services but does not explain each component’s role or boundary.",
+      evidenceSeen: "“CloudFront and an ALB, app services ... RDS with background workers consuming queue events.”",
+      howToFix: "Expand the paragraph so each major component has one clear purpose statement and the request/data flow across boundaries is explicit.",
+      officialSourceLinks: [],
+      ruleVersion: "sample-v2",
       message: "Explain the role of each major component in the paragraph.",
       fix: "State what each service does and how requests move across the boundary lines.",
       evidence: "Multiple services are named but not fully explained in the narrative.",
@@ -46,6 +75,12 @@ const sampleReport = buildArchitectureReviewReport({
       ruleId: "MSFT-LAYERING-OPTIONAL",
       category: "clarity",
       pointsDeducted: 0,
+      recommendationType: "optional",
+      why: "The current view is readable, but a layered variant would help when the live diagram grows.",
+      evidenceSeen: "“Users enter through CloudFront and an ALB ... background workers consuming queue events.”",
+      howToFix: "Consider separate edge, application, and data views for larger follow-on diagrams.",
+      officialSourceLinks: [],
+      ruleVersion: "sample-v2",
       message: "A layered diagram view could improve readability.",
       fix: "Split edge, application, and data concerns into separate views if the live diagram grows further.",
       evidence: "The sample system is busy enough that a layered version would be easier to scan.",
@@ -93,7 +128,7 @@ export default function ArchitectureReviewerSampleReportPage() {
       <section className="grid gap-5 lg:grid-cols-4">
         <article className="surface rounded-2xl p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Provider</p>
-          <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">{sampleReport.provider.toUpperCase()}</h2>
+          <h2 className="font-display mt-2 text-2xl font-semibold text-slate-900">{reviewScopeLabel(sampleReport.reviewScope)}</h2>
         </article>
         <article className="surface rounded-2xl p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Overall Score</p>
@@ -123,8 +158,14 @@ export default function ArchitectureReviewerSampleReportPage() {
                 <h2 className="text-base font-semibold text-slate-900">{finding.ruleId}</h2>
                 <Badge variant="secondary">-{finding.pointsDeducted} points</Badge>
               </div>
-              <p className="mt-3 text-sm leading-6 text-slate-700">{finding.message}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Fix: {finding.fix}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-700">Why: {finding.why}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Evidence seen: {finding.evidenceSeen}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">How to fix: {finding.howToFix}</p>
+              {finding.officialSourceLinks.length > 0 ? (
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Official references: {finding.officialSourceLinks.map((link) => link.label).join(" · ")}
+                </p>
+              ) : null}
               <p className="mt-2 text-sm leading-6 text-slate-500">Estimated fix-effort driver: ${finding.fixCostUSD}</p>
             </article>
           ))}

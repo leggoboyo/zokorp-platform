@@ -440,6 +440,12 @@ function dedupeMergeFindings(
     byRuleId.set(finding.ruleId, {
       ...existing,
       pointsDeducted: finding.pointsDeducted,
+      recommendationType: finding.recommendationType,
+      why: finding.why,
+      evidenceSeen: finding.evidenceSeen,
+      howToFix: finding.howToFix,
+      officialSourceLinks: finding.officialSourceLinks,
+      ruleVersion: finding.ruleVersion,
       message: finding.message,
       fix: finding.fix,
       evidence: finding.evidence,
@@ -474,6 +480,7 @@ export function buildReviewReportFromEvidence(input: {
 
   return buildArchitectureReviewReport({
     provider: input.bundle.provider,
+    reviewScope: input.bundle.reviewScope,
     flowNarrative: narrative,
     findings: mergedFindings,
     userEmail: input.userEmail,

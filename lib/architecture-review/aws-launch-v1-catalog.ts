@@ -1,24 +1,7 @@
-import type { ArchitectureCategory, ArchitectureEstimatePolicyBand, ArchitectureSourceLink } from "@/lib/architecture-review/types";
+import type { ArchitectureCategory, ArchitectureEstimatePolicyBand } from "@/lib/architecture-review/types";
+import type { ArchitectureReviewRule } from "@/lib/architecture-review/rule-types";
 
-export type AwsArchitectureLaunchV1Rule = {
-  id: string;
-  category: ArchitectureCategory;
-  researchCategory: string;
-  ruleName: string;
-  launchPriority: "critical" | "high" | "medium" | "low";
-  ruleType: "required" | "recommended" | "anti_pattern" | "contradiction_check";
-  scoreWeight: number;
-  maxPartialCredit: number;
-  partialCreditLogic: string;
-  remediationSummary: string;
-  remediationHoursLow: number;
-  remediationHoursHigh: number;
-  estimateLineItemLabel: string;
-  estimatePolicyBand: ArchitectureEstimatePolicyBand;
-  confidenceGuidance: string;
-  officialSourceLinks: ArchitectureSourceLink[];
-  customerSummarySnippet: string;
-};
+export type AwsArchitectureLaunchV1Rule = ArchitectureReviewRule;
 
 type RawRule = readonly [
   string,
@@ -107,7 +90,9 @@ export const AWS_ARCHITECTURE_LAUNCH_V1_RULES: AwsArchitectureLaunchV1Rule[] = R
     urls,
     customerSummarySnippet,
   ]) => ({
-    id,
+    id: `aws:${id}`,
+    provider: "aws",
+    ruleVersion: "aws-launch-v1",
     category,
     researchCategory,
     ruleName,
@@ -132,5 +117,6 @@ export const awsArchitectureLaunchV1RuleById = new Map(
 );
 
 export function getAwsArchitectureLaunchV1Rule(ruleId: string) {
-  return awsArchitectureLaunchV1RuleById.get(ruleId) ?? null;
+  const normalizedRuleId = ruleId.startsWith("aws:") ? ruleId : `aws:${ruleId}`;
+  return awsArchitectureLaunchV1RuleById.get(normalizedRuleId) ?? null;
 }

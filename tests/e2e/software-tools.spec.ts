@@ -146,13 +146,19 @@ test.describe("authenticated architecture reviewer", () => {
     expect(standardSubmitCalled).toBe(false);
     expect(telemetryBody).not.toBeNull();
     expect(Object.keys(telemetryBody ?? {}).sort()).toEqual([
+      "additionalPlatforms",
+      "additionalProviders",
       "emailDeliveryRequested",
+      "provider",
       "scoreBand",
       "submissionFingerprintHash",
       "toolSlug",
     ]);
     expect(telemetryBody).toMatchObject({
       toolSlug: "architecture-diagram-reviewer",
+      provider: "aws",
+      additionalProviders: [],
+      additionalPlatforms: [],
       emailDeliveryRequested: false,
     });
 
@@ -264,6 +270,9 @@ test.describe("authenticated architecture reviewer", () => {
     expect(standardSubmitCallCount).toBe(0);
     expect(telemetryBody).toMatchObject({
       toolSlug: "architecture-diagram-reviewer",
+      provider: "aws",
+      additionalProviders: [],
+      additionalPlatforms: [],
       emailDeliveryRequested: false,
     });
   });
@@ -309,6 +318,9 @@ test.describe("authenticated architecture reviewer", () => {
     expect(standardSubmitCallCount).toBe(0);
     expect(telemetryBody).toMatchObject({
       toolSlug: "architecture-diagram-reviewer",
+      provider: "aws",
+      additionalProviders: [],
+      additionalPlatforms: [],
       emailDeliveryRequested: false,
     });
   });

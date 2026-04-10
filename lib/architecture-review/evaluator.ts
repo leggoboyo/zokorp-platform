@@ -3,10 +3,12 @@ import { buildFallbackArchitectureEstimateSnapshot } from "@/lib/architecture-re
 import { detectNonArchitectureEvidence } from "@/lib/architecture-review/engine";
 import type {
   ArchitectureAnalysisConfidence,
+  ArchitectureConcreteProvider,
   ArchitectureDiagramFormat,
   ArchitectureEngagementPreference,
   ArchitectureEnvironment,
   ArchitectureLifecycleStage,
+  ArchitecturePlatform,
   ArchitectureProvider,
   ArchitectureRegulatoryScope,
   ArchitectureReviewReport,
@@ -15,6 +17,8 @@ import type {
 
 type EvaluateArchitectureReviewInput = {
   provider: ArchitectureProvider;
+  additionalProviders?: ArchitectureConcreteProvider[];
+  additionalPlatforms?: ArchitecturePlatform[];
   userEmail: string;
   paragraphInput: string;
   ocrText: string;
@@ -45,6 +49,8 @@ export function evaluateArchitectureReviewInput(input: EvaluateArchitectureRevie
 } {
   const bundle = createEvidenceBundle({
     provider: input.provider,
+    additionalProviders: input.additionalProviders,
+    additionalPlatforms: input.additionalPlatforms,
     paragraph: input.paragraphInput,
     ocrText: input.ocrText,
     metadata: {

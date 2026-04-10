@@ -52,7 +52,7 @@ describe("ArchitectureDiagramReviewerForm", () => {
     expect(fileInput.getAttribute("accept")).toBe(
       "image/png,image/jpeg,application/pdf,image/svg+xml,.png,.jpg,.jpeg,.pdf,.svg",
     );
-    expect(screen.getByText(/AWS-only at launch/i)).toBeTruthy();
+    expect(screen.getByText(/Multi-cloud \+ Snowflake/i)).toBeTruthy();
 
     const jpgFile = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00])], "diagram.jpg", { type: "image/jpeg" });
 
@@ -266,6 +266,71 @@ describe("ArchitectureDiagramReviewerForm", () => {
     expect(metadata.clientSvgDimensions).toEqual({ width: 1440, height: 900 });
     expect(metadata.saveForFollowUp).toBe(false);
     expect(metadata.archiveForFollowup).toBe(false);
+  });
+
+  it("submits multi-cloud scope and platform add-ons in metadata", async () => {
+    vi.spyOn(architectureReviewClient, "isStrictDiagramFile").mockResolvedValue({
+      ok: true,
+      format: "png",
+      mimeType: "image/png",
+    });
+    vi.spyOn(architectureReviewClient, "extractPngTextEvidence").mockResolvedValue(
+      "AWS edge routes to Azure app services and Snowflake stores analytical data.",
+    );
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        status: "sent",
+      }),
+    });
+
+    render(<ArchitectureDiagramReviewerForm />);
+
+    fireEvent.change(screen.getByLabelText(/primary provider/i), {
+      target: { value: "multi" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /^AWS/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /^Azure/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /^Snowflake/i }));
+
+    const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    const pngFile = new File([pngBytes], "diagram.png", { type: "image/png" });
+
+    const fileInput = screen.getByLabelText(/diagram file/i);
+    const submitButton = screen.getByRole("button", { name: /run review/i });
+    const form = submitButton.closest("form");
+
+    Object.defineProperty(fileInput, "files", {
+      value: [pngFile],
+      writable: false,
+    });
+    fireEvent.change(fileInput);
+
+    fireEvent.change(screen.getByLabelText(/architecture description/i), {
+      target: {
+        value: "Traffic enters on AWS, application services run in Azure, and Snowflake stores analytical outputs.",
+      },
+    });
+
+    if (!form) {
+      throw new Error("Expected form element.");
+    }
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const formData = requestInit.body as FormData;
+    const metadataRaw = formData.get("metadata");
+    expect(typeof metadataRaw).toBe("string");
+    const metadata = JSON.parse(String(metadataRaw)) as Record<string, unknown>;
+    expect(metadata.provider).toBe("multi");
+    expect(metadata.additionalProviders).toEqual(["aws", "azure"]);
+    expect(metadata.additionalPlatforms).toEqual(["snowflake"]);
   });
 
   it("submits opt-in archival metadata when follow-up archival is explicitly requested", async () => {

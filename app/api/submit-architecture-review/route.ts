@@ -15,7 +15,7 @@ import { isFreeToolAccessError, requireVerifiedFreeToolAccess } from "@/lib/free
 import { normalizeIdempotencyKey, readIdempotencyEntry, writeIdempotencyEntry } from "@/lib/idempotency-cache";
 import { requireSameOrigin } from "@/lib/request-origin";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
-import { maxUploadBytes } from "@/lib/security";
+import { getEmailDomain, maxUploadBytes } from "@/lib/security";
 import { archiveArchitectureDiagramToWorkDrive, formatWorkDriveArchiveStatus } from "@/lib/zoho-workdrive";
 
 export const runtime = "nodejs";
@@ -24,6 +24,8 @@ const ARCHITECTURE_REVIEW_MAX_MB = Number(process.env.ARCHITECTURE_REVIEW_UPLOAD
 const ARCH_REVIEW_RATE_LIMIT = 8;
 const ARCH_REVIEW_WINDOW_MS = 60 * 60 * 1000;
 const ARCH_REVIEW_DAILY_LIMIT = Number(process.env.ARCH_REVIEW_DAILY_LIMIT ?? "24");
+const ARCH_REVIEW_DOMAIN_LIMIT = 1;
+const ARCH_REVIEW_DOMAIN_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_METADATA_JSON_CHARS = 120_000;
 
 type RateLimitResult = {
@@ -135,9 +137,6 @@ async function parsePayloadFromRequest(request: Request) {
   }
 
   const metadata = submitArchitectureReviewMetadataSchema.parse(JSON.parse(metadataRaw));
-  if (metadata.provider !== "aws") {
-    throw new Error("UNSUPPORTED_PROVIDER");
-  }
   const bytes = new Uint8Array(await diagramRaw.arrayBuffer());
   if (bytes.length > maxBytes) {
     throw new Error("DIAGRAM_TOO_LARGE");
@@ -298,6 +297,29 @@ export async function POST(request: Request) {
     });
     const user = access.user;
     const userEmail = access.email;
+    const emailDomain = getEmailDomain(userEmail);
+
+    if (emailDomain) {
+      const domainLimiter = await consumeRateLimit({
+        key: `arch-review-domain:${emailDomain}`,
+        limit: ARCH_REVIEW_DOMAIN_LIMIT,
+        windowMs: ARCH_REVIEW_DOMAIN_WINDOW_MS,
+      });
+
+      if (!domainLimiter.allowed) {
+        return jsonResponse(
+          requestId,
+          {
+            error: "This business domain has already used its free architecture review for the current 24-hour window.",
+          },
+          429,
+          limiterContext,
+          {
+            "Retry-After": String(domainLimiter.retryAfterSeconds),
+          },
+        );
+      }
+    }
 
     const incomingIdempotencyKey = normalizeIdempotencyKey(request.headers.get("x-idempotency-key"));
     const idempotencyCacheKey = incomingIdempotencyKey
@@ -404,15 +426,6 @@ export async function POST(request: Request) {
 
     if (error instanceof Error && (error.message === "INVALID_DIAGRAM_FILE" || error.message === "INVALID_SVG_FILE")) {
       return jsonResponse(requestId, { error: "Invalid diagram file. Upload a safe PNG, JPG, PDF, or SVG." }, 400, limiterContext);
-    }
-
-    if (error instanceof Error && error.message === "UNSUPPORTED_PROVIDER") {
-      return jsonResponse(
-        requestId,
-        { error: "Architecture Diagram Reviewer is AWS-only right now. Choose AWS and retry." },
-        400,
-        limiterContext,
-      );
     }
 
     if (error instanceof Error && error.message === "DIAGRAM_FORMAT_MISMATCH") {

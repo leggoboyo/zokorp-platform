@@ -103,10 +103,93 @@ export async function POST(request: Request) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const checkoutType = session.metadata?.checkoutType;
         const userId = session.metadata?.userId;
         const productId = session.metadata?.productId;
         const priceId = session.metadata?.priceId;
         const checkoutSessionId = session.id;
+
+        if (checkoutType === "architecture-remediation") {
+          if (!userId || !productId || !checkoutSessionId) {
+            await createInternalAuditLog("billing.webhook_checkout_skipped", {
+              stripeEventId: event.id,
+              eventType: event.type,
+              reason: "missing_architecture_checkout_metadata",
+              stripeCheckoutSessionId: session.id,
+            });
+            await recordStripeWebhookEvent({
+              event,
+              processingStatus: "ignored",
+              metadata: {
+                reason: "missing_architecture_checkout_metadata",
+                paymentStatus: session.payment_status ?? null,
+              },
+            });
+            break;
+          }
+
+          if (session.payment_status !== "paid") {
+            await createInternalAuditLog("billing.webhook_checkout_skipped", {
+              stripeEventId: event.id,
+              eventType: event.type,
+              reason: "architecture_payment_not_ready",
+              stripeCheckoutSessionId: session.id,
+              paymentStatus: session.payment_status ?? "unknown",
+            });
+            await recordStripeWebhookEvent({
+              event,
+              processingStatus: "ignored",
+              metadata: {
+                reason: "architecture_payment_not_ready",
+                paymentStatus: session.payment_status ?? null,
+              },
+            });
+            break;
+          }
+
+          try {
+            await db.$transaction(async (tx) => {
+              await tx.checkoutFulfillment.create({
+                data: {
+                  stripeCheckoutSessionId: checkoutSessionId,
+                  stripeEventId: event.id,
+                  userId,
+                  productId,
+                },
+              });
+
+              await tx.auditLog.create({
+                data: {
+                  userId,
+                  action: "billing.architecture_checkout_completed",
+                  metadataJson: {
+                    stripeCheckoutSessionId: session.id,
+                    stripeEventId: event.id,
+                    jobId: session.metadata?.jobId ?? null,
+                    estimateReferenceCode: session.metadata?.estimateReferenceCode ?? null,
+                    amountTotal: session.amount_total ?? null,
+                    currency: session.currency ?? null,
+                  },
+                },
+              });
+            });
+          } catch (error) {
+            if (!isDuplicateCheckoutFulfillmentError(error)) {
+              throw error;
+            }
+          }
+
+          await recordStripeWebhookEvent({
+            event,
+            processingStatus: "processed",
+            metadata: {
+              fulfillmentMode: "architecture-remediation",
+              paymentStatus: session.payment_status ?? null,
+              amountTotal: session.amount_total ?? null,
+            },
+          });
+          break;
+        }
 
         if (!userId || !productId || !priceId || !checkoutSessionId) {
           await createInternalAuditLog("billing.webhook_checkout_skipped", {

@@ -71,7 +71,7 @@ const FALLBACK_PUBLIC_CATALOG: CatalogProduct[] = [
     slug: "architecture-diagram-reviewer",
     name: "Architecture Diagram Reviewer",
     description:
-      "AWS-only architecture review for PNG, JPG, PDF, or SVG diagrams with score-based findings, official guidance links, and estimate-first follow-up.",
+      "Multi-cloud architecture review for PNG, JPG, PDF, or SVG diagrams with evidence-backed findings, official guidance links, and estimate-first follow-up.",
     accessModel: AccessModel.FREE,
     active: true,
     prices: [],

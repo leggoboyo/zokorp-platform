@@ -251,6 +251,22 @@ const PROVIDER_THEMES: Record<ArchitectureProvider, ProviderTheme> = {
     textStrong: "#102a46",
     textMuted: "#4d6882",
   },
+  multi: {
+    accent: "#0f766e",
+    accentSoft: "#effcf9",
+    accentMuted: "#3f948c",
+    surface: "#f7fafc",
+    cloudFill: "#f5fbfa",
+    cloudStroke: "#9fd1ca",
+    zoneFill: "#fbfefd",
+    zoneStroke: "#b9ddd8",
+    sourceFill: "#f7fbff",
+    sourceStroke: "#c8dced",
+    nodeFill: "#ffffff",
+    nodeStroke: "#b0d7d2",
+    textStrong: "#11253b",
+    textMuted: "#4e6781",
+  },
 };
 
 const FALLBACK_LANE_ICON_KEYS: Record<ArchitectureProvider, Record<NonSourceLane, string>> = {
@@ -271,6 +287,12 @@ const FALLBACK_LANE_ICON_KEYS: Record<ArchitectureProvider, Record<NonSourceLane
     application: "gcp/cloud-run",
     data: "gcp/cloud-sql",
     operations: "gcp/observability",
+  },
+  multi: {
+    edge: "aws/elastic-load-balancing",
+    application: "aws/ec2",
+    data: "aws/rds",
+    operations: "aws/cloudwatch",
   },
 };
 
@@ -448,6 +470,15 @@ const PROVIDER_ICON_RULES: Record<ArchitectureProvider, IconRule[]> = {
       priority: 72,
     },
   ],
+  multi: [
+    { keywords: ["route 53", "front door", "cloud dns"], label: "Edge Routing", lane: "edge", iconKey: "aws/route-53", priority: 10 },
+    { keywords: ["api gateway", "application gateway", "cloud load balancing"], label: "Ingress", lane: "edge", iconKey: "aws/api-gateway", priority: 12 },
+    { keywords: ["lambda", "app service", "cloud run"], label: "Application Service", lane: "application", iconKey: "aws/lambda", priority: 30 },
+    { keywords: ["ecs", "aks", "gke", "kubernetes"], label: "Container Platform", lane: "application", iconKey: "aws/eks", priority: 32 },
+    { keywords: ["rds", "sql database", "cloud sql"], label: "Relational Database", lane: "data", iconKey: "aws/rds", priority: 50 },
+    { keywords: ["s3", "storage account", "cloud storage"], label: "Object Storage", lane: "data", iconKey: "aws/s3", priority: 54 },
+    { keywords: ["cloudwatch", "azure monitor", "cloud monitoring", "logging"], label: "Observability", lane: "operations", iconKey: "aws/cloudwatch", priority: 72 },
+  ],
 };
 
 const PROVIDER_DEFAULT_SEEDS: Record<ArchitectureProvider, DiagramNodeSeed[]> = {
@@ -483,6 +514,13 @@ const PROVIDER_DEFAULT_SEEDS: Record<ArchitectureProvider, DiagramNodeSeed[]> = 
     { label: "Cloud Storage", lane: "data", iconKey: "gcp/cloud-storage", priority: 54, mentionOrder: MISSING_MENTION_ORDER },
     { label: "Observability", lane: "operations", iconKey: "gcp/observability", priority: 72, mentionOrder: MISSING_MENTION_ORDER },
     { label: "Security Identity", lane: "operations", iconKey: "gcp/security-identity", priority: 70, mentionOrder: MISSING_MENTION_ORDER },
+  ],
+  multi: [
+    { label: "Users", lane: "source", priority: 0, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Ingress", lane: "edge", iconKey: "aws/api-gateway", priority: 12, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Application Service", lane: "application", iconKey: "aws/ec2", priority: 30, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Relational Database", lane: "data", iconKey: "aws/rds", priority: 50, mentionOrder: MISSING_MENTION_ORDER },
+    { label: "Observability", lane: "operations", iconKey: "aws/cloudwatch", priority: 72, mentionOrder: MISSING_MENTION_ORDER },
   ],
 };
 

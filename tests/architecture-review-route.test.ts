@@ -267,6 +267,28 @@ describe("submit architecture review route", () => {
     });
   });
 
+  it("blocks second free-tier submissions from the same business domain within 24 hours", async () => {
+    mocks.consumeRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: 86_400,
+    });
+
+    const response = await POST(makeMultipartRequest());
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "This business domain has already used its free architecture review for the current 24-hour window.",
+    });
+    expect(mocks.consumeRateLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: "arch-review-domain:acmecloud.com",
+        limit: 1,
+      }),
+    );
+    expect(mocks.createArchitectureReviewJob).not.toHaveBeenCalled();
+  });
+
   it("rejects SVG uploads that do not include browser-extracted text evidence", async () => {
     const svgFile = new File(['<svg xmlns="http://www.w3.org/2000/svg"><text>edge</text></svg>'], "diagram.svg", {
       type: "image/svg+xml",
@@ -290,7 +312,7 @@ describe("submit architecture review route", () => {
     expect(mocks.createArchitectureReviewJob).not.toHaveBeenCalled();
   });
 
-  it("rejects non-AWS submissions while the reviewer is AWS-only", async () => {
+  it("accepts Azure submissions under the expanded provider model", async () => {
     const response = await POST(
       makeMultipartRequestWithMetadata({
         provider: "azure",
@@ -300,10 +322,17 @@ describe("submit architecture review route", () => {
       }),
     );
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(202);
     await expect(response.json()).resolves.toMatchObject({
-      error: "Architecture Diagram Reviewer is AWS-only right now. Choose AWS and retry.",
+      status: "queued",
+      jobId: "job_123",
     });
-    expect(mocks.createArchitectureReviewJob).not.toHaveBeenCalled();
+    expect(mocks.createArchitectureReviewJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          provider: "azure",
+        }),
+      }),
+    );
   });
 });

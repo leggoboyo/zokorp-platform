@@ -4,11 +4,12 @@ import type {
   ArchitectureReviewReport,
 } from "@/lib/architecture-review/types";
 import { buildFallbackArchitectureEstimateSnapshot } from "@/lib/architecture-review/estimate-snapshot";
+import { reviewScopeLabel } from "@/lib/architecture-review/scope";
 import { buildEmailPreferenceFooter } from "@/lib/email-preferences";
 import { getMarketingSiteUrl } from "@/lib/site";
 
-function providerLabel(provider: ArchitectureReviewReport["provider"]) {
-  return provider.toUpperCase();
+function providerLabel(report: ArchitectureReviewReport) {
+  return reviewScopeLabel(report.reviewScope);
 }
 
 function confidenceLabel(confidence: ArchitectureReviewReport["analysisConfidence"]) {
@@ -60,6 +61,7 @@ function escapeHtml(input: string) {
 
 type EmailCtaLinks = {
   bookArchitectureCallUrl: string;
+  payNowUrl?: string | null;
 };
 
 function resolveDefaultCtaLinks() {
@@ -175,8 +177,19 @@ function buildHtmlEmail(
                   <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;color:#0f172a;font-size:13px;width:44px;">${index + 1}</td>
                   <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;color:#0f172a;font-size:13px;">
                     <div style="font-weight:700;">-${finding.pointsDeducted} points | ${escapeHtml(finding.ruleId)}</div>
-                    <div style="margin-top:4px;">${escapeHtml(finding.message)}</div>
-                    <div style="margin-top:4px;color:#334155;">Fix: ${escapeHtml(finding.fix)}</div>
+                    <div style="margin-top:6px;color:#0f172a;"><strong>Why:</strong> ${escapeHtml(finding.why)}</div>
+                    <div style="margin-top:4px;color:#334155;"><strong>Evidence seen:</strong> ${escapeHtml(finding.evidenceSeen)}</div>
+                    <div style="margin-top:4px;color:#334155;"><strong>How to fix:</strong> ${escapeHtml(finding.howToFix)}</div>
+                    ${
+                      finding.officialSourceLinks.length > 0
+                        ? `<div style="margin-top:4px;color:#334155;"><strong>Official references:</strong> ${finding.officialSourceLinks
+                            .map(
+                              (link) =>
+                                `<a href="${escapeHtml(link.url)}" style="color:#0f5c7a;text-decoration:none;">${escapeHtml(link.label)}</a>`,
+                            )
+                            .join(" · ")}</div>`
+                        : ""
+                    }
                     ${
                       lineItem
                         ? `<div style="margin-top:4px;color:#334155;">Quoted line: ${escapeHtml(lineItem.serviceLineLabel)} · ${escapeHtml(toUsd(lineItem.amountUsd))} · ${escapeHtml(formatHours(lineItem.estimatedHours))}</div>`
@@ -232,8 +245,10 @@ function buildHtmlEmail(
               <tr>
                 <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;color:#334155;font-size:13px;width:28px;">${index + 1}.</td>
                 <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;color:#334155;font-size:13px;">
-                  <span style="font-weight:700;color:#0f172a;">${escapeHtml(finding.ruleId)}:</span>
-                  ${escapeHtml(finding.message)}
+                  <div style="font-weight:700;color:#0f172a;">${escapeHtml(finding.ruleId)}</div>
+                  <div style="margin-top:4px;"><strong>Why:</strong> ${escapeHtml(finding.why)}</div>
+                  <div style="margin-top:4px;"><strong>Evidence seen:</strong> ${escapeHtml(finding.evidenceSeen)}</div>
+                  <div style="margin-top:4px;"><strong>How to fix:</strong> ${escapeHtml(finding.howToFix)}</div>
                 </td>
               </tr>
             `,
@@ -256,7 +271,7 @@ function buildHtmlEmail(
               <td style="padding:18px 22px;background:#0f2f5f;color:#ffffff;">
                 <div style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.9;">ZoKorp Architecture Review</div>
                 <div style="margin-top:8px;font-size:28px;line-height:1.2;font-weight:700;">
-                  ${providerLabel(report.provider)} Score ${report.overallScore}/100
+                  ${providerLabel(report)} Score ${report.overallScore}/100
                 </div>
               </td>
             </tr>
@@ -344,6 +359,11 @@ function buildHtmlEmail(
                         <a href="${escapeHtml(ctaLinks.bookArchitectureCallUrl)}" style="display:inline-block;border-radius:8px;background:#0f172a;color:#ffffff;padding:10px 14px;font-size:13px;font-weight:700;text-decoration:none;">${escapeHtml(
                           ctaLabel(estimateSnapshot),
                         )}</a>
+                        ${
+                          estimateSnapshot.policy.payableQuoteEnabled && ctaLinks.payNowUrl
+                            ? `<a href="${escapeHtml(ctaLinks.payNowUrl)}" style="display:inline-block;margin-left:10px;border-radius:8px;background:#0f766e;color:#ffffff;padding:10px 14px;font-size:13px;font-weight:700;text-decoration:none;">Pay now</a>`
+                            : ""
+                        }
                       </div>
                     </td>
                   </tr>
@@ -434,6 +454,7 @@ export function buildArchitectureReviewEmailContent(
   const defaults = resolveDefaultCtaLinks();
   const ctaLinks: EmailCtaLinks = {
     bookArchitectureCallUrl: options?.ctaLinks?.bookArchitectureCallUrl ?? defaults.bookArchitectureCallUrl,
+    payNowUrl: options?.ctaLinks?.payNowUrl ?? null,
   };
   const estimateSnapshot =
     options?.estimateSnapshot ??
@@ -451,7 +472,7 @@ export function buildArchitectureReviewEmailContent(
     : null;
 
   const lines = [
-    `Architecture Diagram Review (${providerLabel(report.provider)})`,
+    `Architecture Diagram Review (${providerLabel(report)})`,
     `Generated: ${report.generatedAtISO}`,
     `Email: ${report.userEmail}`,
     "",
@@ -470,10 +491,17 @@ export function buildArchitectureReviewEmailContent(
     "Next step:",
     nextStepNote(report, estimateSnapshot),
     `${ctaLabel(estimateSnapshot)}: ${ctaLinks.bookArchitectureCallUrl}`,
+    ...(estimateSnapshot.policy.payableQuoteEnabled && ctaLinks.payNowUrl ? [`Pay now: ${ctaLinks.payNowUrl}`] : []),
     "",
     "Top deductions:",
     ...(mandatoryFindings.length > 0
-      ? mandatoryFindings.slice(0, 6).map((finding) => `- ${finding.ruleId} | -${finding.pointsDeducted} points | ${finding.message}`)
+      ? mandatoryFindings.slice(0, 6).flatMap((finding) => [
+          `- ${finding.ruleId} | -${finding.pointsDeducted} points | ${finding.recommendationType.toUpperCase()}`,
+          `  Why: ${finding.why}`,
+          `  Evidence seen: ${finding.evidenceSeen}`,
+          `  How to fix: ${finding.howToFix}`,
+          `  Official references: ${finding.officialSourceLinks.map((link) => `${link.label} (${link.url})`).join(", ")}`,
+        ])
       : ["No mandatory deductions."]),
     "",
     `${estimateSectionTextLabel(estimateSnapshot)}:`,
@@ -501,15 +529,20 @@ export function buildArchitectureReviewEmailContent(
     "",
     "Optional recommendations:",
     ...(optionalRecommendations.length > 0
-      ? optionalRecommendations.map((finding) => `- ${finding.ruleId} | ${finding.message}`)
+      ? optionalRecommendations.flatMap((finding) => [
+          `- ${finding.ruleId} | ${finding.recommendationType.toUpperCase()}`,
+          `  Why: ${finding.why}`,
+          `  Evidence seen: ${finding.evidenceSeen}`,
+          `  How to fix: ${finding.howToFix}`,
+        ])
       : ["No optional recommendations."]),
     ...(emailPreferenceFooter ? ["", emailPreferenceFooter.text] : []),
   ];
 
   const subject =
     estimateSnapshot.policy.band === "consultation-only"
-      ? `[ZoKorp] ${providerLabel(report.provider)} architecture review ${report.overallScore}/100`
-      : `[ZoKorp] ${providerLabel(report.provider)} architecture estimate ${report.overallScore}/100`;
+      ? `[ZoKorp] ${providerLabel(report)} architecture review ${report.overallScore}/100`
+      : `[ZoKorp] ${providerLabel(report)} architecture estimate ${report.overallScore}/100`;
   const text = lines.join("\n");
   const html = buildHtmlEmail(report, estimateSnapshot, ctaLinks, officialEstimateReference, emailPreferenceFooter?.html);
 

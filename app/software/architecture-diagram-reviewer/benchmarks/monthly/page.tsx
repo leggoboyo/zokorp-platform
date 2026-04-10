@@ -6,7 +6,7 @@ import { buildMarketingPageMetadata } from "@/lib/site";
 export const metadata = buildMarketingPageMetadata({
   title: "Monthly Architecture Benchmark Digest",
   description:
-    "Monthly benchmark digest across ZoKorp architecture benchmark material, including AWS live-review trends and directional Azure/GCP research pages.",
+    "Monthly benchmark digest across ZoKorp architecture benchmark material and live multi-cloud review trends.",
   path: "/software/architecture-diagram-reviewer/benchmarks/monthly",
 });
 
@@ -35,7 +35,7 @@ export default function MonthlyBenchmarkPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Monthly Digest</p>
         <h1 className="font-display mt-2 text-3xl font-semibold text-slate-900">Architecture benchmark summary</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-          This page is refreshed monthly with anonymized aggregate trends from architecture review submissions and benchmark-library research material. The live reviewer remains AWS-only today.
+          This page is refreshed monthly with anonymized aggregate trends from architecture review submissions and benchmark-library research material across supported providers.
         </p>
       </section>
 

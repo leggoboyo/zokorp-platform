@@ -8,6 +8,7 @@ import {
   ensureArchitecturePrivacyFingerprint,
   ensureArchitectureReviewLead,
 } from "@/lib/architecture-review/privacy-context";
+import { resolveArchitectureReviewScope, reviewScopeLabel } from "@/lib/architecture-review/scope";
 import { architectureReviewPrivacyTelemetrySchema } from "@/lib/architecture-review/types";
 import { db } from "@/lib/db";
 import { isFreeToolAccessError, requireVerifiedFreeToolAccess } from "@/lib/free-tool-access";
@@ -15,6 +16,7 @@ import { jsonNoStore } from "@/lib/internal-route";
 import { ensureLeadInteraction, recordLeadEvent } from "@/lib/privacy-leads";
 import { requireSameOrigin } from "@/lib/request-origin";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
+import { getEmailDomain } from "@/lib/security";
 import { recordArchitectureReviewToolRun } from "@/lib/tool-runs";
 
 export const runtime = "nodejs";
@@ -22,6 +24,8 @@ export const runtime = "nodejs";
 const ARCH_REVIEW_RATE_LIMIT = 8;
 const ARCH_REVIEW_WINDOW_MS = 60 * 60 * 1000;
 const ARCH_REVIEW_DAILY_LIMIT = Number(process.env.ARCH_REVIEW_DAILY_LIMIT ?? "24");
+const ARCH_REVIEW_DOMAIN_LIMIT = 1;
+const ARCH_REVIEW_DOMAIN_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 type ToolRunCountDelegate = {
   count: (args: { where: Record<string, unknown> }) => Promise<number>;
@@ -103,6 +107,31 @@ export async function POST(request: Request) {
       toolName: "Architecture Diagram Reviewer",
     });
     const user = access.user;
+    const emailDomain = getEmailDomain(access.email);
+
+    if (emailDomain) {
+      const domainLimiter = await consumeRateLimit({
+        key: `arch-review-domain:${emailDomain}`,
+        limit: ARCH_REVIEW_DOMAIN_LIMIT,
+        windowMs: ARCH_REVIEW_DOMAIN_WINDOW_MS,
+      });
+
+      if (!domainLimiter.allowed) {
+        return jsonNoStore(
+          {
+            error: "This business domain has already used its free architecture review for the current 24-hour window.",
+            requestId,
+          },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(domainLimiter.retryAfterSeconds),
+              "X-Request-Id": requestId,
+            },
+          },
+        );
+      }
+    }
 
     const limiter = await consumeRateLimit({
       key: `arch-review-privacy:${user.id}:${getRequestFingerprint(request)}`,
@@ -139,6 +168,11 @@ export async function POST(request: Request) {
     }
 
     const payload = architectureReviewPrivacyTelemetrySchema.parse(await request.json());
+    const reviewScope = resolveArchitectureReviewScope({
+      provider: payload.provider,
+      additionalProviders: payload.additionalProviders,
+      additionalPlatforms: payload.additionalPlatforms,
+    });
     const lead = await ensureArchitectureReviewLead({
       userId: user.id,
       email: access.email,
@@ -195,7 +229,7 @@ export async function POST(request: Request) {
       userId: user.id,
       summary: `Privacy-mode architecture review · score band ${payload.scoreBand}`,
       sourceType: "privacy",
-      sourceName: "AWS",
+      sourceName: reviewScopeLabel(reviewScope),
       deliveryStatus: payload.emailDeliveryRequested ? "local-email-pending" : "local-only",
       metadata: {
         executionMode: "privacy",
@@ -204,6 +238,9 @@ export async function POST(request: Request) {
         submissionFingerprintHash: payload.submissionFingerprintHash,
         scoreBand: payload.scoreBand,
         emailDeliveryRequested: payload.emailDeliveryRequested,
+        provider: payload.provider,
+        additionalProviders: payload.additionalProviders,
+        additionalPlatforms: payload.additionalPlatforms,
       },
     });
 

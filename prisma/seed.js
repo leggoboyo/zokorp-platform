@@ -33,7 +33,7 @@ async function main() {
     update: {
       name: "Architecture Diagram Reviewer",
       description:
-        "AWS-only architecture review for PNG, JPG, PDF, or SVG diagrams with score-based findings, official guidance links, and estimate-first follow-up.",
+        "Evidence-backed architecture review for AWS, Azure, GCP, and multi-cloud diagrams with official guidance links, actionable findings, and estimate-first follow-up.",
       accessModel: AccessModel.FREE,
       active: true,
     },
@@ -41,7 +41,26 @@ async function main() {
       slug: "architecture-diagram-reviewer",
       name: "Architecture Diagram Reviewer",
       description:
-        "AWS-only architecture review for PNG, JPG, PDF, or SVG diagrams with score-based findings, official guidance links, and estimate-first follow-up.",
+        "Evidence-backed architecture review for AWS, Azure, GCP, and multi-cloud diagrams with official guidance links, actionable findings, and estimate-first follow-up.",
+      accessModel: AccessModel.FREE,
+      active: true,
+    },
+  });
+
+  const architectureRemediation = await prisma.product.upsert({
+    where: { slug: "architecture-review-remediation" },
+    update: {
+      name: "Architecture Review Remediation",
+      description:
+        "Hidden remediation checkout product for payable architecture-review quote line items.",
+      accessModel: AccessModel.FREE,
+      active: true,
+    },
+    create: {
+      slug: "architecture-review-remediation",
+      name: "Architecture Review Remediation",
+      description:
+        "Hidden remediation checkout product for payable architecture-review quote line items.",
       accessModel: AccessModel.FREE,
       active: true,
     },
@@ -150,7 +169,7 @@ async function main() {
   }
 
   console.log(
-    `Seeded products: ${validator.slug}, ${freeReviewer.slug}, ${mlopsPlatform.slug}`,
+    `Seeded products: ${validator.slug}, ${freeReviewer.slug}, ${architectureRemediation.slug}, ${mlopsPlatform.slug}`,
   );
 }
 

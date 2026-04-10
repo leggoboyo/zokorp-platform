@@ -11,6 +11,8 @@ import {
   mergedEvidenceText,
   type ArchitectureQuoteContext,
 } from "@/lib/architecture-review/quote";
+import { getArchitectureReviewRule } from "@/lib/architecture-review/rules";
+import { resolveArchitectureReviewScope } from "@/lib/architecture-review/scope";
 import {
   ARCHITECTURE_REVIEW_VERSION,
   architectureFindingDraftSchema,
@@ -19,6 +21,7 @@ import {
   type ArchitectureFindingDraft,
   type ArchitectureProvider,
   type ArchitectureReviewReport,
+  type ArchitectureReviewScope,
 } from "@/lib/architecture-review/types";
 
 function truncate(input: string, maxLength: number) {
@@ -30,14 +33,75 @@ function truncate(input: string, maxLength: number) {
   return `${trimmed.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
 
-function normalizeFindingDraft(input: ArchitectureFindingDraft): ArchitectureFindingDraft {
+type ArchitectureFindingInput = Pick<
+  ArchitectureFindingDraft,
+  "ruleId" | "category" | "pointsDeducted" | "message" | "fix" | "evidence"
+> &
+  Partial<
+    Omit<
+      ArchitectureFindingDraft,
+      "ruleId" | "category" | "pointsDeducted" | "message" | "fix" | "evidence"
+    >
+  >;
+
+function resolveRuleForFinding(ruleId: string, provider: ArchitectureProvider) {
+  if (ruleId.includes(":")) {
+    return getArchitectureReviewRule(ruleId);
+  }
+
+  if (ruleId === "diagram_narrative_core_component_mismatch") {
+    return getArchitectureReviewRule(`shared:${ruleId}`);
+  }
+
+  if (provider !== "multi") {
+    return getArchitectureReviewRule(`${provider}:${ruleId}`);
+  }
+
+  return getArchitectureReviewRule(ruleId);
+}
+
+function normalizeFindingDraft(
+  input: ArchitectureFindingInput,
+  provider: ArchitectureProvider,
+): ArchitectureFindingDraft {
+  const rule = resolveRuleForFinding(input.ruleId, provider);
+  const ruleId = rule?.id ?? truncate(input.ruleId, 80);
+  const pointsDeducted = Math.max(0, Math.min(100, Math.round(input.pointsDeducted)));
+  const recommendationType =
+    input.recommendationType ??
+    (input.message.toLowerCase().startsWith("clarify:")
+      ? "clarify"
+      : input.message.toLowerCase().startsWith("optional:")
+        ? "optional"
+        : pointsDeducted > 0
+          ? "fix"
+          : "optional");
+  const why = truncate(input.why ?? rule?.customerSummarySnippet ?? input.message.replace(/^[^:]+:\s*/, ""), 180);
+  const evidenceSeen = truncate(input.evidenceSeen ?? input.evidence, 240);
+  const howToFix = truncate(input.howToFix ?? rule?.remediationSummary ?? input.fix, 320);
+  const officialSourceLinks =
+    input.officialSourceLinks && input.officialSourceLinks.length > 0
+      ? input.officialSourceLinks
+      : rule?.officialSourceLinks ?? [
+          {
+            label: "Architecture guidance",
+            url: "https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html",
+          },
+        ];
+
   return {
-    ruleId: truncate(input.ruleId, 80),
+    ruleId,
     category: input.category,
-    pointsDeducted: Math.max(0, Math.min(100, Math.round(input.pointsDeducted))),
-    message: truncate(input.message, 120),
-    fix: truncate(input.fix, 160),
-    evidence: truncate(input.evidence, 240),
+    pointsDeducted,
+    recommendationType,
+    why,
+    evidenceSeen,
+    howToFix,
+    officialSourceLinks: officialSourceLinks.slice(0, 4),
+    ruleVersion: truncate(input.ruleVersion ?? rule?.ruleVersion ?? "manual-v1", 40),
+    message: truncate(input.message, 160),
+    fix: truncate(input.fix || howToFix, 320),
+    evidence: truncate(input.evidence || evidenceSeen, 240),
   };
 }
 
@@ -87,9 +151,12 @@ function limitFindings(findings: ArchitectureFindingDraft[]) {
   return sortFindingDrafts(selected);
 }
 
-export function finalizeFindings(inputFindings: ArchitectureFindingDraft[]): ArchitectureFinding[] {
+export function finalizeFindings(
+  inputFindings: ArchitectureFindingInput[],
+  provider: ArchitectureProvider,
+): ArchitectureFinding[] {
   const parsedFindings = inputFindings
-    .map((finding) => architectureFindingDraftSchema.safeParse(normalizeFindingDraft(finding)))
+    .map((finding) => architectureFindingDraftSchema.safeParse(normalizeFindingDraft(finding, provider)))
     .filter((result) => result.success)
     .map((result) => result.data);
 
@@ -118,15 +185,21 @@ export function finalizeFindings(inputFindings: ArchitectureFindingDraft[]): Arc
 
 export function buildArchitectureReviewReport(input: {
   provider: ArchitectureProvider;
+  reviewScope?: ArchitectureReviewScope;
   flowNarrative: string;
-  findings: ArchitectureFindingDraft[];
+  findings: ArchitectureFindingInput[];
   userEmail: string;
   generatedAtISO?: string;
   quoteContext?: ArchitectureQuoteContext;
   analysisConfidenceOverride?: ArchitectureReviewReport["analysisConfidence"];
   quoteTierOverride?: ArchitectureReviewReport["quoteTier"];
 }): ArchitectureReviewReport {
-  const findings = finalizeFindings(input.findings);
+  const reviewScope =
+    input.reviewScope ??
+    resolveArchitectureReviewScope({
+      provider: input.provider,
+    });
+  const findings = finalizeFindings(input.findings, input.provider);
   const overallScore = calculateOverallScore(findings);
   const analysisConfidence = input.analysisConfidenceOverride ?? calculateAnalysisConfidence(findings, input.quoteContext);
   const quoteTier =
@@ -148,6 +221,7 @@ export function buildArchitectureReviewReport(input: {
   const report: ArchitectureReviewReport = {
     reportVersion: ARCHITECTURE_REVIEW_VERSION,
     provider: input.provider,
+    reviewScope,
     overallScore,
     analysisConfidence,
     quoteTier,

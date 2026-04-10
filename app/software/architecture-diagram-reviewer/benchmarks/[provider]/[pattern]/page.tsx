@@ -60,7 +60,7 @@ export default async function PatternBenchmarkPage({
           Benchmark score range: {patternBenchmark.scoreRange[0]} to {patternBenchmark.scoreRange[1]}
         </p>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-          This benchmark page is directional reference material. The live Architecture Diagram Reviewer remains AWS-only until additional providers are fully released.
+          This benchmark page is directional reference material. Live review findings still require direct evidence from the uploaded diagram and narrative.
         </p>
       </section>
 

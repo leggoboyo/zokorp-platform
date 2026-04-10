@@ -1,8 +1,16 @@
-import { extractServiceTokens } from "@/lib/architecture-review/engine";
-import type { ArchitectureEvidenceBundle, ArchitectureProvider } from "@/lib/architecture-review/types";
+import { extractServiceTokensForScope } from "@/lib/architecture-review/engine";
+import { resolveArchitectureReviewScope } from "@/lib/architecture-review/scope";
+import type {
+  ArchitectureConcreteProvider,
+  ArchitectureEvidenceBundle,
+  ArchitecturePlatform,
+  ArchitectureProvider,
+} from "@/lib/architecture-review/types";
 
 export function createEvidenceBundle(input: {
   provider: ArchitectureProvider;
+  additionalProviders?: ArchitectureConcreteProvider[] | null;
+  additionalPlatforms?: ArchitecturePlatform[] | null;
   paragraph: string;
   ocrText: string;
   metadata: {
@@ -20,10 +28,16 @@ export function createEvidenceBundle(input: {
   };
 }) {
   const normalizedOcrText = input.ocrText.replace(/\s+/g, " ").trim();
-  const serviceTokens = extractServiceTokens(input.provider, normalizedOcrText);
+  const reviewScope = resolveArchitectureReviewScope({
+    provider: input.provider,
+    additionalProviders: input.additionalProviders,
+    additionalPlatforms: input.additionalPlatforms,
+  });
+  const serviceTokens = extractServiceTokensForScope(reviewScope, normalizedOcrText);
 
   const bundle: ArchitectureEvidenceBundle = {
     provider: input.provider,
+    reviewScope,
     paragraph: input.paragraph.trim(),
     ocrText: normalizedOcrText,
     serviceTokens,

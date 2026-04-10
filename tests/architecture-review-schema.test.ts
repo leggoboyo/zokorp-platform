@@ -24,9 +24,14 @@ describe("architecture review schema", () => {
 
     const parsed = architectureReviewReportSchema.safeParse(report);
     expect(parsed.success).toBe(true);
-    expect(report.reportVersion).toBe("1.0");
+    expect(report.reportVersion).toBe("2.0");
     expect(report.analysisConfidence).toBe("high");
     expect(report.quoteTier).toBe("remediation-sprint");
+    expect(report.reviewScope).toMatchObject({
+      primaryProvider: "aws",
+      providers: ["aws"],
+      platforms: [],
+    });
     expect(report.findings[0].fixCostUSD).toBeGreaterThan(0);
     expect(report.consultationQuote.lineItems[0]?.label).toBe("Advisory review baseline");
   });

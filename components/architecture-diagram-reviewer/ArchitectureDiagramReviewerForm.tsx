@@ -22,11 +22,14 @@ import {
   generateArchitectureDiagramFromNarrative,
   makeGeneratedDiagramSvgFile,
 } from "@/lib/architecture-review/diagram-generator";
+import { reviewScopeLabel } from "@/lib/architecture-review/scope";
 import type {
+  ArchitectureConcreteProvider,
   ArchitectureEstimateSnapshot,
   ArchitectureEngagementPreference,
   ArchitectureEnvironment,
   ArchitectureLifecycleStage,
+  ArchitecturePlatform,
   ArchitectureProvider,
   ArchitectureRegulatoryScope,
   ArchitectureReviewExecutionMode,
@@ -203,6 +206,20 @@ const DELIVERY_PACKAGE_ITEMS = [
   "Fallback email actions if automated delivery is unavailable",
   "Ephemeral processing by default; archival is optional and explicit",
 ];
+const CLOUD_PROVIDER_OPTIONS: Array<{ value: ArchitectureProvider; label: string }> = [
+  { value: "aws", label: "AWS" },
+  { value: "azure", label: "Azure" },
+  { value: "gcp", label: "GCP" },
+  { value: "multi", label: "Multi-cloud" },
+];
+const CLOUD_CHECKBOXES: Array<{ value: ArchitectureConcreteProvider; label: string }> = [
+  { value: "aws", label: "AWS" },
+  { value: "azure", label: "Azure" },
+  { value: "gcp", label: "GCP" },
+];
+const PLATFORM_CHECKBOXES: Array<{ value: ArchitecturePlatform; label: string }> = [
+  { value: "snowflake", label: "Snowflake" },
+];
 
 function trackAnalyticsEvent(name: string, params?: Record<string, string | number>) {
   if (typeof window === "undefined") {
@@ -293,7 +310,7 @@ function ArchitecturePrivacyReportPanel({ report, estimateSnapshot }: PrivacyRep
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Local privacy-mode report</p>
             <h4 className="font-display text-3xl font-semibold text-slate-900">
-              {report.provider.toUpperCase()} score {report.overallScore}/100
+              {reviewScopeLabel(report.reviewScope)} score {report.overallScore}/100
             </h4>
             <p className="max-w-3xl text-sm leading-6 text-slate-600">{report.flowNarrative}</p>
           </div>
@@ -416,6 +433,8 @@ export function ArchitectureDiagramReviewerForm({
   accountEmail = null,
 }: ArchitectureDiagramReviewerFormProps) {
   const [provider, setProvider] = useState<ArchitectureProvider>("aws");
+  const [additionalProviders, setAdditionalProviders] = useState<ArchitectureConcreteProvider[]>([]);
+  const [additionalPlatforms, setAdditionalPlatforms] = useState<ArchitecturePlatform[]>([]);
   const [paragraph, setParagraph] = useState("");
   const [generationNarrative, setGenerationNarrative] = useState("");
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -470,14 +489,25 @@ export function ArchitectureDiagramReviewerForm({
     () => false,
   );
   const privacyModeActive = executionMode === "privacy";
+  const normalizedAdditionalProviders = useMemo(() => {
+    if (provider === "multi") {
+      return additionalProviders;
+    }
+
+    return additionalProviders.filter((selectedProvider) => selectedProvider !== provider);
+  }, [additionalProviders, provider]);
+  const generatorEnabled =
+    provider !== "multi" && normalizedAdditionalProviders.length === 0 && additionalPlatforms.length === 0;
+  const multiProviderSelectionValid =
+    provider !== "multi" || normalizedAdditionalProviders.length >= 2;
 
   const canSubmit = useMemo(() => {
-    if (!selectedFile || paragraphTooShort || paragraphTooLong) {
+    if (!selectedFile || paragraphTooShort || paragraphTooLong || !multiProviderSelectionValid) {
       return false;
     }
 
     return status !== "running";
-  }, [paragraphTooLong, paragraphTooShort, selectedFile, status]);
+  }, [multiProviderSelectionValid, paragraphTooLong, paragraphTooShort, selectedFile, status]);
 
   useEffect(() => {
     return () => {
@@ -715,6 +745,11 @@ export function ArchitectureDiagramReviewerForm({
   }
 
   function handleGenerateDiagram() {
+    if (!generatorEnabled) {
+      setGenerationError("Sample SVG generation is only available for a single concrete cloud provider with no add-ons.");
+      return;
+    }
+
     const narrative = generationNarrative.trim() || paragraph.trim();
     if (narrative.length < 12) {
       setGenerationError("Add at least one sentence before generating a diagram.");
@@ -759,6 +794,11 @@ export function ArchitectureDiagramReviewerForm({
 
     if (!selectedFile) {
       setError("Select a diagram file before submitting.");
+      return;
+    }
+
+    if (!multiProviderSelectionValid) {
+      setError("Multi-cloud reviews require at least two selected clouds under Also uses clouds.");
       return;
     }
 
@@ -894,6 +934,8 @@ export function ArchitectureDiagramReviewerForm({
       try {
         const evaluation = evaluateArchitectureReviewInput({
           provider,
+          additionalProviders: normalizedAdditionalProviders,
+          additionalPlatforms,
           userEmail: accountEmail ?? "privacy-reviewer@zokorp.local",
           paragraphInput: paragraph.trim(),
           ocrText,
@@ -923,6 +965,8 @@ export function ArchitectureDiagramReviewerForm({
           email: accountEmail,
           payload: {
             provider,
+            additionalProviders: normalizedAdditionalProviders,
+            additionalPlatforms,
             paragraphInput: paragraph.trim(),
             ocrText,
             diagramFormat: diagramValidation.format,
@@ -982,6 +1026,9 @@ export function ArchitectureDiagramReviewerForm({
               submissionFingerprintHash: fingerprintHash,
               scoreBand,
               emailDeliveryRequested: privacyEmailDelivery,
+              provider,
+              additionalProviders: normalizedAdditionalProviders,
+              additionalPlatforms,
             }),
           });
           telemetryPayload = (await telemetryResponse.json()) as PrivacyTelemetryResponse;
@@ -1125,6 +1172,8 @@ export function ArchitectureDiagramReviewerForm({
         "metadata",
         JSON.stringify({
           provider,
+          additionalProviders: normalizedAdditionalProviders,
+          additionalPlatforms,
           title: title.trim() || undefined,
           owner: owner.trim() || undefined,
           lastUpdated: lastUpdated.trim() || undefined,
@@ -1175,6 +1224,8 @@ export function ArchitectureDiagramReviewerForm({
         setEtaSeconds(Math.max(0, Math.round(payload.etaSeconds)));
         trackAnalyticsEvent("architecture_review_started", {
           provider,
+          additional_provider_count: normalizedAdditionalProviders.length,
+          additional_platform_count: additionalPlatforms.length,
           execution_mode: "standard",
         });
         return;
@@ -1266,7 +1317,7 @@ export function ArchitectureDiagramReviewerForm({
             Private
           </Badge>
           <Badge variant="brand" className="border-white/20 bg-white/12 text-white shadow-none">
-            AWS-only report in ~2 min
+            Multi-cloud + Snowflake
           </Badge>
           <Badge variant="brand" className="border-white/20 bg-white/12 text-white shadow-none">
             Privacy mode available
@@ -1391,18 +1442,27 @@ export function ArchitectureDiagramReviewerForm({
             </div>
             <div className="mt-3 grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className={fieldLabelClassName}>Cloud Provider</span>
+                <span className={fieldLabelClassName}>Primary Provider</span>
                 <select
                   name="provider"
                   value={provider}
-                  onChange={(event) => setProvider(event.target.value as ArchitectureProvider)}
+                  onChange={(event) => {
+                    const nextProvider = event.target.value as ArchitectureProvider;
+                    setProvider(nextProvider);
+                    if (nextProvider !== "multi") {
+                      setAdditionalProviders((current) => current.filter((value) => value !== nextProvider));
+                    }
+                  }}
                   className={fieldClassName}
                   required
-                  disabled
                 >
-                  <option value="aws">AWS</option>
+                  {CLOUD_PROVIDER_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
-                <p className="text-xs text-slate-500">AWS-only at launch so the scoring and follow-up guidance stay trustworthy.</p>
+                <p className="text-xs text-slate-500">Pick the main cloud first. Then add any other clouds or platform add-ons the uploaded architecture also uses.</p>
               </label>
 
               <label className="space-y-2">
@@ -1439,6 +1499,85 @@ export function ArchitectureDiagramReviewerForm({
               </label>
             </div>
 
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <span className={fieldLabelClassName}>Also Uses Clouds</span>
+                <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  {CLOUD_CHECKBOXES.map((option) => {
+                    const disabled = provider !== "multi" && provider === option.value;
+                    return (
+                      <label key={option.value} className="flex items-start gap-3 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={normalizedAdditionalProviders.includes(option.value)}
+                          disabled={disabled}
+                          onChange={(event) => {
+                            setAdditionalProviders((current) => {
+                              if (event.target.checked) {
+                                return [...current, option.value].filter(
+                                  (value, index, array) => array.indexOf(value) === index,
+                                );
+                              }
+
+                              return current.filter((value) => value !== option.value);
+                            });
+                          }}
+                          className="mt-1 h-4 w-4 rounded border-slate-300"
+                        />
+                        <span>
+                          <span className="block font-medium text-slate-900">
+                            {option.label}
+                            {disabled ? " (primary)" : ""}
+                          </span>
+                          <span className="block text-xs text-slate-500">
+                            {provider === "multi"
+                              ? "Count this cloud in the multi-cloud review."
+                              : "Select this only if the diagram spans more than the primary cloud."}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-slate-500">
+                  {provider === "multi"
+                    ? `Select at least two clouds. Current selection: ${normalizedAdditionalProviders.length}.`
+                    : "Leave these unchecked for a single-cloud review."}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <span className={fieldLabelClassName}>Platform Add-ons</span>
+                <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  {PLATFORM_CHECKBOXES.map((option) => (
+                    <label key={option.value} className="flex items-start gap-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={additionalPlatforms.includes(option.value)}
+                        onChange={(event) => {
+                          setAdditionalPlatforms((current) => {
+                            if (event.target.checked) {
+                              return [...current, option.value].filter(
+                                (value, index, array) => array.indexOf(value) === index,
+                              );
+                            }
+
+                            return current.filter((value) => value !== option.value);
+                          });
+                        }}
+                        className="mt-1 h-4 w-4 rounded border-slate-300"
+                      />
+                      <span>
+                        <span className="block font-medium text-slate-900">{option.label}</span>
+                        <span className="block text-xs text-slate-500">Enable the add-on rule pack only when the submitted diagram or narrative explicitly uses this platform.</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">Snowflake is available in the first add-on release. Kubernetes and Databricks can be added later without changing this review model.</p>
+              </div>
+            </div>
+
             <label className="mt-4 block space-y-2">
               <span className={fieldLabelClassName}>Architecture Description (required)</span>
               <textarea
@@ -1460,7 +1599,7 @@ export function ArchitectureDiagramReviewerForm({
               Generate Sample Diagram (Optional)
             </p>
             <p className="mt-2 text-sm text-slate-600">
-              Type or dictate an architecture narrative, then generate a provider-specific SVG that auto-attaches to this form. Use this for test submissions, not as a substitute for a real production diagram.
+              Type or dictate an architecture narrative, then generate a provider-specific SVG that auto-attaches to this form. This stays limited to a single concrete cloud with no add-ons and is best used for test submissions, not as a substitute for a real production diagram.
             </p>
 
             <label className="mt-3 block space-y-2">
@@ -1479,6 +1618,7 @@ export function ArchitectureDiagramReviewerForm({
                 type="button"
                 onClick={handleGenerateDiagram}
                 size="sm"
+                disabled={!generatorEnabled}
               >
                 Generate Diagram SVG
               </Button>
@@ -1516,6 +1656,11 @@ export function ArchitectureDiagramReviewerForm({
                 </p>
               )}
             </div>
+            {!generatorEnabled ? (
+              <p className="mt-3 text-xs text-slate-500">
+                Sample SVG generation is disabled for multi-cloud or add-on reviews because the reviewer needs the real architecture scope instead of a simplified single-provider sketch.
+              </p>
+            ) : null}
 
             {generatedDiagramSummary ? (
               <div className="mt-3 space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3">

@@ -192,4 +192,98 @@ describe("architecture review email content", () => {
     expect(content.text).toContain(sourceLabel);
     expect(content.html).toContain(sourceLabel);
   });
+
+  it("shows the pay-now CTA only when the estimate is payable", () => {
+    const payableReport = buildArchitectureReviewReport({
+      provider: "aws",
+      flowNarrative: "Public traffic reaches edge and app tiers before writing to managed storage.",
+      findings: [
+        {
+          ruleId: "internet_facing_endpoint_without_tls",
+          category: "security",
+          pointsDeducted: 5,
+          message: "Public traffic is present without explicit TLS enforcement.",
+          fix: "Terminate TLS with ACM at the public entry point and enforce HTTPS-only.",
+          evidence: "The architecture shows internet-facing traffic without explicit TLS enforcement.",
+        },
+      ],
+      userEmail: "architect@zokorp.com",
+      generatedAtISO: "2026-03-09T03:00:00.000Z",
+    });
+
+    const payableContent = buildArchitectureReviewEmailContent(payableReport, {
+      ctaLinks: {
+        bookArchitectureCallUrl: "https://book.zokorp.com/architecture",
+        payNowUrl: "https://app.zokorp.com/api/architecture-review/checkout?jobId=abc&estimateReferenceCode=est_123",
+      },
+    });
+
+    expect(payableContent.text).toContain("Pay now:");
+    expect(payableContent.html).toContain("Pay now");
+
+    const consultationBaseReport = buildArchitectureReviewReport({
+      provider: "aws",
+      flowNarrative: "Public HTTP traffic reaches a single production instance and the database is publicly exposed.",
+      findings: [
+        {
+          ruleId: "internet_facing_endpoint_without_tls",
+          category: "security",
+          pointsDeducted: 12,
+          message: "Public traffic is present without explicit TLS enforcement.",
+          fix: "Terminate TLS with ACM at the public entry point and enforce HTTPS-only.",
+          evidence: "The architecture shows internet-facing traffic without explicit TLS enforcement.",
+        },
+        {
+          ruleId: "public_database_exposure",
+          category: "security",
+          pointsDeducted: 12,
+          message: "A production database is publicly exposed.",
+          fix: "Move the database behind private networking and restrict access paths.",
+          evidence: "The architecture shows a publicly reachable database path.",
+        },
+        {
+          ruleId: "single_instance_production_compute",
+          category: "reliability",
+          pointsDeducted: 10,
+          message: "Production compute is single-instance only.",
+          fix: "Add redundant compute capacity and define failover behavior.",
+          evidence: "The architecture shows one production instance only.",
+        },
+        {
+          ruleId: "cloudtrail_multi_region_enabled",
+          category: "operations",
+          pointsDeducted: 8,
+          message: "Audit logging is not explicit.",
+          fix: "Enable multi-Region CloudTrail with protected delivery.",
+          evidence: "The architecture does not show CloudTrail or protected audit delivery.",
+        },
+        {
+          ruleId: "centralized_application_logging",
+          category: "operations",
+          pointsDeducted: 8,
+          message: "Application logging is missing.",
+          fix: "Centralize application logs and define retention.",
+          evidence: "The architecture does not show centralized application logging.",
+        },
+      ],
+      userEmail: "architect@zokorp.com",
+      generatedAtISO: "2026-03-09T03:10:00.000Z",
+    });
+    const consultationReport = {
+      ...consultationBaseReport,
+      overallScore: 55,
+      quoteTier: "advisory-review" as const,
+    };
+    expect(consultationReport.overallScore).toBeLessThan(60);
+
+    const consultationContent = buildArchitectureReviewEmailContent(consultationReport, {
+      ctaLinks: {
+        bookArchitectureCallUrl: "https://book.zokorp.com/architecture",
+        payNowUrl: "https://app.zokorp.com/api/architecture-review/checkout?jobId=def&estimateReferenceCode=est_456",
+      },
+    });
+
+    expect(consultationContent.text).not.toContain("Pay now:");
+    expect(consultationContent.html).not.toContain(">Pay now<");
+  });
 });

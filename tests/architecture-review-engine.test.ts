@@ -37,11 +37,12 @@ describe("architecture deterministic engine", () => {
     expect(findings).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          ruleId: "diagram_narrative_core_component_mismatch",
+          ruleId: "shared:diagram_narrative_core_component_mismatch",
           pointsDeducted: 5,
         }),
       ]),
     );
+    expect(findings).toHaveLength(1);
 
     const narrative = buildDeterministicNarrative({
       provider: "aws",
@@ -80,11 +81,11 @@ describe("architecture deterministic engine", () => {
 
     expect(findings.map((finding) => finding.ruleId)).toEqual(
       expect.arrayContaining([
-        "internet_facing_endpoint_without_tls",
-        "public_database_exposure",
-        "unrestricted_admin_ports_from_internet",
-        "single_instance_production_compute",
-        "no_backup_strategy_for_stateful_data",
+        "aws:internet_facing_endpoint_without_tls",
+        "aws:public_database_exposure",
+        "aws:unrestricted_admin_ports_from_internet",
+        "aws:single_instance_production_compute",
+        "aws:no_backup_strategy_for_stateful_data",
       ]),
     );
   });
@@ -106,11 +107,11 @@ describe("architecture deterministic engine", () => {
       },
     });
 
-    expect(findings.some((finding) => finding.ruleId === "internet_facing_endpoint_without_tls")).toBe(false);
-    expect(findings.some((finding) => finding.ruleId === "single_instance_production_compute")).toBe(false);
-    expect(findings.some((finding) => finding.ruleId === "single_az_database_for_production")).toBe(false);
-    expect(findings.some((finding) => finding.ruleId === "secrets_management_centralized")).toBe(false);
-    expect(findings.some((finding) => finding.ruleId === "cloudtrail_multi_region_enabled")).toBe(false);
+    expect(findings.some((finding) => finding.ruleId === "aws:internet_facing_endpoint_without_tls")).toBe(false);
+    expect(findings.some((finding) => finding.ruleId === "aws:single_instance_production_compute")).toBe(false);
+    expect(findings.some((finding) => finding.ruleId === "aws:single_az_database_for_production")).toBe(false);
+    expect(findings.some((finding) => finding.ruleId === "aws:secrets_management_centralized")).toBe(false);
+    expect(findings.some((finding) => finding.ruleId === "aws:cloudtrail_multi_region_enabled")).toBe(false);
   });
 
   it("uses a low-signal narrative fallback instead of echoing gibberish", () => {

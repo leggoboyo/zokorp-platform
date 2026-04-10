@@ -16,6 +16,8 @@ import {
 import {
   ARCHITECTURE_REVIEW_PRICING_CATALOG,
   getArchitectureReviewPricingCatalogEntry,
+  legacyArchitectureReviewPricingCatalogRuleId,
+  resolveArchitectureReviewPricingCatalogRuleId,
   type ArchitectureReviewPricingCatalogEntry,
 } from "@/lib/architecture-review/pricing-catalog";
 import { db } from "@/lib/db";
@@ -201,6 +203,10 @@ function normalizeCategory(value: string, fallback: ArchitectureCategory): Archi
 
 function normalizeText(value: string | null | undefined) {
   return value?.trim() ?? "";
+}
+
+function normalizeCatalogRuleId(ruleId: string) {
+  return resolveArchitectureReviewPricingCatalogRuleId(ruleId) ?? normalizeText(ruleId);
 }
 
 function formatDateInputValue(value: Date | null | undefined) {
@@ -522,10 +528,18 @@ async function fetchPublishedOverrides(ruleIds: string[]) {
     return new Map<string, ArchitectureEstimateOverrideRecord>();
   }
 
+  const canonicalRuleIds = [...new Set(ruleIds.map((ruleId) => normalizeCatalogRuleId(ruleId)).filter(Boolean))];
+  const queryRuleIds = [...new Set(
+    canonicalRuleIds.flatMap((ruleId) => {
+      const legacyRuleId = legacyArchitectureReviewPricingCatalogRuleId(ruleId);
+      return legacyRuleId ? [ruleId, legacyRuleId] : [ruleId];
+    }),
+  )];
+
   try {
     const rows = await db.architectureRuleCatalog.findMany({
       where: {
-        ruleId: { in: ruleIds },
+        ruleId: { in: queryRuleIds },
         isPresentInCode: true,
       },
       select: {
@@ -540,14 +554,32 @@ async function fetchPublishedOverrides(ruleIds: string[]) {
       },
     });
 
+    const eligibleRows = rows.filter(
+      (row) =>
+        row.publishedRevisionId !== null &&
+        row.reviewStatus !== PrismaArchitectureRuleCatalogReviewStatus.STALE,
+    );
+    const rowsByRuleId = new Map(eligibleRows.map((row) => [row.ruleId, row]));
+
     return new Map<string, ArchitectureEstimateOverrideRecord>(
-      rows
-        .filter(
-          (row) =>
-            row.publishedRevisionId !== null &&
-            row.reviewStatus !== PrismaArchitectureRuleCatalogReviewStatus.STALE,
-        )
-        .map((row) => [row.ruleId, row]),
+      canonicalRuleIds.flatMap((ruleId) => {
+        const legacyRuleId = legacyArchitectureReviewPricingCatalogRuleId(ruleId);
+        const row = rowsByRuleId.get(ruleId) ?? (legacyRuleId ? rowsByRuleId.get(legacyRuleId) : undefined);
+
+        if (!row) {
+          return [];
+        }
+
+        return [
+          [
+            ruleId,
+            {
+              ...row,
+              ruleId,
+            },
+          ],
+        ];
+      }),
     );
   } catch (error) {
     if (isSchemaDriftError(error)) {
@@ -588,13 +620,15 @@ export async function syncArchitectureRuleCatalog() {
   try {
     const existingRows = await fetchCatalogRows();
     const existingByRuleId = new Map(existingRows.map((row) => [row.ruleId, row]));
+    const migratedLegacyRuleIds = new Set<string>();
     let created = 0;
     let markedStale = 0;
     let refreshed = 0;
 
     for (const codeEntry of ARCHITECTURE_REVIEW_PRICING_CATALOG) {
       const snapshot = codeSnapshotForEntry(codeEntry);
-      const existing = existingByRuleId.get(codeEntry.ruleId);
+      const legacyRuleId = legacyArchitectureReviewPricingCatalogRuleId(codeEntry.ruleId);
+      const existing = existingByRuleId.get(codeEntry.ruleId) ?? (legacyRuleId ? existingByRuleId.get(legacyRuleId) : undefined);
 
       if (!existing) {
         await db.architectureRuleCatalog.create({
@@ -623,6 +657,7 @@ export async function syncArchitectureRuleCatalog() {
       await db.architectureRuleCatalog.update({
         where: { id: existing.id },
         data: {
+          ruleId: codeEntry.ruleId,
           category: codeEntry.category,
           isPresentInCode: true,
           codeSnapshotJson: snapshot,
@@ -630,6 +665,10 @@ export async function syncArchitectureRuleCatalog() {
           lastCodeSyncedAt: new Date(),
         },
       });
+
+      if (existing.ruleId !== codeEntry.ruleId) {
+        migratedLegacyRuleIds.add(existing.ruleId);
+      }
 
       if (codeChanged || !existing.isPresentInCode) {
         if (existing.publishedVersion) {
@@ -641,6 +680,10 @@ export async function syncArchitectureRuleCatalog() {
     }
 
     for (const existing of existingRows) {
+      if (migratedLegacyRuleIds.has(existing.ruleId)) {
+        continue;
+      }
+
       if (codeEntries.has(existing.ruleId)) {
         continue;
       }
@@ -814,23 +857,24 @@ function buildRuntimePreview(input: {
 }
 
 export async function getArchitectureRuleCatalogDetail(ruleId: string) {
+  const normalizedRuleId = normalizeCatalogRuleId(ruleId);
   await syncArchitectureRuleCatalog();
 
   try {
-    const catalog = await fetchCatalogDetailRow(ruleId);
+    const catalog = await fetchCatalogDetailRow(normalizedRuleId);
     if (!catalog) {
       return null;
     }
 
     const codeEntry =
-      getArchitectureReviewPricingCatalogEntry(ruleId) ??
+      getArchitectureReviewPricingCatalogEntry(normalizedRuleId) ??
       codeEntryFromSnapshot(catalog.ruleId, catalog.category, catalog.codeSnapshotJson);
 
     const latestDraft =
       catalog.revisions.find((revision) => revision.status === PrismaArchitectureRuleCatalogReviewStatus.DRAFT) ?? null;
 
     return {
-      ruleId,
+      ruleId: normalizedRuleId,
       codeEntry,
       catalog: {
         reviewStatus: catalog.reviewStatus,
@@ -894,10 +938,11 @@ type EditableCatalogInput = {
 };
 
 async function ensureCatalogWithRevisions(ruleId: string) {
+  const normalizedRuleId = normalizeCatalogRuleId(ruleId);
   await syncArchitectureRuleCatalog();
 
   const catalog = await db.architectureRuleCatalog.findUnique({
-    where: { ruleId },
+    where: { ruleId: normalizedRuleId },
     select: {
       id: true,
       ruleId: true,
@@ -948,7 +993,7 @@ async function ensureCatalogWithRevisions(ruleId: string) {
   }
 
   const codeEntry =
-    getArchitectureReviewPricingCatalogEntry(ruleId) ??
+    getArchitectureReviewPricingCatalogEntry(normalizedRuleId) ??
     codeEntryFromSnapshot(catalog.ruleId, catalog.category, catalog.codeSnapshotJson);
 
   return {
@@ -1007,6 +1052,7 @@ function buildNormalizedEditableInput(
 
 export async function saveArchitectureRuleCatalogDraft(input: EditableCatalogInput) {
   const { catalog, codeEntry } = await ensureCatalogWithRevisions(input.ruleId);
+  const normalizedRuleId = normalizeCatalogRuleId(input.ruleId);
   const normalized = buildNormalizedEditableInput(input, {
     catalog,
     revisions: catalog.revisions,
@@ -1015,7 +1061,7 @@ export async function saveArchitectureRuleCatalogDraft(input: EditableCatalogInp
   const version = nextVersionNumber(catalog.revisions);
 
   const snapshotJson = serializeEditableSnapshot({
-    ruleId: input.ruleId,
+    ruleId: normalizedRuleId,
     serviceLineLabel: normalized.serviceLineLabel,
     publicFixSummary: normalized.publicFixSummary,
     internalResearchNotes: normalized.internalResearchNotes,
@@ -1059,6 +1105,7 @@ export async function saveArchitectureRuleCatalogDraft(input: EditableCatalogInp
 
 export async function publishArchitectureRuleCatalog(input: EditableCatalogInput) {
   const { catalog, codeEntry } = await ensureCatalogWithRevisions(input.ruleId);
+  const normalizedRuleId = normalizeCatalogRuleId(input.ruleId);
   const normalized = buildNormalizedEditableInput(input, {
     catalog,
     revisions: catalog.revisions,
@@ -1068,7 +1115,7 @@ export async function publishArchitectureRuleCatalog(input: EditableCatalogInput
   const now = new Date();
 
   const snapshotJson = serializeEditableSnapshot({
-    ruleId: input.ruleId,
+    ruleId: normalizedRuleId,
     serviceLineLabel: normalized.serviceLineLabel,
     publicFixSummary: normalized.publicFixSummary,
     internalResearchNotes: normalized.internalResearchNotes,

@@ -17,6 +17,7 @@ import {
 } from "@/lib/architecture-review/privacy-context";
 import { loadArchitectureEstimateSnapshot } from "@/lib/architecture-review/rule-catalog";
 import { sendArchitectureReviewEmail } from "@/lib/architecture-review/sender";
+import { reviewScopeLabel } from "@/lib/architecture-review/scope";
 import { summarizeTopIssues } from "@/lib/architecture-review/report";
 import { architectureReviewPrivacyEmailSchema } from "@/lib/architecture-review/types";
 import { db } from "@/lib/db";
@@ -393,6 +394,7 @@ export async function POST(request: Request) {
       ...payload.report,
       userEmail: access.email,
     };
+    const scopeLabel = reviewScopeLabel(report.reviewScope);
     const lead = await ensureArchitectureReviewLead({
       userId: access.user.id,
       email: access.email,
@@ -408,7 +410,7 @@ export async function POST(request: Request) {
         ? await syncZohoInvoiceEstimate({
             email: access.email,
             fullName: access.user.name ?? null,
-            serviceLabel: `Architecture Diagram Reviewer (${report.provider.toUpperCase()})`,
+            serviceLabel: `Architecture Diagram Reviewer (${scopeLabel})`,
             referenceNumber: estimateSnapshot.referenceCode,
             notes: [
               `Score: ${report.overallScore}/100`,
@@ -429,7 +431,7 @@ export async function POST(request: Request) {
                 : [
                     {
                       name: "Architecture remediation estimate",
-                      description: `Architecture remediation follow-up for ${report.provider.toUpperCase()} findings.`,
+                      description: `Architecture remediation follow-up for ${scopeLabel} findings.`,
                       rate: estimateSnapshot.totalUsd,
                     },
                   ],
@@ -472,7 +474,7 @@ export async function POST(request: Request) {
           userId: access.user.id,
           source: "architecture-review",
           sourceRecordKey,
-          sourceLabel: `Architecture Diagram Reviewer (${report.provider.toUpperCase()})`,
+          sourceLabel: `Architecture Diagram Reviewer (${scopeLabel})`,
           provider: quoteCompanion.provider,
           status: quoteCompanion.status,
           referenceCode: estimateSnapshot.referenceCode,
@@ -571,9 +573,9 @@ export async function POST(request: Request) {
         await recordArchitectureReviewToolRun({
           toolRunId: payload.toolRunId,
           userId: access.user.id,
-          summary: `${report.provider.toUpperCase()} privacy review · ${report.overallScore}/100 · emailed`,
+          summary: `${scopeLabel} privacy review · ${report.overallScore}/100 · emailed`,
           sourceType: "privacy",
-          sourceName: report.provider.toUpperCase(),
+          sourceName: scopeLabel,
           score: report.overallScore,
           confidenceLabel: report.analysisConfidence,
           deliveryStatus: "sent",
@@ -683,9 +685,9 @@ export async function POST(request: Request) {
       await recordArchitectureReviewToolRun({
         toolRunId: payload.toolRunId,
         userId: access.user.id,
-        summary: `${report.provider.toUpperCase()} privacy review · ${report.overallScore}/100 · fallback delivery`,
+        summary: `${scopeLabel} privacy review · ${report.overallScore}/100 · fallback delivery`,
         sourceType: "privacy",
-        sourceName: report.provider.toUpperCase(),
+        sourceName: scopeLabel,
         score: report.overallScore,
         confidenceLabel: report.analysisConfidence,
         deliveryStatus: "fallback",
