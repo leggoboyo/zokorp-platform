@@ -219,11 +219,34 @@ export const architectureReviewPhaseSchema = z.enum([
 ]);
 export type ArchitectureReviewPhase = z.infer<typeof architectureReviewPhaseSchema>;
 
+export const architectureReviewExecutionModeSchema = z.enum(["standard", "privacy"]);
+export type ArchitectureReviewExecutionMode = z.infer<typeof architectureReviewExecutionModeSchema>;
+
+export const architectureReviewScoreBandSchema = z.enum(["0-59", "60-89", "90-100"]);
+export type ArchitectureReviewScoreBand = z.infer<typeof architectureReviewScoreBandSchema>;
+
 export const llmRefinementSchema = z.object({
   flowNarrative: z.string().trim().min(1).max(2000),
   findings: z.array(architectureFindingDraftSchema).max(20),
 });
 export type LlmRefinement = z.infer<typeof llmRefinementSchema>;
+
+export const architectureReviewPrivacyTelemetrySchema = z.object({
+  toolSlug: z.literal("architecture-diagram-reviewer"),
+  submissionFingerprintHash: z.string().regex(/^[a-f0-9]{64}$/),
+  scoreBand: architectureReviewScoreBandSchema,
+  emailDeliveryRequested: z.boolean(),
+});
+export type ArchitectureReviewPrivacyTelemetry = z.infer<typeof architectureReviewPrivacyTelemetrySchema>;
+
+export const architectureReviewPrivacyEmailSchema = z.object({
+  toolSlug: z.literal("architecture-diagram-reviewer"),
+  toolRunId: z.string().cuid(),
+  submissionFingerprintHash: z.string().regex(/^[a-f0-9]{64}$/),
+  report: architectureReviewReportSchema,
+  allowCrmFollowUp: z.boolean().default(false),
+});
+export type ArchitectureReviewPrivacyEmailPayload = z.infer<typeof architectureReviewPrivacyEmailSchema>;
 
 export type ArchitectureEvidenceBundle = {
   provider: ArchitectureProvider;

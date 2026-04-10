@@ -26,6 +26,12 @@ const appHostMarketingRoutes = [
   "/support",
 ] as const;
 
+const appHostToolRoutes = [
+  "/software/architecture-diagram-reviewer",
+  "/software/zokorp-validator",
+  "/software/mlops-foundation-platform",
+] as const;
+
 test.describe("host routing contract", () => {
   test.skip(singleOriginMode, "Host-split routing checks require distinct marketing and app origins.");
 
@@ -90,6 +96,20 @@ test.describe("host routing contract", () => {
     expect(response.headers()["x-robots-tag"]).toBe("noindex, follow");
     expect(extractCanonicalHref(html)).toBe(buildCanonicalUrl(expectedMarketingCanonicalBaseUrl, "/software"));
     expect(normalizeRobots(extractRobotsMeta(html))).toBe("noindex,follow");
+  });
+
+  test("app-host software detail pages stay canonicalized to marketing and noindex", async ({ request }) => {
+    for (const path of appHostToolRoutes) {
+      const response = await request.get(buildUrl(appBaseUrl, path), {
+        failOnStatusCode: false,
+      });
+      const html = await response.text();
+
+      expect(response.status(), `${path} should render on the app host`).toBe(200);
+      expect(response.headers()["x-robots-tag"], `${path} x-robots-tag`).toBe("noindex, follow");
+      expect(extractCanonicalHref(html), `${path} canonical`).toBe(buildCanonicalUrl(expectedMarketingCanonicalBaseUrl, path));
+      expect(normalizeRobots(extractRobotsMeta(html)), `${path} robots meta`).toBe("noindex,follow");
+    }
   });
 
   test("protected app routes redirect to sign-in with callback URLs", async ({ request }) => {

@@ -3,7 +3,7 @@ import type {
   ArchitectureQuoteTier,
   ArchitectureReviewReport,
 } from "@/lib/architecture-review/types";
-import { buildFallbackArchitectureEstimateSnapshot } from "@/lib/architecture-review/rule-catalog";
+import { buildFallbackArchitectureEstimateSnapshot } from "@/lib/architecture-review/estimate-snapshot";
 import { buildEmailPreferenceFooter } from "@/lib/email-preferences";
 import { getMarketingSiteUrl } from "@/lib/site";
 

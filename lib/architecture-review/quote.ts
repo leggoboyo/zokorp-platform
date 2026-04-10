@@ -10,7 +10,7 @@ import type {
 } from "@/lib/architecture-review/types";
 import { scaleQuoteLineItems, type QuoteLineItem } from "@/lib/quote-line-items";
 
-const DEFAULT_REMEDIATION_RATE_USD_PER_HOUR = 225;
+export const DEFAULT_REMEDIATION_RATE_USD_PER_HOUR = 225;
 
 const CATEGORY_DEDUCTION_CAPS: Record<ArchitectureCategory, number> = {
   security: 100,
@@ -51,6 +51,7 @@ export type ArchitectureQuoteContext = {
   workloadCriticality?: ArchitectureWorkloadCriticality;
   regulatoryScope?: ArchitectureRegulatoryScope;
   desiredEngagement?: ArchitectureEngagementPreference;
+  remediationRateUsdPerHour?: number;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -194,7 +195,7 @@ export function determineQuoteTier(
   return "implementation-partner";
 }
 
-function remediationRateUsdPerHour() {
+export function configuredArchitectureRemediationRateUsdPerHour() {
   const configured = Number.parseInt(process.env.ARCH_REVIEW_RATE_USD_PER_HOUR ?? "", 10);
   if (Number.isFinite(configured) && configured > 0) {
     return configured;
@@ -341,7 +342,7 @@ export function calculateConsultationQuoteUSD(
   const complexity = 1 + clamp((tokenCount - 10) / 40, 0, 0.5);
   const criticality = criticalityMultiplier(context.workloadCriticality);
   const confidence = estimateConfidence(positiveFindings, context);
-  const rate = remediationRateUsdPerHour();
+  const rate = context?.remediationRateUsdPerHour ?? DEFAULT_REMEDIATION_RATE_USD_PER_HOUR;
   const estimatedRemediationUsd = baseHours * rate * complexity * criticality * confidence;
 
   if (confidence < 0.85) {

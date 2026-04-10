@@ -452,7 +452,7 @@ export default async function SoftwareDetailPage({
       </Badge>
       {isValidator ? <Badge variant="outline">1 credit per run</Badge> : null}
       {isValidator && !isAdminTester ? <Badge variant="outline">FTR public launch</Badge> : null}
-      {isArchitectureReviewer ? <Badge variant="outline">Email-delivered review</Badge> : null}
+      {isArchitectureReviewer ? <Badge variant="outline">Standard email or privacy-local review</Badge> : null}
       {isMLOpsPlatform ? <Badge variant="outline">Forecasting beta only</Badge> : null}
       {!isValidator && !isArchitectureReviewer && !isMLOpsPlatform ? (
         <Badge variant="outline">Account-linked access</Badge>
@@ -668,7 +668,7 @@ export default async function SoftwareDetailPage({
           sampleHref="/software/architecture-diagram-reviewer/sample-report"
           sampleLabel="View sample report"
         >
-          <ArchitectureDiagramReviewerForm />
+          <ArchitectureDiagramReviewerForm accountEmail={currentEmail ?? null} />
         </FreeToolAccessGate>
       ) : isMLOpsPlatform ? (
         <ForecastingWorkspace

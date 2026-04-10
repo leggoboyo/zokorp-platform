@@ -326,6 +326,72 @@ describe("ArchitectureDiagramReviewerForm", () => {
     expect(metadata.archiveForFollowup).toBe(true);
   });
 
+  it("runs privacy mode locally for text-based PDF uploads", async () => {
+    vi.spyOn(architectureReviewClient, "isStrictDiagramFile").mockResolvedValue({
+      ok: true,
+      format: "pdf",
+      mimeType: "application/pdf",
+    });
+    vi.spyOn(architectureReviewClient, "extractPdfTextEvidence").mockResolvedValue(
+      "CloudFront routes requests to API Gateway. Lambda writes DynamoDB. KMS protects keys and CloudWatch alarms on failures.",
+    );
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const requestUrl = String(input);
+
+      if (requestUrl.includes("/api/architecture-review/privacy-telemetry")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            toolRunId: "toolrun-privacy-001",
+            dedupedLeadFingerprint: false,
+            requestId: "req-privacy-001",
+          }),
+        } as Response;
+      }
+
+      throw new Error(`Unexpected request: ${requestUrl}`);
+    });
+
+    render(<ArchitectureDiagramReviewerForm accountEmail="owner@acmecloud.com" />);
+
+    fireEvent.click(screen.getByLabelText(/privacy mode \(analyze in browser\)/i));
+
+    const pdfBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
+    const pdfFile = new File([pdfBytes], "diagram.pdf", { type: "application/pdf" });
+    const fileInput = screen.getByLabelText(/diagram file/i);
+    const submitButton = screen.getByRole("button", { name: /run local review/i });
+    const form = submitButton.closest("form");
+
+    Object.defineProperty(fileInput, "files", {
+      value: [pdfFile],
+      writable: false,
+    });
+    fireEvent.change(fileInput);
+
+    fireEvent.change(screen.getByLabelText(/architecture description/i), {
+      target: {
+        value: "CloudFront sends traffic to API Gateway, Lambda writes DynamoDB, and CloudWatch alarms on failures.",
+      },
+    });
+
+    if (!form) {
+      throw new Error("Expected form element.");
+    }
+
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(screen.getByText(/local privacy-mode report/i)).toBeTruthy();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/api/architecture-review/privacy-telemetry");
+    expect(screen.queryByText(/pdf privacy mode is not available yet/i)).toBeNull();
+  });
+
   it("shows browser OCR progress before PNG submission is sent", async () => {
     vi.spyOn(architectureReviewClient, "isStrictDiagramFile").mockResolvedValue({
       ok: true,

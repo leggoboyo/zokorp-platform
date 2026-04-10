@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" width="960" height="540">
+  <rect width="960" height="540" fill="#f8fafc" />
+  <rect x="40" y="60" width="180" height="72" rx="14" fill="#dbeafe" stroke="#1d4ed8" />
+  <text x="62" y="95" font-family="Arial" font-size="22" fill="#0f172a">CloudFront</text>
+  <text x="62" y="120" font-family="Arial" font-size="16" fill="#334155">Public edge</text>
+
+  <rect x="290" y="60" width="190" height="72" rx="14" fill="#e0f2fe" stroke="#0284c7" />
+  <text x="315" y="95" font-family="Arial" font-size="22" fill="#0f172a">API Gateway</text>
+  <text x="315" y="120" font-family="Arial" font-size="16" fill="#334155">Request routing</text>
+
+  <rect x="550" y="60" width="160" height="72" rx="14" fill="#dcfce7" stroke="#16a34a" />
+  <text x="595" y="95" font-family="Arial" font-size="22" fill="#0f172a">Lambda</text>
+  <text x="580" y="120" font-family="Arial" font-size="16" fill="#334155">Application logic</text>
+
+  <rect x="770" y="60" width="150" height="72" rx="14" fill="#fef3c7" stroke="#d97706" />
+  <text x="805" y="95" font-family="Arial" font-size="22" fill="#0f172a">DynamoDB</text>
+  <text x="800" y="120" font-family="Arial" font-size="16" fill="#334155">State store</text>
+
+  <rect x="290" y="230" width="190" height="72" rx="14" fill="#f5f3ff" stroke="#7c3aed" />
+  <text x="325" y="265" font-family="Arial" font-size="22" fill="#0f172a">CloudWatch</text>
+  <text x="325" y="290" font-family="Arial" font-size="16" fill="#334155">Logs and alerts</text>
+
+  <rect x="550" y="230" width="160" height="72" rx="14" fill="#fef2f2" stroke="#dc2626" />
+  <text x="600" y="265" font-family="Arial" font-size="22" fill="#0f172a">KMS</text>
+  <text x="570" y="290" font-family="Arial" font-size="16" fill="#334155">Encryption keys</text>
+
+  <rect x="770" y="230" width="150" height="72" rx="14" fill="#ecfeff" stroke="#0891b2" />
+  <text x="785" y="265" font-family="Arial" font-size="20" fill="#0f172a">Secrets Manager</text>
+  <text x="800" y="290" font-family="Arial" font-size="16" fill="#334155">Secrets storage</text>
+
+  <line x1="220" y1="96" x2="290" y2="96" stroke="#0f172a" stroke-width="3" />
+  <line x1="480" y1="96" x2="550" y2="96" stroke="#0f172a" stroke-width="3" />
+  <line x1="710" y1="96" x2="770" y2="96" stroke="#0f172a" stroke-width="3" />
+  <line x1="385" y1="132" x2="385" y2="230" stroke="#0f172a" stroke-width="3" stroke-dasharray="8 8" />
+  <line x1="630" y1="132" x2="630" y2="230" stroke="#0f172a" stroke-width="3" stroke-dasharray="8 8" />
+  <line x1="845" y1="132" x2="845" y2="230" stroke="#0f172a" stroke-width="3" stroke-dasharray="8 8" />
+
+  <text x="54" y="410" font-family="Arial" font-size="18" fill="#0f172a">
+    Flow: users -> CloudFront -> API Gateway -> Lambda -> DynamoDB
+  </text>
+  <text x="54" y="440" font-family="Arial" font-size="18" fill="#0f172a">
+    Controls: CloudWatch alerts, KMS encryption, Secrets Manager for credentials
+  </text>
+</svg>

@@ -15,9 +15,19 @@ const shouldLaunchLocalServer = isLocalUrl(marketingBaseUrl) && isLocalUrl(appBa
 const localDevUrl = shouldLaunchLocalServer ? new URL(marketingBaseUrl) : null;
 const localDevHost = localDevUrl?.hostname ?? "127.0.0.1";
 const localDevPort = localDevUrl?.port || "3000";
+const defaultLocalAdminEmail = process.env.E2E_LOCAL_ADMIN_EMAIL ?? "e2e-admin@acmecloud.com";
+
+if (shouldLaunchLocalServer && !process.env.ZOKORP_ADMIN_EMAILS) {
+  process.env.ZOKORP_ADMIN_EMAILS = defaultLocalAdminEmail;
+}
+
+const webServerEnv = Object.fromEntries(
+  Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+);
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalSetup: "./tests/e2e/global.setup.ts",
   fullyParallel: true,
   timeout: 60_000,
   expect: {
@@ -57,6 +67,7 @@ export default defineConfig({
         url: marketingBaseUrl,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,
+        env: webServerEnv,
       }
     : undefined,
 });

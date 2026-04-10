@@ -63,7 +63,7 @@ export function FreeToolAccessGate({
           <Alert tone="info">
             <AlertTitle>Full results are sent only to a verified account</AlertTitle>
             <AlertDescription>
-              ZoKorp sends free diagnostic output only to the signed-in verified business-email account that owns the run. This prevents advisory results from being delivered to an unverified inbox and keeps account history tied to one owner.
+              ZoKorp requires the signed-in verified business-email account that owns the run. Standard mode emails the report, and privacy mode still records usage only against that verified account.
             </AlertDescription>
           </Alert>
           {sampleHref ? (

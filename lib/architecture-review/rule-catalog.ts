@@ -6,10 +6,13 @@ import {
 
 import type {
   ArchitectureCategory,
-  ArchitectureEstimateLineItem,
-  ArchitectureEstimateSnapshot,
   ArchitectureReviewReport,
 } from "@/lib/architecture-review/types";
+import {
+  buildArchitectureEstimateSnapshot,
+  type ArchitectureEstimateAuditUsage,
+  type ArchitectureEstimateOverrideRecord,
+} from "@/lib/architecture-review/estimate-snapshot";
 import {
   ARCHITECTURE_REVIEW_PRICING_CATALOG,
   getArchitectureReviewPricingCatalogEntry,
@@ -17,8 +20,6 @@ import {
 } from "@/lib/architecture-review/pricing-catalog";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
-import { buildEstimateReferenceCode } from "@/lib/privacy-leads";
-import { getMarketingSiteUrl } from "@/lib/site";
 
 export const ARCHITECTURE_RULE_CATALOG_FILTERS = [
   "all",
@@ -117,14 +118,6 @@ export type ArchitectureRuleCatalogDetail = {
   revisions: ArchitectureRuleCatalogRevisionRecord[];
 };
 
-export type ArchitectureEstimateAuditUsage = {
-  ruleId: string;
-  source: "published" | "fallback";
-  publishedRevisionId: string | null;
-  pricingMode: "DERIVED" | "OVERRIDE";
-  amountUsd: number;
-};
-
 type PersistedCatalogRecord = {
   id: string;
   ruleId: string;
@@ -167,16 +160,6 @@ type PersistedRevisionRecord = {
   effectiveAt: Date | null;
 };
 
-type PublishedCatalogOverride = {
-  ruleId: string;
-  publishedRevisionId: string | null;
-  serviceLineLabel: string | null;
-  publicFixSummary: string | null;
-  pricingMode: "DERIVED" | "OVERRIDE";
-  overrideMinPriceUsd: number | null;
-  overrideMaxPriceUsd: number | null;
-};
-
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableStringify(item)).join(",")}]`;
@@ -193,10 +176,6 @@ function stableStringify(value: unknown): string {
   }
 
   return JSON.stringify(value);
-}
-
-function normalizeText(value: string | null | undefined) {
-  return value?.trim() ?? "";
 }
 
 function normalizeOptionalText(value: string | null | undefined) {
@@ -220,44 +199,8 @@ function normalizeCategory(value: string, fallback: ArchitectureCategory): Archi
   return fallback;
 }
 
-function defaultBookingUrl() {
-  return process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getMarketingSiteUrl()}/services#service-request`;
-}
-
-function roundToNearest(value: number, step: number) {
-  return Math.round(value / step) * step;
-}
-
-function midpointAmount(low: number, high: number) {
-  if (low === high) {
-    return low;
-  }
-
-  return roundToNearest((low + high) / 2, 25);
-}
-
-function roundHours(value: number) {
-  return Math.max(0.5, Math.round(value * 2) / 2);
-}
-
-function estimatedHoursForFinding(input: {
-  category: ArchitectureCategory;
-  pointsDeducted: number;
-  amountUsd: number;
-}) {
-  const categoryMultiplier: Record<ArchitectureCategory, number> = {
-    clarity: 0.3,
-    operations: 0.4,
-    performance: 0.45,
-    cost: 0.4,
-    sustainability: 0.25,
-    reliability: 0.55,
-    security: 0.6,
-  };
-
-  const pointsComponent = input.pointsDeducted * categoryMultiplier[input.category];
-  const amountComponent = input.amountUsd / 300;
-  return roundHours(pointsComponent + amountComponent);
+function normalizeText(value: string | null | undefined) {
+  return value?.trim() ?? "";
 }
 
 function formatDateInputValue(value: Date | null | undefined) {
@@ -496,34 +439,6 @@ function codeEntryFromSnapshot(
   };
 }
 
-function quoteAmountForFinding(input: {
-  lineItem: ArchitectureEstimateLineItem;
-  overrideMinPriceUsd: number | null;
-  overrideMaxPriceUsd: number | null;
-  pricingMode: "DERIVED" | "OVERRIDE";
-}) {
-  if (input.pricingMode !== "OVERRIDE") {
-    return input.lineItem.amountUsd;
-  }
-
-  const low = normalizeOverrideAmount(input.overrideMinPriceUsd);
-  const high = normalizeOverrideAmount(input.overrideMaxPriceUsd);
-
-  if (low !== null && high !== null) {
-    return midpointAmount(Math.min(low, high), Math.max(low, high));
-  }
-
-  if (low !== null) {
-    return low;
-  }
-
-  if (high !== null) {
-    return high;
-  }
-
-  return input.lineItem.amountUsd;
-}
-
 async function fetchCatalogRows() {
   return db.architectureRuleCatalog.findMany({
     orderBy: [{ category: "asc" }, { ruleId: "asc" }],
@@ -604,7 +519,7 @@ async function fetchCatalogDetailRow(ruleId: string) {
 
 async function fetchPublishedOverrides(ruleIds: string[]) {
   if (ruleIds.length === 0) {
-    return new Map<string, PublishedCatalogOverride>();
+    return new Map<string, ArchitectureEstimateOverrideRecord>();
   }
 
   try {
@@ -625,7 +540,7 @@ async function fetchPublishedOverrides(ruleIds: string[]) {
       },
     });
 
-    return new Map(
+    return new Map<string, ArchitectureEstimateOverrideRecord>(
       rows
         .filter(
           (row) =>
@@ -636,7 +551,7 @@ async function fetchPublishedOverrides(ruleIds: string[]) {
     );
   } catch (error) {
     if (isSchemaDriftError(error)) {
-      return new Map<string, PublishedCatalogOverride>();
+      return new Map<string, ArchitectureEstimateOverrideRecord>();
     }
 
     throw error;
@@ -649,169 +564,7 @@ export function buildFallbackArchitectureEstimateSnapshot(
     bookingUrl?: string;
   },
 ) {
-  return buildArchitectureEstimateSnapshot(report, new Map<string, PublishedCatalogOverride>(), options);
-}
-
-function estimatePolicyForScore(input: {
-  overallScore: number;
-  payableQuoteTotalUsd: number;
-}) {
-  if (input.overallScore < 60) {
-    return {
-      band: "consultation-only" as const,
-      scoreBandLabel: "0-59" as const,
-      headline: "Consultation-first path",
-      nextStep: `This architecture needs a consultation-first review before ZoKorp issues a payable remediation quote. Use the booking link to confirm the real target state and the shortest correction path.`,
-      payableQuoteEnabled: false,
-    };
-  }
-
-  if (input.overallScore >= 90) {
-    return {
-      band: "optional-polish" as const,
-      scoreBandLabel: "90-100" as const,
-      headline: "Optional polish only",
-      nextStep:
-        input.payableQuoteTotalUsd > 0
-          ? "The architecture is largely workable. Any scoped follow-up should focus on polish, presentation quality, or targeted optimization only."
-          : "No payable remediation scope was generated because the current submission does not show material fix work. Use the booking link only if you want a human polish pass.",
-      payableQuoteEnabled: input.payableQuoteTotalUsd > 0,
-    };
-  }
-
-  return {
-    band: "remediation-estimate" as const,
-    scoreBandLabel: "60-89" as const,
-    headline: "Bounded remediation estimate",
-    nextStep:
-      "The architecture is workable but has fixable gaps. The estimate below stays bounded to the issues visible in this submission so you can act quickly without opening a larger project.",
-    payableQuoteEnabled: input.payableQuoteTotalUsd > 0,
-  };
-}
-
-function buildArchitectureEstimateSnapshot(
-  report: ArchitectureReviewReport,
-  publishedOverrides: Map<string, PublishedCatalogOverride>,
-  options?: {
-    bookingUrl?: string;
-  },
-) {
-  const bookingUrl = options?.bookingUrl ?? defaultBookingUrl();
-  const positiveFindings = report.findings.filter((finding) => finding.pointsDeducted > 0);
-
-  const quoteCandidateLineItems = positiveFindings.map((finding) => {
-    const codeEntry = getArchitectureReviewPricingCatalogEntry(finding.ruleId);
-    const publishedOverride = publishedOverrides.get(finding.ruleId);
-    const baseLineItem: ArchitectureEstimateLineItem = {
-      ruleId: finding.ruleId,
-      category: finding.category,
-      pointsDeducted: finding.pointsDeducted,
-      serviceLineLabel:
-        normalizeText(publishedOverride?.serviceLineLabel) ||
-        codeEntry?.serviceLine ||
-        `Fix ${finding.ruleId}`,
-      publicFixSummary:
-        normalizeText(publishedOverride?.publicFixSummary) ||
-        finding.fix,
-      amountUsd: finding.fixCostUSD,
-      estimatedHours: estimatedHoursForFinding({
-        category: finding.category,
-        pointsDeducted: finding.pointsDeducted,
-        amountUsd: finding.fixCostUSD,
-      }),
-      remediationHoursLow: codeEntry?.remediationHoursLow ?? 0.5,
-      remediationHoursHigh: codeEntry?.remediationHoursHigh ?? 0.5,
-      officialSourceLinks: codeEntry?.officialSourceLinks ?? [],
-      confidenceGuidance:
-        codeEntry?.confidenceGuidance ??
-        "Confidence depends on whether the submitted diagram and narrative clearly show the AWS controls being claimed.",
-      partialCreditGuidance:
-        codeEntry?.partialCreditGuidance ??
-        "Partial credit applies when the reviewer can see the architectural intent but not the exact implementation detail.",
-      source: publishedOverride ? "published" : "fallback",
-      publishedRevisionId: publishedOverride?.publishedRevisionId ?? null,
-    };
-
-    const amountUsd = quoteAmountForFinding({
-      lineItem: baseLineItem,
-      overrideMinPriceUsd: publishedOverride?.overrideMinPriceUsd ?? null,
-      overrideMaxPriceUsd: publishedOverride?.overrideMaxPriceUsd ?? null,
-      pricingMode: publishedOverride?.pricingMode ?? "DERIVED",
-    });
-
-    return {
-      ...baseLineItem,
-      amountUsd,
-      estimatedHours: estimatedHoursForFinding({
-        category: finding.category,
-        pointsDeducted: finding.pointsDeducted,
-        amountUsd,
-      }),
-    };
-  });
-
-  const payableQuoteTotalUsd = quoteCandidateLineItems.reduce((sum, item) => sum + item.amountUsd, 0);
-  const policy = estimatePolicyForScore({
-    overallScore: report.overallScore,
-    payableQuoteTotalUsd,
-  });
-  const lineItems = policy.band === "consultation-only" ? [] : quoteCandidateLineItems;
-  const totalUsd = lineItems.reduce((sum, item) => sum + item.amountUsd, 0);
-  const assumptions =
-    policy.band === "consultation-only"
-      ? [
-          "No payable remediation quote is being issued at this score band.",
-          "The architecture needs a consultation-first review to confirm whether the design is feasible, salvageable, or should be redesigned.",
-          "Any future quote depends on validating the intended AWS workload, constraints, and target outcome during the follow-up call.",
-        ]
-      : [
-          "Estimated only for the issues visible in the submitted diagram and written narrative.",
-          report.analysisConfidence === "low"
-            ? "Because the evidence confidence was low, the estimate assumes no hidden dependencies outside the submitted material."
-            : policy.band === "optional-polish"
-              ? "The follow-up scope assumes polish, optimization, or presentation cleanup instead of a broader redesign."
-              : "The estimate assumes the current architecture can be corrected without a broader redesign.",
-          "Work is scoped for a solo implementation pass and one review cycle unless expanded during the booking conversation.",
-        ];
-  const exclusions =
-    policy.band === "consultation-only"
-      ? [
-          "This email does not include a payable remediation quote or delivery commitment.",
-          "New requirements, migrations, application code changes, and vendor procurement stay outside scope until the consultation confirms a workable target state.",
-          "If the intended design is impossible or materially misaligned with AWS best practices, the next step is redesign guidance rather than a light remediation pass.",
-        ]
-      : [
-          "New requirements, migrations, application code changes, and vendor procurement are excluded from this estimate.",
-          "Issues not visible in the submitted diagram or uncovered later are outside this estimated total.",
-          "Ongoing support, managed operations, and subscription work are not included unless separately agreed.",
-        ];
-
-  const snapshot: ArchitectureEstimateSnapshot = {
-    referenceCode: buildEstimateReferenceCode({
-      source: "architecture-review",
-      email: report.userEmail,
-      generatedAtISO: report.generatedAtISO,
-    }),
-    bookingUrl,
-    totalUsd,
-    policy,
-    lineItems,
-    assumptions,
-    exclusions,
-  };
-
-  const auditUsage: ArchitectureEstimateAuditUsage[] = quoteCandidateLineItems.map((item) => ({
-    ruleId: item.ruleId,
-    source: item.source,
-    publishedRevisionId: item.publishedRevisionId ?? null,
-    pricingMode: publishedOverrides.get(item.ruleId)?.pricingMode ?? "DERIVED",
-    amountUsd: item.amountUsd,
-  }));
-
-  return {
-    snapshot,
-    auditUsage,
-  };
+  return buildArchitectureEstimateSnapshot(report, new Map<string, ArchitectureEstimateOverrideRecord>(), options);
 }
 
 export async function loadArchitectureEstimateSnapshot(

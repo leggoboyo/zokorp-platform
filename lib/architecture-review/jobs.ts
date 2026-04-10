@@ -1,13 +1,12 @@
 import { Prisma, type ArchitectureReviewJob } from "@prisma/client";
 
-import { buildReviewReportFromEvidence } from "@/lib/architecture-review/client";
 import { buildArchitectureReviewCtaLinks } from "@/lib/architecture-review/cta-links";
 import { buildArchitectureReviewEmailContent, buildMailtoUrl } from "@/lib/architecture-review/email";
+import { evaluateArchitectureReviewInput } from "@/lib/architecture-review/evaluator";
 import { loadArchitectureEstimateSnapshot } from "@/lib/architecture-review/rule-catalog";
 import { createEmlToken } from "@/lib/architecture-review/eml-token";
-import { detectNonArchitectureEvidence } from "@/lib/architecture-review/engine";
-import { createEvidenceBundle } from "@/lib/architecture-review/evidence";
 import { calculateLeadScore } from "@/lib/architecture-review/lead";
+import { configuredArchitectureRemediationRateUsdPerHour } from "@/lib/architecture-review/quote";
 import { summarizeTopIssues } from "@/lib/architecture-review/report";
 import { sendArchitectureReviewEmail } from "@/lib/architecture-review/sender";
 import {
@@ -28,6 +27,7 @@ import {
 } from "@/lib/privacy-leads";
 import { redactedArchitectureEmailBody } from "@/lib/retention-sweep";
 import { estimateBandForRange, scoreBandForScore } from "@/lib/tool-consent";
+import { recordArchitectureReviewToolRun } from "@/lib/tool-runs";
 import { syncZohoInvoiceEstimate } from "@/lib/zoho-invoice";
 import {
   archiveArchitectureReviewReportToWorkDrive,
@@ -588,9 +588,10 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
     job = await updatePhase(job, "ocr", "complete");
     job = await updatePhase(job, "rules", "start");
 
-    const bundle = createEvidenceBundle({
+    const evaluation = evaluateArchitectureReviewInput({
       provider: metadata.provider,
-      paragraph: metadata.paragraphInput,
+      userEmail: job.userEmail,
+      paragraphInput: metadata.paragraphInput,
       ocrText,
       metadata: {
         diagramFormat: metadata.diagramFormat,
@@ -605,30 +606,15 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
         lifecycleStage: metadata.lifecycleStage,
         desiredEngagement: metadata.desiredEngagement,
       },
+      analysisConfidenceOverride: metadata.analysisConfidence,
+      remediationRateUsdPerHour: configuredArchitectureRemediationRateUsdPerHour(),
     });
 
-    const nonArchitectureEvidence = detectNonArchitectureEvidence(bundle);
-
-    if (nonArchitectureEvidence.likely && nonArchitectureEvidence.confidence === "high") {
+    if (evaluation.nonArchitectureEvidence.likely && evaluation.nonArchitectureEvidence.confidence === "high") {
       return rejectJob(job, "Uploaded content appears to be non-architecture data. No email was sent.");
     }
 
-    const report = buildReviewReportFromEvidence({
-      bundle,
-      userEmail: job.userEmail,
-      quoteContext: {
-        tokenCount: bundle.serviceTokens.length,
-        ocrCharacterCount: ocrText.length,
-        mode: "rules-only",
-        workloadCriticality: metadata.workloadCriticality,
-        regulatoryScope: metadata.regulatoryScope,
-        desiredEngagement: metadata.desiredEngagement,
-      },
-      analysisConfidenceOverride:
-        nonArchitectureEvidence.likely && nonArchitectureEvidence.confidence === "medium"
-          ? "low"
-          : metadata.analysisConfidence,
-    });
+    const report = evaluation.report;
 
     job = await updatePhase(job, "rules", "complete");
     job = await updatePhase(job, "package-email", "start");
@@ -1018,6 +1004,34 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
         },
       });
 
+      if (job.userId) {
+        try {
+          await recordArchitectureReviewToolRun({
+            userId: job.userId,
+            summary: `${report.provider.toUpperCase()} review · ${report.overallScore}/100 · ${report.quoteTier}`,
+            inputFileName: job.diagramFileName,
+            sourceType: metadata.diagramFormat ?? job.diagramMimeType ?? null,
+            sourceName: report.provider.toUpperCase(),
+            score: report.overallScore,
+            confidenceLabel: report.analysisConfidence,
+            deliveryStatus: "sent",
+            estimateAmountUsd: estimateSnapshot.totalUsd,
+            estimateSla: estimateSnapshot.policy.headline,
+            estimateReferenceCode: estimateSnapshot.referenceCode,
+            report,
+            metadata: {
+              executionMode: "standard",
+              quoteTier: report.quoteTier,
+              scoreBand: scoreBandForScore(report.overallScore),
+              policyBand: estimateSnapshot.policy.band,
+              jobId: job.id,
+            },
+          });
+        } catch (toolRunError) {
+          console.error("Failed to persist architecture review tool run", toolRunError);
+        }
+      }
+
       return completed;
     }
 
@@ -1132,6 +1146,35 @@ export async function processArchitectureReviewJob(jobId: string): Promise<Archi
         jobId: job.id,
       },
     });
+
+    if (job.userId) {
+      try {
+        await recordArchitectureReviewToolRun({
+          userId: job.userId,
+          summary: `${report.provider.toUpperCase()} review · ${report.overallScore}/100 · fallback delivery`,
+          inputFileName: job.diagramFileName,
+          sourceType: metadata.diagramFormat ?? job.diagramMimeType ?? null,
+          sourceName: report.provider.toUpperCase(),
+          score: report.overallScore,
+          confidenceLabel: report.analysisConfidence,
+          deliveryStatus: "fallback",
+          estimateAmountUsd: estimateSnapshot.totalUsd,
+          estimateSla: estimateSnapshot.policy.headline,
+          estimateReferenceCode: estimateSnapshot.referenceCode,
+          report,
+          metadata: {
+            executionMode: "standard",
+            quoteTier: report.quoteTier,
+            scoreBand: scoreBandForScore(report.overallScore),
+            policyBand: estimateSnapshot.policy.band,
+            jobId: job.id,
+            fallbackReason: sendResult.error ?? null,
+          },
+        });
+      } catch (toolRunError) {
+        console.error("Failed to persist architecture review tool run", toolRunError);
+      }
+    }
 
     return fallbackCompleted;
   } catch (error) {

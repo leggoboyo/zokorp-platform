@@ -268,11 +268,13 @@ export async function archiveToolSubmission(input: {
 export async function findRecentSubmissionFingerprint(input: {
   toolName: ToolEventSource;
   fingerprintHash: string;
+  userId?: string | null;
 }) {
   return db.submissionFingerprint.findFirst({
     where: {
       toolName: input.toolName,
       fingerprintHash: input.fingerprintHash,
+      ...(input.userId ? { userId: input.userId } : {}),
       expiresAt: {
         gt: new Date(),
       },

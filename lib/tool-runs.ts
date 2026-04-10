@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 
 type ToolRunCreateDelegate = {
   create: (args: { data: Prisma.ToolRunUncheckedCreateInput }) => Promise<{ id: string }>;
+  update?: (args: { where: { id: string }; data: Prisma.ToolRunUncheckedUpdateInput }) => Promise<{ id: string }>;
 };
 
 function toolRunDelegate() {
@@ -65,6 +66,57 @@ export async function recordValidatorToolRun(input: {
   });
 }
 
+export async function recordArchitectureReviewToolRun(input: {
+  toolRunId?: string | null;
+  userId: string;
+  summary: string;
+  inputFileName?: string | null;
+  sourceType?: string | null;
+  sourceName?: string | null;
+  score?: number | null;
+  confidenceLabel?: string | null;
+  deliveryStatus?: string | null;
+  estimateAmountUsd?: number | null;
+  estimateSla?: string | null;
+  estimateReferenceCode?: string | null;
+  report?: unknown;
+  metadata?: Record<string, unknown> | null;
+  failed?: boolean;
+}) {
+  const delegate = toolRunDelegate();
+  if (!delegate?.create) {
+    return null;
+  }
+
+  const data: Prisma.ToolRunUncheckedCreateInput = {
+    userId: input.userId,
+    toolSlug: "architecture-diagram-reviewer",
+    toolLabel: "Architecture Diagram Reviewer",
+    status: input.failed ? ToolRunStatus.FAILED : ToolRunStatus.COMPLETED,
+    summary: input.summary,
+    inputFileName: input.inputFileName ?? null,
+    sourceType: input.sourceType ?? null,
+    sourceName: input.sourceName ?? null,
+    score: input.score ?? null,
+    confidenceLabel: input.confidenceLabel ?? null,
+    deliveryStatus: input.deliveryStatus ?? null,
+    estimateAmountUsd: input.estimateAmountUsd ?? null,
+    estimateSla: input.estimateSla ?? null,
+    estimateReferenceCode: input.estimateReferenceCode ?? null,
+    reportJson: toJsonValue(input.report ?? null),
+    metadataJson: toJsonValue(input.metadata ?? null),
+  };
+
+  if (input.toolRunId && delegate.update) {
+    return delegate.update({
+      where: { id: input.toolRunId },
+      data,
+    });
+  }
+
+  return delegate.create({ data });
+}
+
 export async function recordMlopsForecastToolRun(input: {
   userId: string;
   summary: string;
@@ -94,6 +146,7 @@ export async function recordMlopsForecastToolRun(input: {
       sourceName: input.sourceName,
       confidenceScore: input.confidenceScore,
       confidenceLabel: input.confidenceLabel,
+      deliveryStatus: "onscreen-only",
       reportJson: toJsonValue(input.report),
       metadataJson: toJsonValue(input.metadata ?? null),
     },

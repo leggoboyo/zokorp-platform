@@ -218,32 +218,94 @@ function mlopsRunBadgeVariant(confidenceScore: number | null): TimelineBadgeVari
   return "warning";
 }
 
+function architectureToolRunBadgeVariant(score: number | null, deliveryStatus: string | null): TimelineBadgeVariant {
+  if (deliveryStatus === "fallback") {
+    return "warning";
+  }
+
+  if (deliveryStatus === "failed") {
+    return "danger";
+  }
+
+  if (score === null) {
+    return "secondary";
+  }
+
+  if (score >= 90) {
+    return "success";
+  }
+
+  if (score >= 60) {
+    return "info";
+  }
+
+  return "warning";
+}
+
 function buildToolRunTimelineEntries(input: {
   architectureReviews: ArchitectureReviewJob[];
   toolRuns: ToolRun[];
   auditLogs: AuditLog[];
 }) {
-  const architectureEntries: ToolRunTimelineEntry[] = input.architectureReviews.map((review) => ({
-    id: review.id,
-    createdAt: review.createdAt,
-    title: "Architecture Diagram Reviewer",
-    badgeLabel: humanizeArchitectureJobStatus(review),
-    badgeVariant: architectureReviewBadgeVariant(review),
-    summary: [
-      review.overallScore !== null ? `Score ${review.overallScore}/100` : "Review in progress",
-      review.analysisConfidence ? `${review.analysisConfidence} confidence` : null,
-      review.quoteTier ? review.quoteTier : null,
-    ]
-      .filter(Boolean)
-      .join(" · "),
-    details: [
-      review.completedAt ? `Completed ${new Date(review.completedAt).toLocaleString()}` : "Email-delivered account-linked review",
-    ],
-    href: "/software/architecture-diagram-reviewer",
-    hrefLabel: "Open reviewer",
-  }));
+  const hasPersistedArchitectureRuns = input.toolRuns.some((run) => run.toolSlug === "architecture-diagram-reviewer");
+  const architectureEntries: ToolRunTimelineEntry[] = hasPersistedArchitectureRuns
+    ? []
+    : input.architectureReviews.map((review) => ({
+        id: review.id,
+        createdAt: review.createdAt,
+        title: "Architecture Diagram Reviewer",
+        badgeLabel: humanizeArchitectureJobStatus(review),
+        badgeVariant: architectureReviewBadgeVariant(review),
+        summary: [
+          review.overallScore !== null ? `Score ${review.overallScore}/100` : "Review in progress",
+          review.analysisConfidence ? `${review.analysisConfidence} confidence` : null,
+          review.quoteTier ? review.quoteTier : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        details: [
+          review.completedAt ? `Completed ${new Date(review.completedAt).toLocaleString()}` : "Email-delivered account-linked review",
+        ],
+        href: "/software/architecture-diagram-reviewer",
+        hrefLabel: "Open reviewer",
+      }));
 
   const persistedToolRunEntries: ToolRunTimelineEntry[] = input.toolRuns.map((run) => {
+    if (run.toolSlug === "architecture-diagram-reviewer") {
+      return {
+        id: run.id,
+        createdAt: run.createdAt,
+        title: "Architecture Diagram Reviewer",
+        badgeLabel:
+          run.deliveryStatus === "fallback"
+            ? "Fallback"
+            : run.score !== null && run.score !== undefined
+              ? `Score ${run.score}/100`
+              : "Completed",
+        badgeVariant: architectureToolRunBadgeVariant(run.score ?? null, run.deliveryStatus ?? null),
+        summary: [
+          run.confidenceLabel ? `${run.confidenceLabel} confidence` : null,
+          run.deliveryStatus ? `Delivery ${run.deliveryStatus}` : null,
+          run.summary,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        details: [
+          run.estimateAmountUsd !== null && run.estimateAmountUsd !== undefined
+            ? new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD",
+                maximumFractionDigits: 0,
+              }).format(run.estimateAmountUsd)
+            : null,
+          run.estimateReferenceCode ? `Estimate ${run.estimateReferenceCode}` : null,
+          run.estimateSla ? run.estimateSla : null,
+        ].filter((value): value is string => Boolean(value)),
+        href: "/software/architecture-diagram-reviewer",
+        hrefLabel: "Open reviewer",
+      };
+    }
+
     if (run.toolSlug === "zokorp-validator") {
       return {
         id: run.id,

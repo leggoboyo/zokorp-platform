@@ -24,6 +24,8 @@ const JPEG_SIGNATURE = [0xff, 0xd8, 0xff];
 const PDF_SIGNATURE = [0x25, 0x50, 0x44, 0x46];
 const MAX_DIAGRAM_FILE_BYTES = 8 * 1024 * 1024;
 const PNG_OCR_TIMEOUT_MS = 90_000;
+const PDF_TEXT_TIMEOUT_MS = 45_000;
+const PDF_TEXT_MAX_PAGES = 20;
 
 function isPngBytes(bytes: Uint8Array) {
   return PNG_SIGNATURE.every((byte, index) => bytes[index] === byte);
@@ -94,6 +96,63 @@ export async function extractPngTextEvidence(file: File, options?: ExtractPngTex
       clearTimeout(timeoutHandle);
     }
     await worker.terminate();
+  }
+}
+
+type ExtractPdfTextOptions = {
+  onProgress?: (progress: PngOcrProgress) => void;
+  timeoutMs?: number;
+  maxPages?: number;
+};
+
+export async function extractPdfTextEvidence(file: File, options?: ExtractPdfTextOptions) {
+  const timeoutMs = Math.max(5_000, Math.round(options?.timeoutMs ?? PDF_TEXT_TIMEOUT_MS));
+  const maxPages = Math.max(1, Math.round(options?.maxPages ?? PDF_TEXT_MAX_PAGES));
+  const pdfBytes = new Uint8Array(await file.arrayBuffer());
+  const pdfjs = await import("pdfjs-dist/legacy/webpack.mjs");
+  const loadingTask = pdfjs.getDocument({ data: pdfBytes });
+
+  const extractPromise = (async () => {
+    const pdf = await loadingTask.promise;
+    const totalPages = Math.min(pdf.numPages, maxPages);
+    const pageTexts: string[] = [];
+
+    for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const textContent = await page.getTextContent();
+      const pageText = (textContent.items as Array<{ str?: string }>)
+        .map((item) => item.str?.trim() ?? "")
+        .filter(Boolean)
+        .join(" ");
+
+      if (pageText.trim()) {
+        pageTexts.push(pageText.trim());
+      }
+
+      options?.onProgress?.({
+        percent: Math.max(0, Math.min(100, Math.round((pageNumber / totalPages) * 100))),
+        status: `page-${pageNumber}`,
+      });
+      page.cleanup();
+    }
+
+    return pageTexts.join(" ").replace(/\s+/g, " ").trim();
+  })();
+
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error("Browser PDF text extraction timed out."));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([extractPromise, timeoutPromise]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+    await loadingTask.destroy();
   }
 }
 

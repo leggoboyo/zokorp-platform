@@ -28,6 +28,6 @@ export function AlertTitle({ className, ...props }: React.HTMLAttributes<HTMLPar
   return <p className={cn("font-semibold", className)} {...props} />;
 }
 
-export function AlertDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn("mt-1 leading-6", className)} {...props} />;
+export function AlertDescription({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("mt-1 leading-6", className)} {...props} />;
 }

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { ToolResultDeliveryBanner } from "@/components/software/ToolResultDeliveryBanner";
 import { cn } from "@/lib/utils";
 import type {
   ValidationCheckStatus,
@@ -287,6 +288,30 @@ export function ValidatorForm({
   const rawOutput = result?.output ?? "";
   const actionableChecks = report?.checks.filter((check) => check.status !== "PASS") ?? [];
   const calibrationControls = report?.controlCalibration?.controls ?? [];
+  const deliveryBanner =
+    result?.estimate || report
+      ? {
+          tone:
+            result?.emailDeliveryStatus === "sent"
+              ? ("success" as const)
+              : result?.emailDeliveryStatus === "failed"
+                ? ("warning" as const)
+                : ("info" as const),
+          title:
+            result?.emailDeliveryStatus === "sent"
+              ? "Report delivered to your account email"
+              : result?.emailDeliveryStatus === "failed"
+                ? "Email delivery failed, but the report is on screen"
+                : "On-screen report ready",
+          description:
+            result?.emailDeliveryStatus === "sent"
+              ? "This validator run stays visible here and was also sent to your verified account email."
+              : result?.emailDeliveryStatus === "failed"
+                ? "The validator finished and kept the report in-browser, but the environment could not complete automated email delivery."
+                : "This environment keeps the validator result in-browser only because automated email delivery is not configured.",
+          detail: result?.estimate?.nextStep ?? "Use the findings below to decide whether you need remediation support or another review pass.",
+        }
+      : null;
 
   if (authUnavailable) {
     return (
@@ -574,6 +599,15 @@ export function ValidatorForm({
           </CardHeader>
 
           <CardContent className="space-y-5">
+            {deliveryBanner ? (
+              <ToolResultDeliveryBanner
+                tone={deliveryBanner.tone}
+                title={deliveryBanner.title}
+                description={deliveryBanner.description}
+                detail={deliveryBanner.detail}
+              />
+            ) : null}
+
             {hasReviewedWorkbook ? (
               <Alert tone="success">
                 <AlertTitle>Reviewed workbook ready</AlertTitle>
@@ -589,7 +623,7 @@ export function ValidatorForm({
             ) : null}
 
             {result?.estimate ? (
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl border border-border bg-white/90 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Estimate</p>
                   <p className="mt-2 font-display text-3xl font-semibold text-slate-900">
@@ -605,35 +639,33 @@ export function ValidatorForm({
                   <p className="mt-1 text-xs text-slate-500">Estimated effort: {formatHours(result.estimate.estimatedHoursTotal)}</p>
                 </div>
                 <div className="rounded-2xl border border-border bg-white/90 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Delivery status</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-900">
-                    {result.emailDeliveryStatus === "sent"
-                      ? "Results emailed to your account"
-                      : result.emailDeliveryStatus === "failed"
-                        ? "Email delivery failed, but the report is still on screen"
-                        : "Email delivery is not configured in this environment"}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">{result.estimate.nextStep}</p>
-                </div>
-                <div className="rounded-2xl border border-border bg-white/90 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Formal quote companion</p>
                   <p className="mt-2 text-sm font-semibold text-slate-900">
                     {consultationOnlyEstimate
                       ? "No auto-quote generated"
                       : result.quoteCompanion?.status === "created"
-                      ? `Zoho estimate ${result.quoteCompanion.estimateNumber ?? result.quoteCompanion.estimateId}`
-                      : result.quoteCompanion?.status === "failed"
-                        ? "Zoho estimate creation failed"
-                        : "Zoho estimate is not configured in this environment"}
+                        ? `Zoho estimate ${result.quoteCompanion.estimateNumber ?? result.quoteCompanion.estimateId}`
+                        : result.quoteCompanion?.status === "failed"
+                          ? "Zoho estimate creation failed"
+                          : "Zoho estimate is not configured in this environment"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
                     {consultationOnlyEstimate
                       ? "This run stayed consultation-first because the current submission is not safe to auto-scope as a payable remediation quote."
                       : result.quoteCompanion?.status === "created"
-                      ? "The remediation estimate was mirrored into Zoho Invoice for follow-up."
-                      : result.quoteCompanion?.status === "failed"
-                        ? result.quoteCompanion.error ?? "Zoho estimate creation failed."
-                        : "Customer-facing report delivery still succeeded independently."}
+                        ? "The remediation estimate was mirrored into Zoho Invoice for follow-up."
+                        : result.quoteCompanion?.status === "failed"
+                          ? result.quoteCompanion.error ?? "Zoho estimate creation failed."
+                          : "Customer-facing report delivery still succeeded independently."}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border bg-white/90 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Recommended next step</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">
+                    {consultationOnlyEstimate ? "Consultation-first follow-up recommended" : "Use the scoped remediation estimate"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {result.estimate.nextStep}
                   </p>
                 </div>
               </div>

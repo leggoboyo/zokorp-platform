@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { ToolResultDeliveryBanner } from "@/components/software/ToolResultDeliveryBanner";
 import { cn } from "@/lib/utils";
 import {
   buildDemoRevenueSeries,
@@ -299,6 +300,21 @@ export function ForecastingWorkspace({ signedIn, currentEmail, hasAccess }: Fore
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
+          <ToolResultDeliveryBanner
+            tone={showLockedState ? "warning" : "info"}
+            title={showLockedState ? "Preview only until the subscription is active" : "Forecast result is available immediately on screen"}
+            description={
+              showLockedState
+                ? "The demo stays interactive, but live uploads and account history remain behind the paid beta subscription."
+                : "Forecasting beta runs return their result in-browser first and log the run to account history. This tool does not send email delivery."
+            }
+            detail={
+              showLockedState
+                ? "Sign in and activate the forecasting subscription to upload your own revenue history."
+                : "Use account activity for retention and rerun history, then request services if you want a deeper planning review."
+            }
+          />
+
           <div className="grid gap-3 md:grid-cols-4">
             <div className="rounded-2xl border border-border bg-white p-4">
               <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Observations</p>

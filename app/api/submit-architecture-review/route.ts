@@ -39,6 +39,10 @@ type ParsedDiagram = {
   mimeType: "image/png" | "image/jpeg" | "application/pdf" | "image/svg+xml";
 };
 
+type ToolRunCountDelegate = {
+  count: (args: { where: Record<string, unknown> }) => Promise<number>;
+};
+
 function responseHeaders(requestId: string, limiter?: RateLimitResult) {
   const headers: Record<string, string> = {
     "Cache-Control": "no-store",
@@ -197,9 +201,13 @@ async function parsePayloadFromRequest(request: Request) {
       throw new Error("INVALID_DIAGRAM_FILE");
     }
 
-    const pdfParseModule = await import("pdf-parse");
-    const parsed = await pdfParseModule.default(Buffer.from(bytes));
-    const clientPdfText = (parsed.text || "").replace(/\s+/g, " ").trim();
+    let clientPdfText = metadata.clientPdfText?.trim() ?? "";
+
+    if (!clientPdfText) {
+      const pdfParseModule = await import("pdf-parse");
+      const parsed = await pdfParseModule.default(Buffer.from(bytes));
+      clientPdfText = (parsed.text || "").replace(/\s+/g, " ").trim();
+    }
 
     if (!clientPdfText) {
       throw new Error("MISSING_DIAGRAM_EVIDENCE");
@@ -248,14 +256,31 @@ async function parsePayloadFromRequest(request: Request) {
 
 async function exceedsDailyLimit(userId: string) {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const count = await db.architectureReviewJob.count({
-    where: {
-      userId,
-      createdAt: { gte: since },
-    },
-  });
+  const [jobCount, privacyRunCount] = await Promise.all([
+    db.architectureReviewJob.count({
+      where: {
+        userId,
+        createdAt: { gte: since },
+      },
+    }),
+    (async () => {
+      const delegate = (db as unknown as { toolRun?: ToolRunCountDelegate }).toolRun;
+      if (!delegate?.count) {
+        return 0;
+      }
 
-  return count >= Math.max(1, ARCH_REVIEW_DAILY_LIMIT);
+      return delegate.count({
+        where: {
+          userId,
+          toolSlug: "architecture-diagram-reviewer",
+          sourceType: "privacy",
+          createdAt: { gte: since },
+        },
+      });
+    })(),
+  ]);
+
+  return jobCount + privacyRunCount >= Math.max(1, ARCH_REVIEW_DAILY_LIMIT);
 }
 
 export async function POST(request: Request) {
