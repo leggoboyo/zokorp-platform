@@ -1,5 +1,3 @@
-import Stripe from "stripe";
-
 import { loadArchitectureEstimateSnapshot } from "@/lib/architecture-review/rule-catalog";
 import { architectureReviewReportSchema } from "@/lib/architecture-review/types";
 import { db } from "@/lib/db";
@@ -7,12 +5,6 @@ import { ensureStripeCustomerForUser } from "@/lib/stripe-customer";
 import { getStripeClient } from "@/lib/stripe";
 
 export const ARCHITECTURE_REMEDIATION_PRODUCT_SLUG = "architecture-review-remediation";
-
-type ArchitectureCheckoutContext = {
-  userId: string;
-  jobId: string;
-  estimateReferenceCode: string;
-};
 
 export async function createArchitectureRemediationCheckoutSession(input: {
   userId: string;
