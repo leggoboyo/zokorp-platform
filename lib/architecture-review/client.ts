@@ -131,24 +131,21 @@ function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-type RenderableCanvas = HTMLCanvasElement | OffscreenCanvas;
+type RenderableCanvas = HTMLCanvasElement;
+type PdfPageLike = import("pdfjs-dist/types/src/display/api").PDFPageProxy;
 
 function createRenderableCanvas(width: number, height: number): RenderableCanvas {
-  if (typeof document !== "undefined") {
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    return canvas;
+  if (typeof document === "undefined") {
+    throw new Error("Browser PDF OCR requires a document-backed canvas.");
   }
 
-  return new OffscreenCanvas(width, height);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
 }
 
 async function canvasToBlob(canvas: RenderableCanvas) {
-  if ("convertToBlob" in canvas) {
-    return canvas.convertToBlob({ type: "image/png" });
-  }
-
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) {
@@ -171,7 +168,7 @@ function releaseCanvas(canvas: RenderableCanvas) {
   }
 }
 
-async function renderPdfPageBlob(page: any) {
+async function renderPdfPageBlob(page: PdfPageLike) {
   const baseViewport = page.getViewport({ scale: 1 });
   const longestEdge = Math.max(baseViewport.width, baseViewport.height, 1);
   const scale = Math.max(1.25, Math.min(2, PDF_OCR_MAX_LONG_EDGE / longestEdge));
@@ -186,6 +183,7 @@ async function renderPdfPageBlob(page: any) {
 
   try {
     await page.render({
+      canvas,
       canvasContext,
       viewport,
     }).promise;

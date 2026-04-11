@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  AWS_ARCHITECTURE_LAUNCH_V1_RULES,
   getAwsArchitectureLaunchV1Rule,
 } from "@/lib/architecture-review/aws-launch-v1-catalog";
 import { ARCHITECTURE_REVIEW_RULES } from "@/lib/architecture-review/rules";

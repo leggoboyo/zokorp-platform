@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { loadEnvConfig } from "@next/env";
 import { Role } from "@prisma/client";
-import { chromium, type FullConfig } from "@playwright/test";
+import { chromium } from "@playwright/test";
 
 import { db } from "../../lib/db";
 import { hashPassword } from "../../lib/password-auth";
@@ -126,7 +126,7 @@ async function prepareRemoteAccount(emailEnv: string | undefined, passwordEnv: s
   });
 }
 
-export default async function globalSetup(_config: FullConfig) {
+export default async function globalSetup() {
   loadEnvConfig(process.cwd());
 
   rmSync(authDir, { recursive: true, force: true });

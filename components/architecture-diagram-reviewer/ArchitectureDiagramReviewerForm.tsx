@@ -461,7 +461,7 @@ export function ArchitectureDiagramReviewerForm({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [executionMode, setExecutionMode] = useState<ArchitectureReviewExecutionMode>("standard");
   const [privacyEmailDelivery, setPrivacyEmailDelivery] = useState(false);
-  const [privacyPdfFallbackNotice, setPrivacyPdfFallbackNotice] = useState<string | null>(null);
+  const [privacyPdfFallbackMessage, setPrivacyPdfFallbackMessage] = useState<string | null>(null);
   const [privacyReportState, setPrivacyReportState] = useState<PrivacyReportState | null>(null);
   const [privacyDeliveryState, setPrivacyDeliveryState] = useState<PrivacyDeliveryState | null>(null);
 
@@ -489,6 +489,15 @@ export function ArchitectureDiagramReviewerForm({
     () => false,
   );
   const privacyModeActive = executionMode === "privacy";
+  const privacyPdfSelected = Boolean(
+    selectedFile &&
+      (selectedFile.type === "application/pdf" || selectedFile.name.toLowerCase().endsWith(".pdf")),
+  );
+  const privacyPdfFallbackNotice =
+    privacyPdfFallbackMessage ??
+    (privacyModeActive && privacyPdfSelected
+      ? "PDFs run locally in privacy mode. Text-based PDFs stay faster; scanned or image-only PDFs fall back to local OCR and may take longer."
+      : null);
   const normalizedAdditionalProviders = useMemo(() => {
     if (provider === "multi") {
       return additionalProviders;
@@ -528,32 +537,6 @@ export function ArchitectureDiagramReviewerForm({
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (!privacyModeActive) {
-      setPrivacyPdfFallbackNotice(null);
-      return;
-    }
-
-    if (archiveForFollowup) {
-      setArchiveForFollowup(false);
-    }
-  }, [archiveForFollowup, privacyModeActive]);
-
-  useEffect(() => {
-    if (!privacyModeActive || !selectedFile) {
-      return;
-    }
-
-    const isPdfSelection =
-      selectedFile.type === "application/pdf" || selectedFile.name.toLowerCase().endsWith(".pdf");
-
-    setPrivacyPdfFallbackNotice(
-      isPdfSelection
-        ? "PDFs run locally in privacy mode. Text-based PDFs stay faster; scanned or image-only PDFs fall back to local OCR and may take longer."
-        : null,
-    );
-  }, [privacyModeActive, selectedFile]);
 
   useEffect(() => {
     if (!activeJobId || status !== "running") {
@@ -835,7 +818,7 @@ export function ArchitectureDiagramReviewerForm({
     }
 
     const effectiveExecutionMode = executionMode;
-    setPrivacyPdfFallbackNotice(null);
+    setPrivacyPdfFallbackMessage(null);
 
     let clientPngOcrText: string | undefined;
     let clientPdfText: string | undefined;
@@ -887,7 +870,7 @@ export function ArchitectureDiagramReviewerForm({
           return;
         }
 
-        setPrivacyPdfFallbackNotice(message);
+        setPrivacyPdfFallbackMessage(message);
       }
 
       if (!clientPdfText && effectiveExecutionMode === "privacy") {
@@ -1402,9 +1385,15 @@ export function ArchitectureDiagramReviewerForm({
                 <input
                   type="checkbox"
                   checked={privacyModeActive}
-                  onChange={(event) =>
-                    setExecutionMode(event.target.checked ? "privacy" : "standard")
-                  }
+                  onChange={(event) => {
+                    const nextMode = event.target.checked ? "privacy" : "standard";
+                    setExecutionMode(nextMode);
+                    setPrivacyPdfFallbackMessage(null);
+
+                    if (nextMode === "privacy") {
+                      setArchiveForFollowup(false);
+                    }
+                  }}
                   className="mt-1 h-4 w-4 rounded border-slate-300"
                 />
                 <span className="space-y-1 text-sm text-slate-600">
@@ -1478,17 +1467,7 @@ export function ArchitectureDiagramReviewerForm({
                       clearGeneratedDiagramPreview();
                     }
                     setSelectedFile(nextFile);
-                    if (
-                      privacyModeActive &&
-                      nextFile &&
-                      (nextFile.type === "application/pdf" || nextFile.name.toLowerCase().endsWith(".pdf"))
-                    ) {
-                      setPrivacyPdfFallbackNotice(
-                        "PDFs run locally in privacy mode. Text-based PDFs stay faster; scanned or image-only PDFs fall back to local OCR and may take longer.",
-                      );
-                    } else {
-                      setPrivacyPdfFallbackNotice(null);
-                    }
+                    setPrivacyPdfFallbackMessage(null);
                   }}
                   className={fieldClassName}
                 />
