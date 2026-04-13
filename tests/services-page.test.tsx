@@ -43,7 +43,7 @@ describe("ServicesPage", () => {
     }
   });
 
-  it("renders a tagged booking CTA and a signed-in service request panel on first paint", async () => {
+  it("renders the productized AWS services model with signed-in request handling", async () => {
     const html = renderToStaticMarkup(await ServicesPage());
 
     expect(html).toContain("utm_source=zokorp");
@@ -51,12 +51,29 @@ describe("ServicesPage", () => {
     expect(html).toContain("utm_campaign=architecture-follow-up");
     expect(html).toContain("Signed in as");
     expect(html).toContain("consulting@zokorp.com");
-    expect(html).toContain("Initial response within one business day");
-    expect(html).toContain("Focused AWS architecture, validation, and optimization services for SMB teams that need a clear next step.");
+    expect(html).toContain("ZoKorp is a founder-led AWS architecture consultancy.");
+    expect(html).toContain("Scoped AWS architecture services you can actually buy.");
+    expect(html).toContain("Architecture Review");
+    expect(html).toContain("$249");
     expect(html).toContain("AWS Readiness / FTR Validation");
-    expect(html).toContain("Advisory-first");
-    expect(html).toContain("Lower SLA, faster access, and direct founder involvement.");
-    expect(html).toContain("https://app.zokorp.com/register");
+    expect(html).toContain("from $1,500");
+    expect(html).toContain("Cloud Cost Optimization Audit");
+    expect(html).toContain("from $750");
+    expect(html).toContain("Landing Zone Setup");
+    expect(html).toContain("from $2,500");
+    expect(html).toContain("Implementation (Scoped Work)");
+    expect(html).toContain("from $1,250 per sprint or $149/hr");
+    expect(html).toContain("Advisory Retainer (Light Support)");
+    expect(html).toContain("from $1,500/month");
+    expect(html).toContain("AI / ML Advisory");
+    expect(html).toContain("from $3,500");
+    expect(html).toContain("Start here before any larger engagement");
+    expect(html).toContain("All work is scoped before execution. No unlimited or ongoing work without agreement.");
+    expect(html).toContain("Not a managed service. No strict SLA. Business-hours response only.");
+    expect(html).toContain("How ZoKorp Works");
+    expect(html).toContain("No all-you-can-eat support.");
+    expect(html).toContain("Advisory-first approach, not managed services.");
     expect(html).not.toContain("Sign in to submit a request and track milestones from your account.");
+    expect(html).not.toContain("Broad-launch replacement slot");
   });
 });
