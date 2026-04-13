@@ -10,6 +10,8 @@ import ExcelJS from "exceljs";
 import { PrismaClient, CreditTier, EntitlementStatus, Role, ServiceRequestStatus, ServiceRequestType } from "@prisma/client";
 import { chromium } from "playwright";
 
+import { resolveAuditDatabaseUrl } from "./audit_account_support.mjs";
+
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
 const outputDir = resolve(repoRoot, "output", "playwright", "production-operational-proof");
@@ -109,39 +111,11 @@ function pullProductionEnv() {
   }
 }
 
-function withSingleConnection(url) {
-  const trimmed = (url ?? "").trim();
-  if (!trimmed) {
-    return trimmed;
-  }
-
-  const nextUrl = new URL(trimmed);
-  if (!nextUrl.searchParams.has("connection_limit")) {
-    nextUrl.searchParams.set("connection_limit", "1");
-  }
-  return nextUrl.toString();
-}
-
 function resolveOperationalDatabaseUrl(auditEnv, pulledEnv) {
-  const candidates = [
-    auditEnv.PRODUCTION_DIRECT_DATABASE_URL,
-    auditEnv.PRODUCTION_DATABASE_URL,
-    process.env.PRODUCTION_DIRECT_DATABASE_URL,
-    process.env.PRODUCTION_DATABASE_URL,
-    process.env.DIRECT_DATABASE_URL,
-    process.env.DATABASE_URL,
-    pulledEnv.DIRECT_DATABASE_URL,
-    pulledEnv.DATABASE_URL,
-  ];
-
-  for (const candidate of candidates) {
-    const trimmed = candidate?.trim();
-    if (trimmed) {
-      return withSingleConnection(trimmed);
-    }
-  }
-
-  return "";
+  return resolveAuditDatabaseUrl({
+    auditEnv,
+    pulledEnv,
+  });
 }
 
 async function buildProofWorkbook() {

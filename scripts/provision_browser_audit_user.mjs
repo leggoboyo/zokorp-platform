@@ -2,12 +2,14 @@
 
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PrismaClient, Role } from "@prisma/client";
+
+import { resolveAuditDatabaseUrl } from "./audit_account_support.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
@@ -72,6 +74,14 @@ function runCommand(command, args) {
 
 function quoteEnvValue(value) {
   return JSON.stringify(value);
+}
+
+function isTruthy(value) {
+  return ["1", "true", "yes", "on"].includes(String(value ?? "").trim().toLowerCase());
+}
+
+function shouldSkipLocalEnvFile(value) {
+  return ["0", "false", "no", "off", "none", "skip"].includes(String(value ?? "").trim().toLowerCase());
 }
 
 function isFreeEmailDomain(email) {
@@ -165,8 +175,16 @@ function pullVercelEnvironment(environment) {
   }
 }
 
-function resolveBaseUrl(environment, pulledEnv) {
-  const configuredBaseUrl = pulledEnv.NEXTAUTH_URL ?? pulledEnv.NEXT_PUBLIC_SITE_URL ?? "";
+function resolveBaseUrl(environment, pulledEnv, runtimeEnv = process.env, explicitBaseUrl = "") {
+  const configuredBaseUrl =
+    explicitBaseUrl ||
+    runtimeEnv.NEXTAUTH_URL ||
+    runtimeEnv.APP_SITE_URL ||
+    runtimeEnv.NEXT_PUBLIC_SITE_URL ||
+    pulledEnv.NEXTAUTH_URL ||
+    pulledEnv.APP_SITE_URL ||
+    pulledEnv.NEXT_PUBLIC_SITE_URL ||
+    "";
 
   if (configuredBaseUrl) {
     return configuredBaseUrl;
@@ -184,13 +202,25 @@ function resolveBaseUrl(environment, pulledEnv) {
 }
 
 function suggestedNextCommand({ environment, localEnvPath }) {
-  const envFlag = `JOURNEY_ENV_FILE=${localEnvPath}`;
+  const envPrefix = localEnvPath
+    ? `JOURNEY_ENV_FILE=${localEnvPath} `
+    : "Set JOURNEY_EMAIL and JOURNEY_PASSWORD in the environment, then ";
 
   if (environment === "preview") {
-    return `${envFlag} JOURNEY_MARKETING_BASE_URL=https://preview-www.example.com JOURNEY_APP_BASE_URL=https://preview-app.example.com npm run journey:audit:preview`;
+    return `${envPrefix}JOURNEY_MARKETING_BASE_URL=https://preview-www.example.com JOURNEY_APP_BASE_URL=https://preview-app.example.com npm run journey:audit:preview`;
   }
 
-  return `npm run journey:audit:${environment}`;
+  return `${envPrefix}npm run journey:audit:${environment}`;
+}
+
+function appendGithubOutputs(outputPath, entries) {
+  if (!outputPath) {
+    return;
+  }
+
+  for (const [key, value] of Object.entries(entries)) {
+    appendFileSync(outputPath, `${key}=${String(value ?? "")}\n`, "utf8");
+  }
 }
 
 async function main() {
@@ -199,7 +229,19 @@ async function main() {
   const email = (options.email ?? process.env.AUDIT_ACCOUNT_EMAIL ?? "browser-audit@zokorp-platform.test").trim().toLowerCase();
   const name = (options.name ?? process.env.AUDIT_ACCOUNT_NAME ?? "ZoKorp Browser Audit").trim();
   const password = options.password ?? process.env.AUDIT_ACCOUNT_PASSWORD ?? generatePassword();
-  const localEnvPath = resolve(repoRoot, options["write-env-file"] ?? process.env.AUDIT_ACCOUNT_ENV_FILE ?? defaultLocalEnvFile);
+  const writeEnvFileOption = options["write-env-file"] ?? process.env.AUDIT_ACCOUNT_ENV_FILE;
+  const localEnvPath =
+    writeEnvFileOption === undefined
+      ? defaultLocalEnvFile
+      : shouldSkipLocalEnvFile(writeEnvFileOption)
+        ? null
+        : resolve(repoRoot, writeEnvFileOption);
+  const skipEnvPull = isTruthy(options["skip-env-pull"] ?? process.env.AUDIT_ACCOUNT_SKIP_ENV_PULL ?? "");
+  const explicitBaseUrl = options["base-url"] ?? process.env.AUDIT_ACCOUNT_BASE_URL ?? "";
+  const githubOutputPath =
+    isTruthy(options["github-output"] ?? process.env.AUDIT_ACCOUNT_GITHUB_OUTPUT ?? "") || process.env.GITHUB_OUTPUT
+      ? process.env.GITHUB_OUTPUT ?? null
+      : null;
 
   validateAuditEmail(email);
 
@@ -207,12 +249,24 @@ async function main() {
   let prisma = null;
 
   try {
-    pulled = pullVercelEnvironment(environment);
+    pulled = skipEnvPull
+      ? {
+          env: {},
+          cleanup() {},
+        }
+      : pullVercelEnvironment(environment);
     const env = pulled.env;
-    const databaseUrl = env.DIRECT_DATABASE_URL ?? env.DATABASE_URL;
+    const existingEnv = localEnvPath && existsSync(localEnvPath) ? parseEnvFile(localEnvPath) : {};
+    const databaseUrl = resolveAuditDatabaseUrl({
+      auditEnv: existingEnv,
+      runtimeEnv: process.env,
+      pulledEnv: env,
+    });
 
     if (!databaseUrl) {
-      throw new Error(`No database URL found in pulled Vercel ${environment} environment.`);
+      throw new Error(
+        `No database URL found for ${environment}. Add PRODUCTION_DIRECT_DATABASE_URL or PRODUCTION_DATABASE_URL locally or in the workflow environment and rerun the command.`,
+      );
     }
 
     prisma = new PrismaClient({
@@ -285,12 +339,12 @@ async function main() {
           email,
           environment,
           localEnvFile: localEnvPath,
+          githubOutputEnabled: Boolean(githubOutputPath),
         },
       },
     });
 
-    const baseUrl = resolveBaseUrl(environment, env);
-    const existingEnv = existsSync(localEnvPath) ? parseEnvFile(localEnvPath) : {};
+    const baseUrl = resolveBaseUrl(environment, env, process.env, explicitBaseUrl);
     const preservedEntries = Object.fromEntries(
       Object.entries(existingEnv).filter(([key]) => !["JOURNEY_EMAIL", "JOURNEY_PASSWORD", "JOURNEY_BASE_URL"].includes(key)),
     );
@@ -312,12 +366,25 @@ async function main() {
       "",
     ].join("\n");
 
-    writeFileSync(localEnvPath, localEnvContent, "utf8");
+    if (localEnvPath) {
+      writeFileSync(localEnvPath, localEnvContent, "utf8");
+    }
+
+    if (githubOutputPath) {
+      console.log(`::add-mask::${password}`);
+      appendGithubOutputs(githubOutputPath, {
+        journey_email: email,
+        journey_password: password,
+        journey_base_url: baseUrl,
+        credentials_file: localEnvPath ?? "",
+        next_command: suggestedNextCommand({ environment, localEnvPath }),
+      });
+    }
 
     console.log(`Provisioned browser audit account for ${environment}.`);
     console.log(`Email: ${email}`);
     console.log(`Verified: ${user.emailVerified?.toISOString() ?? "unknown"}`);
-    console.log(`Credentials file: ${localEnvPath}`);
+    console.log(`Credentials file: ${localEnvPath ?? "not written (workflow outputs only)"}`);
     console.log(`Next command: ${suggestedNextCommand({ environment, localEnvPath })}`);
   } finally {
     await prisma?.$disconnect();

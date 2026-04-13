@@ -9,6 +9,7 @@ import { CheckoutFlashBanner } from "@/components/checkout-flash-banner";
 import { FreeToolAccessGate } from "@/components/free-tool-access-gate";
 import { ArchitectureDiagramReviewerForm } from "@/components/architecture-diagram-reviewer/ArchitectureDiagramReviewerForm";
 import { ForecastingWorkspace } from "@/components/mlops/ForecastingWorkspace";
+import { ToolEngagementGuide } from "@/components/software/tool-engagement-guide";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -213,6 +214,62 @@ function accessBadgeVariant(accessModel: AccessModel): ComponentProps<typeof Bad
     default:
       return "secondary";
   }
+}
+
+function buildToolEngagementGuide(input: {
+  isArchitectureReviewer: boolean;
+  isValidator: boolean;
+  isMLOpsPlatform: boolean;
+}) {
+  if (input.isArchitectureReviewer) {
+    return {
+      title: "How review, delivery, and follow-through connect",
+      deliveryTitle: "Results stay tied to a verified account",
+      deliveryDescription:
+        "Standard runs deliver the consulting-style report to the signed-in verified business email. Privacy mode keeps the source files in the browser first and only requests sanitized delivery when you ask for it.",
+      deliveryDetail:
+        "Use the sample report to review the output shape before you upload your own diagram. The verification gate stays in place so detailed results are not sent to unverified inboxes.",
+      serviceDescription:
+        "Use this as the entry point for architecture work. If the review shows a clear next step, move into a scoped remediation sprint or a small advisory engagement instead of an open-ended implementation promise.",
+    };
+  }
+
+  if (input.isValidator) {
+    return {
+      title: "How validator runs turn into real delivery work",
+      deliveryTitle: "Validation results stay visible and account-linked",
+      deliveryDescription:
+        "Validator runs return their report on screen immediately, attempt email delivery when platform email is configured, and keep the output tied to the same account that used the credit.",
+      deliveryDetail:
+        "The public launch stays FTR-first. Deeper validation tracks remain gated until their rulepacks and customer-facing output meet the same bar.",
+      serviceDescription:
+        "Use validator findings to decide whether you need a fixed-scope readiness package, a follow-up architecture review, or a small implementation task. This tool should narrow the work, not create vague consulting scope.",
+    };
+  }
+
+  if (input.isMLOpsPlatform) {
+    return {
+      title: "How the forecasting beta fits the suite",
+      deliveryTitle: "Forecasts are browser-first and history-linked",
+      deliveryDescription:
+        "Forecasting beta runs return their result in-browser first and log the run to account activity. This tool does not promise managed operations or email-delivered advisory output.",
+      deliveryDetail:
+        "Use the live workspace for repeat runs and account history, then move into a scoped advisory engagement only if the forecast exposes a deeper AWS architecture or planning need.",
+      serviceDescription:
+        "This remains a narrow beta. If the result shows a real infrastructure, data, or optimization question, move into a bounded advisory or implementation scope instead of treating the beta as a full platform engagement.",
+    };
+  }
+
+  return {
+    title: "How this tool fits the ZoKorp suite",
+    deliveryTitle: "Account-linked access and delivery",
+    deliveryDescription:
+      "This product keeps access, history, and customer follow-through tied to the same account so operational support stays explainable.",
+    deliveryDetail:
+      "Use account-linked access for the software path, then move into a scoped services engagement only when the work is concrete enough to estimate cleanly.",
+    serviceDescription:
+      "ZoKorp uses software to narrow the work, then sells human delivery only when the next step is clear and bounded.",
+  };
 }
 
 function isSchemaDriftError(error: unknown) {
@@ -459,6 +516,11 @@ export default async function SoftwareDetailPage({
       ) : null}
     </>
   );
+  const engagementGuide = buildToolEngagementGuide({
+    isArchitectureReviewer,
+    isValidator,
+    isMLOpsPlatform,
+  });
 
   const pricingSection = (
     <section className="space-y-4">
@@ -581,25 +643,15 @@ export default async function SoftwareDetailPage({
         </Card>
       ) : null}
 
-      <Card tone="glass" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
-        <CardHeader>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Need hands-on help?</p>
-          <h2 className="font-display text-3xl font-semibold text-slate-900">Connect the tool to a scoped delivery engagement</h2>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm leading-6 text-slate-600">
-            Use the software for quick validation or review, then move into architecture guidance, remediation, or implementation support without leaving the platform.
-          </p>
-        </CardContent>
-        <CardFooter>
-          <Link href={toMarketingSiteUrl("/services#service-request")} className={buttonVariants()}>
-            Request services
-          </Link>
-          <Link href={toMarketingSiteUrl("/support")} className={buttonVariants({ variant: "secondary" })}>
-            Contact support
-          </Link>
-        </CardFooter>
-      </Card>
+      <ToolEngagementGuide
+        title={engagementGuide.title}
+        deliveryTitle={engagementGuide.deliveryTitle}
+        deliveryDescription={engagementGuide.deliveryDescription}
+        deliveryDetail={engagementGuide.deliveryDetail}
+        serviceDescription={engagementGuide.serviceDescription}
+        requestHref={toMarketingSiteUrl("/services#service-request")}
+        supportHref={toMarketingSiteUrl("/support")}
+      />
     </div>
   );
 

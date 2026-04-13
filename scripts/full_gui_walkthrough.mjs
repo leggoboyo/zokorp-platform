@@ -41,6 +41,7 @@ import {
   writePageScreenshot,
   writeTextFile,
 } from "./playwright_audit_support.mjs";
+import { diagnoseAuditCredentialFailure } from "./audit_account_support.mjs";
 
 const VALID_MUTATION_MODES = new Set(["readonly", "low-risk", "full"]);
 const mobileViewport = { width: 390, height: 844 };
@@ -576,7 +577,7 @@ async function runAppUnauthenticated(page, steps, config) {
   }
 }
 
-async function ensureAppAuthentication(page, steps, config) {
+async function ensureAppAuthentication(page, steps, config, diagnostics) {
   await page.goto(new URL("/login", config.appBaseUrl).toString(), {
     waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
@@ -605,9 +606,13 @@ async function ensureAppAuthentication(page, steps, config) {
   });
 
   if (page.url().includes("/login")) {
+    const authFailureDetail = diagnoseAuditCredentialFailure({
+      currentUrl: page.url(),
+      responseFailures: diagnostics.responseFailures,
+    });
     steps.push(
       buildStep("app_auth_login", "App authentication handoff", "blocked", {
-        detail: "Configured JOURNEY_EMAIL/JOURNEY_PASSWORD did not establish a local authenticated session.",
+        detail: authFailureDetail,
         url: page.url(),
       }),
     );
@@ -643,7 +648,7 @@ async function ensureAppAuthentication(page, steps, config) {
   return true;
 }
 
-async function runAppAuthenticated(page, steps, config) {
+async function runAppAuthenticated(page, steps, config, diagnostics) {
   if (!config.loginEmail || !config.loginPassword) {
     steps.push(
       buildStep("app_auth_login", "App authentication handoff", "skipped", {
@@ -666,17 +671,21 @@ async function runAppAuthenticated(page, steps, config) {
     return;
   }
 
-  const authenticated = await ensureAppAuthentication(page, steps, config);
+  const authenticated = await ensureAppAuthentication(page, steps, config, diagnostics);
   if (!authenticated) {
+    const authFailureDetail = diagnoseAuditCredentialFailure({
+      currentUrl: page.url(),
+      responseFailures: diagnostics.responseFailures,
+    });
     steps.push(
       buildStep("app_billing", "Billing page", "blocked", {
-        detail: "Blocked because the configured authenticated session could not be established.",
+        detail: `Blocked because authenticated verification could not be established. ${authFailureDetail}`,
       }),
     );
     for (const product of APP_PRODUCT_EXPECTATIONS) {
       steps.push(
         buildStep(`app_auth_${product.slug}`, `Authenticated product: ${product.label}`, "blocked", {
-          detail: "Blocked because the configured authenticated session could not be established.",
+          detail: `Blocked because authenticated verification could not be established. ${authFailureDetail}`,
         }),
       );
     }
@@ -1097,7 +1106,7 @@ export async function runFullGuiWalkthrough(options = {}) {
     await runAppUnauthenticated(page, steps, runtimeConfig);
     syntheticLead = await runSyntheticServiceRequest(page, steps, runtimeConfig);
     await runOptionalSignup(page, steps, runtimeConfig);
-    await runAppAuthenticated(page, steps, runtimeConfig);
+    await runAppAuthenticated(page, steps, runtimeConfig, diagnostics);
     await runZohoVerification(browserContext, steps, runtimeConfig, syntheticLead);
   } catch (error) {
     const page = browserContext?.pages()[0] ?? null;

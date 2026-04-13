@@ -38,7 +38,7 @@ const accessLabels: Record<AccessModel, string> = {
 const pricingNotes = [
   "No login is required to browse consulting or software pricing.",
   "Consulting anchors reduce ambiguity, but broader work is still scoped before acceptance.",
-  "Forecasting remains a narrow beta inside the wider AI/ML advisory story.",
+  "Forecasting remains a narrow beta beside the core AWS architecture and validation offering.",
 ] as const;
 
 export default async function PricingPage() {

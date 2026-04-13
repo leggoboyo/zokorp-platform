@@ -1,18 +1,30 @@
 import Link from "next/link";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminStatusOverview } from "@/components/admin/admin-status-overview";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TimelineCard } from "@/components/ui/timeline-card";
 import { getAdminBillingSnapshot } from "@/lib/admin-billing";
+import { buildAdminOverview } from "@/lib/admin-overview";
+import { getAdminOperationsSnapshot } from "@/lib/admin-operations";
 import { requireAdminPageAccess } from "@/lib/admin-page-access";
+import { buildRuntimeReadinessReport } from "@/lib/runtime-readiness";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminBillingPage() {
   await requireAdminPageAccess("/admin/billing");
-  const snapshot = await getAdminBillingSnapshot();
+  const [snapshot, operationsSnapshot] = await Promise.all([
+    getAdminBillingSnapshot(),
+    getAdminOperationsSnapshot(),
+  ]);
+  const overviewItems = buildAdminOverview({
+    readinessReport: buildRuntimeReadinessReport(),
+    operationsSnapshot,
+    billingSnapshot: snapshot,
+  });
 
   return (
     <div className="space-y-6">
@@ -28,6 +40,8 @@ export default async function AdminBillingPage() {
           <AdminNav current="billing" />
         </CardHeader>
       </Card>
+
+      <AdminStatusOverview items={overviewItems} />
 
       <section className="grid gap-3 md:grid-cols-6">
         {[

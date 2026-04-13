@@ -1,0 +1,89 @@
+name: Browser Customer Journey Upkeep
+
+on:
+  schedule:
+    - cron: "47 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-customer-journey-upkeep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-audit:
+    name: browser customer journey upkeep
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXTAUTH_URL: https://app.zokorp.com
+      APP_SITE_URL: https://app.zokorp.com
+      JOURNEY_MARKETING_BASE_URL: https://www.zokorp.com
+      JOURNEY_APP_BASE_URL: https://app.zokorp.com
+      JOURNEY_EXPECTED_MARKETING_CANONICAL_BASE_URL: https://www.zokorp.com
+      JOURNEY_EXPECTED_APP_CANONICAL_BASE_URL: https://app.zokorp.com
+      AUDIT_ACCOUNT_SKIP_ENV_PULL: "true"
+      AUDIT_RESULTS_INGEST_URL: https://app.zokorp.com/api/internal/audit-results/public-contract
+      AUDIT_RESULTS_INGEST_SECRET: ${{ secrets.CRON_SECRET }}
+      PRODUCTION_DIRECT_DATABASE_URL: ${{ secrets.PRODUCTION_DIRECT_DATABASE_URL }}
+      PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Provision or rotate synthetic audit account
+        id: provision
+        run: node scripts/provision_browser_audit_user.mjs --environment=production --skip-env-pull=true --write-env-file=none --github-output=true
+
+      - name: Run browser customer journey audit
+        id: journey
+        continue-on-error: true
+        env:
+          JOURNEY_EMAIL: ${{ steps.provision.outputs.journey_email }}
+          JOURNEY_PASSWORD: ${{ steps.provision.outputs.journey_password }}
+          JOURNEY_BASE_URL: ${{ steps.provision.outputs.journey_base_url }}
+        run: node scripts/browser_customer_journey_audit.mjs | tee browser-customer-journey.log
+
+      - name: Append workflow summary
+        if: always()
+        run: |
+          echo "## Browser customer journey upkeep" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f output/playwright/customer-journey-audit/summary.json ]; then
+            node --input-type=module -e 'import fs from "node:fs"; const summary = JSON.parse(fs.readFileSync("output/playwright/customer-journey-audit/summary.json", "utf8")); console.log(""); console.log(`- Outcome: ${summary.outcome}`); console.log(`- Classification: ${summary.classification?.label ?? "unknown"}`); const failing = Array.isArray(summary.steps) ? summary.steps.filter((step) => step.status === "fail" || step.status === "blocked").slice(0, 5) : []; if (failing.length > 0) { console.log("- Failing steps:"); for (const step of failing) { console.log(`  - ${step.label}: ${step.error ?? step.detail ?? step.status}`); } }' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          {
+            echo ""
+            echo '```text'
+            tail -n 160 browser-customer-journey.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload browser audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-customer-journey-audit
+          path: |
+            browser-customer-journey.log
+            output/playwright/customer-journey-audit
+          if-no-files-found: ignore
+
+      - name: Fail when browser audit did not pass
+        if: steps.journey.outcome != 'success'
+        run: exit 1

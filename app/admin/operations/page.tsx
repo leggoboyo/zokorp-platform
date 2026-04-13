@@ -7,18 +7,30 @@ import {
   triggerZohoLeadSyncNowAction,
 } from "@/app/admin/actions";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminStatusOverview } from "@/components/admin/admin-status-overview";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TimelineCard } from "@/components/ui/timeline-card";
+import { getAdminBillingSnapshot } from "@/lib/admin-billing";
+import { buildAdminOverview } from "@/lib/admin-overview";
 import { getAdminOperationsSnapshot } from "@/lib/admin-operations";
 import { requireAdminPageAccess } from "@/lib/admin-page-access";
+import { buildRuntimeReadinessReport } from "@/lib/runtime-readiness";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOperationsPage() {
   await requireAdminPageAccess("/admin/operations");
-  const snapshot = await getAdminOperationsSnapshot();
+  const [snapshot, billingSnapshot] = await Promise.all([
+    getAdminOperationsSnapshot(),
+    getAdminBillingSnapshot(),
+  ]);
+  const overviewItems = buildAdminOverview({
+    readinessReport: buildRuntimeReadinessReport(),
+    operationsSnapshot: snapshot,
+    billingSnapshot,
+  });
   const sections = [
     {
       key: "architecture-email",
@@ -43,6 +55,12 @@ export default async function AdminOperationsPage() {
       title: "Booked-call signals",
       description: "Recent booked follow-ups, including bookings linked back into customer records, bookings flagged for qualification review, and sync configuration problems that need operator action.",
       entries: snapshot.bookedCallSignals,
+    },
+    {
+      key: "public-contract",
+      title: "Public contract drift",
+      description: "Latest smoke and browser-journey signals for the marketing/app host contract, including undeployed content mismatches.",
+      entries: snapshot.publicContractSignals,
     },
     {
       key: "automation-health",
@@ -91,6 +109,8 @@ export default async function AdminOperationsPage() {
         </CardHeader>
       </Card>
 
+      <AdminStatusOverview items={overviewItems} />
+
       <section className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
         {[
           { label: "Architecture email pending", value: snapshot.stats.pendingArchitectureEmail },
@@ -98,6 +118,7 @@ export default async function AdminOperationsPage() {
           { label: "CRM attention", value: snapshot.stats.crmNeedsAttention },
           { label: "Quote issues", value: snapshot.stats.failedQuoteCompanions },
           { label: "Booked calls", value: snapshot.stats.recentBookedCalls },
+          { label: "Public contract attention", value: snapshot.stats.publicContractAttention },
           { label: "Automation attention", value: snapshot.stats.automationAttention },
           { label: "Internal failures", value: snapshot.stats.internalFailures },
           { label: "Security signals", value: snapshot.stats.securitySignals },
@@ -156,6 +177,11 @@ export default async function AdminOperationsPage() {
                   {section.key === "booked-calls" ? (
                     <Link href="/admin/service-requests" className={buttonVariants({ variant: "secondary", size: "sm" })}>
                       Review booked-call state
+                    </Link>
+                  ) : null}
+                  {section.key === "public-contract" ? (
+                    <Link href="/admin/readiness" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                      Review public contract
                     </Link>
                   ) : null}
                   {section.key === "automation-health" ? (

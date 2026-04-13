@@ -2,12 +2,12 @@ export const MARKETING_ROUTE_EXPECTATIONS = [
   {
     path: "/",
     label: "Homepage",
-    marker: "AWS architecture review, remediation, and software for teams that need a credible next step.",
+    marker: "AWS architecture, validation, and optimization for SMB teams that need a clear next step.",
   },
   {
     path: "/services",
     label: "Services",
-    marker: "Architecture review first. Remediation, readiness, and implementation when the next step is real.",
+    marker: "Focused AWS architecture, validation, and optimization services for SMB teams that need a clear next step.",
   },
   {
     path: "/about",
@@ -227,9 +227,9 @@ export const MARKETING_MORE_MENU_LABELS = ["Insights", "Support"];
 export const FOOTER_LEGAL_LINK_LABELS = ["Security", "Privacy", "Refunds", "Terms", "Support"];
 
 export const CONSULTING_PRICE_MARKERS = [
-  "$249",
-  "from $1,250",
-  "from $2,500",
-  "from $3,500",
-  "Custom quote",
+  "Free to under $200",
+  "Usually $500-$1,500",
+  "Usually $1,200-$2,000",
+  "Hourly or scoped quote",
+  "Light monthly retainer",
 ];

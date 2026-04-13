@@ -15,17 +15,17 @@ import {
 import { buildMarketingPageMetadata, getMarketingSiteUrl, siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = buildMarketingPageMetadata({
-  title: "AWS Architecture, AI/ML Advisory, and Software",
+  title: "Founder-Led AWS Architecture, Validation, and Optimization",
   description:
-    "Founder-led AWS architecture review, readiness support, AI/ML advisory, and software for teams that need clear next steps without forced signup.",
+    "Founder-led AWS architecture, validation, optimization, and software for SMB teams that need a clear next step without forced signup.",
   path: "/",
 });
 
 const trustSignals = [
-  "Former AWS Partner Solutions Architect",
+  "Founder-led AWS architecture guidance",
   "AWS SA Pro, ML Specialty, Security Specialty",
-  "Background across AWS, Microsoft, and Nordic Global",
-  "Public software and consulting paths with no forced signup",
+  "Direct founder involvement instead of a sales handoff chain",
+  "Public browsing on www, protected tool runs on app",
 ];
 
 export default function HomePage() {
@@ -74,15 +74,15 @@ export default function HomePage() {
             className="rounded-[1.75rem] bg-[rgb(var(--z-panel))] p-6 shadow-[0_16px_36px_rgba(15,23,42,0.05)] md:p-7"
           >
             <Badge variant="secondary" className="border-slate-200 bg-white/90 text-slate-700">
-              Founder-led consultancy + software
+              Founder-led AWS consultancy + software
             </Badge>
             <h1 className="font-display mt-5 max-w-4xl text-balance text-4xl font-semibold leading-[1.02] text-slate-950 md:text-[4.25rem]">
-              AWS architecture review, remediation, and software for teams that need a credible next step.
+              AWS architecture, validation, and optimization for SMB teams that need a clear next step.
             </h1>
             <p className="enterprise-copy mt-5 max-w-3xl text-base md:text-[1.1rem]">
-              ZoKorp helps teams move from architecture questions to scoped implementation, AWS readiness work,
-              AI/ML advisory, and software-backed follow-through without forcing signup just to understand what is
-              being sold.
+              ZoKorp helps teams move from architecture questions to a tighter next step: a review, a fixed-scope
+              validation, a cost audit, a landing-zone setup, a scoped implementation task, or a light advisory
+              retainer. Public browsing stays open, and software supports the work instead of replacing it.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -180,9 +180,9 @@ export default function HomePage() {
           </CardHeader>
           <CardContent className="space-y-4 px-0">
             <p className="enterprise-copy text-sm md:text-base">
-              ZoKorp is built for teams that need a serious technical review, a practical remediation path, and a
-              founder-led conversation when the work is worth doing. The first offer is intentionally narrow and
-              useful: architecture review, scope, and follow-through.
+              ZoKorp is built for teams that need a serious technical review, a fixed-scope validation path, and
+              founder-led follow-through when the work is worth doing. The entry point stays intentionally narrow:
+              start with the review, then buy only the next service that fits the real issue.
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               {CONSULTING_OFFERS.slice(0, 3).map((offer) => (
@@ -229,14 +229,14 @@ export default function HomePage() {
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Services</p>
-            <h2 className="font-display text-3xl font-semibold text-slate-950">A focused consulting catalog, not a vague list of buzzwords.</h2>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">Six clear AWS offers. No filler, no vague transformation language.</h2>
           </div>
           <a href={bookingUrl} className={buttonVariants({ variant: "secondary" })}>
             Book a call
           </a>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-4">
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
           {CONSULTING_OFFERS.map((offer) => (
             <Card tone="plain" key={offer.slug} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-none">
               <CardHeader className="gap-2 px-0">
@@ -267,8 +267,9 @@ export default function HomePage() {
           </CardHeader>
           <CardContent className="space-y-4 px-0">
             <p className="enterprise-copy text-sm md:text-base">
-              The software side of ZoKorp is there to remove repetitive review work, not to hide the human operating
-              model. Start with the public software catalog if you want a self-serve path before a call.
+              The software side of ZoKorp exists to remove repetitive review work, preserve account-linked history,
+              and make follow-through easier to understand. It supports the consulting model instead of pretending to
+              replace it.
             </p>
             <div className="space-y-3">
               {SOFTWARE_HIGHLIGHTS.map((item) => (
@@ -291,7 +292,7 @@ export default function HomePage() {
         <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
           <CardHeader className="gap-2 px-0">
             <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">How engagements run</p>
-            <h2 className="font-display text-3xl font-semibold text-slate-950">Clear process beats vague transformation language.</h2>
+            <h2 className="font-display text-3xl font-semibold text-slate-950">Lower SLA, tighter scope, and direct founder involvement.</h2>
           </CardHeader>
           <CardContent className="grid gap-4 px-0 md:grid-cols-2">
             {DELIVERY_PROCESS_STEPS.map((step, index) => (

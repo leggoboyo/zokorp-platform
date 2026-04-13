@@ -1,54 +1,80 @@
 export const CONSULTING_OFFERS = [
   {
-    slug: "architecture-review-remediation",
-    eyebrow: "Flagship offer",
-    title: "Architecture Review + Remediation",
-    priceAnchor: "$249 advisory review / from $1,250 sprint",
+    slug: "architecture-review",
+    eyebrow: "Entry point",
+    title: "Architecture Review",
+    priceAnchor: "Free browser review or founder review under $200",
     summary:
-      "For teams that need a founder-led review, a clear remediation path, and help turning architecture findings into implementation decisions.",
+      "Start here when you need a founder-led AWS architecture read before you commit to broader delivery work.",
     bullets: [
-      "AWS architecture review and prioritization",
-      "Scoped remediation plan with concrete next steps",
-      "Hands-on follow-through for bounded delivery work",
+      "Architecture findings tied to practical next steps",
+      "Clear guidance on whether to validate, optimize, or implement next",
+      "A low-friction entry point into scoped follow-through work",
     ],
   },
   {
-    slug: "apn-aws-readiness",
-    eyebrow: "Supporting offer",
-    title: "APN / AWS Readiness",
-    priceAnchor: "from $2,500",
+    slug: "aws-readiness-ftr-validation",
+    eyebrow: "Fixed scope",
+    title: "AWS Readiness / FTR Validation",
+    priceAnchor: "Typically $500-$1,500",
     summary:
-      "For teams preparing partner, readiness, or evidence-heavy AWS work that needs stronger structure, packaging, and technical alignment.",
+      "A structured validation pass for teams that need pass/fail clarity, issues, and remediation guidance before submission or review.",
     bullets: [
-      "Readiness planning and evidence workflow design",
-      "Architecture and control review for milestone preparation",
-      "Founder-led guidance without enterprise-bench theater",
+      "Pass/fail posture with specific issues called out",
+      "Evidence and control gaps translated into a usable next-step list",
+      "A repeatable validation service instead of open-ended consulting time",
     ],
   },
   {
-    slug: "aiml-mlops-advisory",
-    eyebrow: "Supporting offer",
-    title: "AI/ML & MLOps Advisory",
-    priceAnchor: "from $3,500",
+    slug: "cloud-cost-optimization-audit",
+    eyebrow: "One-time audit",
+    title: "Cloud Cost Optimization Audit",
+    priceAnchor: "Typically $500-$1,500",
     summary:
-      "For teams planning AI/ML delivery, GPU-backed workloads, or MLOps operating patterns where the forecasting workflow is only one piece of the roadmap.",
+      "A focused cost review for AWS environments that need clearer savings opportunities, cleaner waste reduction, and a better ROI story.",
     bullets: [
-      "AI/ML architecture and infrastructure advisory",
-      "MLOps direction with practical launch constraints",
-      "Forecasting workflow planning while the product matures",
+      "Waste and inefficiency review with clear priorities",
+      "Savings opportunities tied to practical remediation guidance",
+      "A bounded audit instead of an ongoing optimization retainer",
     ],
   },
   {
-    slug: "implementation-partner",
-    eyebrow: "Custom scope",
-    title: "Implementation Partner",
-    priceAnchor: "Custom quote",
+    slug: "landing-zone-setup",
+    eyebrow: "Fixed scope",
+    title: "Landing Zone Setup",
+    priceAnchor: "Typically $1,200-$2,000",
     summary:
-      "For redesigns, migrations, or larger delivery efforts that should not be auto-scoped from a single call or software result.",
+      "A clean AWS baseline for teams that need IAM, networking, and security fundamentals set up correctly before more work begins.",
     bullets: [
-      "Broader implementation planning and execution support",
-      "Software-backed advisory when repeat work should become productized",
-      "Custom scoping for multi-step delivery engagements",
+      "Tight-scope environment setup for SMB teams",
+      "IAM, networking, and security-baseline guidance",
+      "No enterprise platform over-promising",
+    ],
+  },
+  {
+    slug: "scoped-implementation",
+    eyebrow: "Follow-through",
+    title: "Scoped Implementation",
+    priceAnchor: "Hourly or scoped quote",
+    summary:
+      "Hands-on work for the next technical step after a review, validation, or audit has made the path clear enough to scope cleanly.",
+    bullets: [
+      "Bounded implementation instead of vague delivery engagements",
+      "Best used after findings have already narrowed the real work",
+      "Direct founder involvement without turning into an MSP contract",
+    ],
+  },
+  {
+    slug: "advisory-retainer",
+    eyebrow: "Light support",
+    title: "Advisory Retainer",
+    priceAnchor: "Light monthly retainer",
+    summary:
+      "Ongoing guidance for teams that want continuity after a project without buying a managed-service relationship or strict SLA coverage.",
+    bullets: [
+      "Monthly founder access for email or Slack guidance",
+      "Advisory-first support with limited scope and lower SLA",
+      "Best after architecture, readiness, or implementation work is already underway",
     ],
   },
 ] as const;
@@ -56,33 +82,39 @@ export const CONSULTING_OFFERS = [
 export const CONSULTING_PRICE_OPTIONS = [
   {
     title: "Architecture Advisory Review",
-    price: "$249",
+    price: "Free to under $200",
     summary:
-      "A founder-led review for teams that need a credible second set of eyes before committing to deeper remediation or implementation.",
+      "The entry point for teams that need a credible founder-led read before deciding what work is actually worth buying.",
   },
   {
-    title: "Architecture Remediation Sprint",
-    price: "from $1,250",
+    title: "AWS Readiness / FTR Validation",
+    price: "Usually $500-$1,500",
     summary:
-      "A bounded follow-through sprint when the review already made the next technical step obvious.",
+      "A fixed-scope validation package with pass/fail posture, issues, and remediation guidance.",
   },
   {
-    title: "APN / AWS Readiness Package",
-    price: "from $2,500",
+    title: "Cloud Cost Optimization Audit",
+    price: "Usually $500-$1,500",
     summary:
-      "Readiness, validation, and evidence-heavy AWS support for teams preparing for milestones, audits, or partner checkpoints.",
+      "A one-time audit for SMB teams that need clearer savings opportunities and cost cleanup priorities.",
   },
   {
-    title: "AI/ML & MLOps Advisory",
-    price: "from $3,500",
+    title: "Landing Zone Setup",
+    price: "Usually $1,200-$2,000",
     summary:
-      "Practical AI/ML and MLOps architecture guidance for teams planning infrastructure, controls, and forecasting workflows.",
+      "A clean AWS setup for IAM, networking, and security-baseline work without enterprise bloat.",
   },
   {
-    title: "Implementation Partner",
-    price: "Custom quote",
+    title: "Scoped Implementation",
+    price: "Hourly or scoped quote",
     summary:
-      "Custom scoping for broader implementation, migrations, or multi-step delivery efforts that should not be auto-scoped from a single call.",
+      "Use this when the issue is already clear enough to finish the next technical step without turning it into an open-ended engagement.",
+  },
+  {
+    title: "Advisory Retainer",
+    price: "Light monthly retainer",
+    summary:
+      "Limited ongoing founder guidance for teams that want continuity without a full MSP or strict SLA relationship.",
   },
 ] as const;
 
@@ -105,26 +137,26 @@ export const SOFTWARE_HIGHLIGHTS = [
     title: "Forecasting beta",
     href: "/software/mlops-foundation-platform",
     summary:
-      "A narrow forecasting workflow inside the broader MLOps advisory story, with scope stated plainly while the product continues to be built.",
+      "A narrow forecasting workflow that stays secondary to the core AWS architecture and validation business.",
     cta: "View forecasting beta",
   },
 ] as const;
 
 export const DELIVERY_PROCESS_STEPS = [
   {
-    title: "Assess",
-    detail: "Clarify the architecture, readiness target, and practical constraint set before work expands unnecessarily.",
+    title: "Review",
+    detail: "Start with architecture, readiness, or cost findings before buying broader delivery work.",
   },
   {
-    title: "Scope",
-    detail: "Choose the shortest credible path: advisory review, remediation sprint, readiness package, or a custom implementation plan.",
+    title: "Validate",
+    detail: "Use fixed-scope validation and audit work when the team needs pass/fail clarity, issue lists, or savings guidance.",
   },
   {
-    title: "Execute",
-    detail: "Run the work with founder-led accountability and software support where the process should become repeatable.",
+    title: "Implement",
+    detail: "Move into scoped implementation only after the next technical step is clear enough to define tightly.",
   },
   {
-    title: "Carry forward",
-    detail: "Move into software, support, or a broader implementation phase without losing context.",
+    title: "Advise",
+    detail: "Use light monthly guidance when continuity matters but a managed-service relationship does not.",
   },
 ] as const;

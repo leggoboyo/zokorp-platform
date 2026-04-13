@@ -1,5 +1,6 @@
 import { AccessModel, EntitlementStatus, type AuditLog, type CreditLedgerEntry } from "@prisma/client";
 
+import { evaluateBillingSanity } from "@/lib/billing-sanity";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
 
@@ -328,7 +329,7 @@ function mapIntegritySignal(input: {
 }
 
 export async function getAdminBillingSnapshot(): Promise<AdminBillingSnapshot> {
-  const [recentCheckouts, attentionSignals, activeEntitlements, activeCreditBalances] = await Promise.all([
+  const [recentCheckouts, attentionSignals, activeEntitlements, activeCreditBalances, catalogProducts] = await Promise.all([
     db.checkoutFulfillment.findMany({
       include: {
         user: {
@@ -398,6 +399,24 @@ export async function getAdminBillingSnapshot(): Promise<AdminBillingSnapshot> {
         userId: true,
         productId: true,
         remainingUses: true,
+      },
+    }),
+    db.product.findMany({
+      where: {
+        active: true,
+      },
+      include: {
+        prices: {
+          select: {
+            id: true,
+            stripePriceId: true,
+            active: true,
+            kind: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
       },
     }),
   ]);
@@ -514,6 +533,29 @@ export async function getAdminBillingSnapshot(): Promise<AdminBillingSnapshot> {
       }
     }
   }
+
+  for (const issue of evaluateBillingSanity({ products: catalogProducts })) {
+    integritySignals.push(
+      mapIntegritySignal({
+        id: issue.id,
+        title: issue.title,
+        summary: issue.summary,
+        details: issue.details,
+        statusTone: issue.statusTone,
+        href: issue.href,
+      }),
+    );
+  }
+
+  integritySignals.sort((left, right) => {
+    const tonePriority = { danger: 0, warning: 1, info: 2, secondary: 3, success: 4 } as const;
+    const byTone = tonePriority[left.statusTone] - tonePriority[right.statusTone];
+    if (byTone !== 0) {
+      return byTone;
+    }
+
+    return right.createdAt.getTime() - left.createdAt.getTime();
+  });
 
   return {
     stats: {

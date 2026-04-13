@@ -27,5 +27,7 @@ describe("AboutPage", () => {
     expect(html).toContain("Amazon Web Services");
     expect(html).toContain("Microsoft");
     expect(html).toContain("Concrete founder credibility without fake proof");
+    expect(html).toContain("without hiring a full MSP or large consultancy");
+    expect(html).not.toContain("AI/ML advisory");
   });
 });

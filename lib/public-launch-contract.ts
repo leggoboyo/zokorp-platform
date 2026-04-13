@@ -14,7 +14,7 @@ export const PUBLIC_LAUNCH_FOUNDER_PROFILE = {
   headshotPath: "/founder/zohaib-khawaja.jpg",
   logoPath: "/brand/zokorp-logo.png",
   summary:
-    "Former AWS Partner Solutions Architect and AI solutions engineer building ZoKorp to help teams move from architecture decisions to scoped implementation, readiness work, and software-backed delivery.",
+    "Former AWS Partner Solutions Architect building ZoKorp to help SMB teams move from architecture decisions to validation, optimization, and scoped implementation.",
   credentials: [
     "AWS Certified Solutions Architect - Professional",
     "AWS Certified Machine Learning - Specialty",
@@ -26,7 +26,7 @@ export const PUBLIC_LAUNCH_FOUNDER_PROFILE = {
     "Nordic Global",
   ],
   highlights: [
-    "Former AWS Partner Solutions Architect focused on AI/ML, GPU infrastructure, and partner-aligned delivery.",
+    "Former AWS Partner Solutions Architect with hands-on architecture, readiness, and delivery experience.",
     "Background across AWS, Microsoft, Nordic Global, and higher education technical instruction.",
     "ZoKorp keeps software, consulting, and follow-up workflows connected without forcing buyers into signup too early.",
   ],

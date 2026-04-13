@@ -2,7 +2,10 @@
 
 import { pathToFileURL } from "node:url";
 
-import { APP_ROOT_EXPECTATION } from "./playwright_audit_contract.mjs";
+import {
+  APP_ROOT_EXPECTATION,
+  MARKETING_ROUTE_EXPECTATIONS,
+} from "./playwright_audit_contract.mjs";
 
 function userAgent() {
   return "ZoKorpUptimeMonitor/1.0";
@@ -69,6 +72,10 @@ export async function runUptimeMonitor({
   apexBaseUrl = process.env.UPTIME_APEX_BASE_URL || "https://zokorp.com",
   timeoutMs = Number(process.env.UPTIME_TIMEOUT_MS || 15000),
 } = {}) {
+  const servicesExpectation = MARKETING_ROUTE_EXPECTATIONS.find((route) => route.path === "/services");
+  const servicesUrl = new URL("/services", marketingBaseUrl).toString();
+  const appServicesUrl = new URL("/services", appBaseUrl).toString();
+
   const checks = [
     {
       id: "apex_redirect",
@@ -140,6 +147,32 @@ export async function runUptimeMonitor({
         return {
           ok: htmlResponseOk(response),
           status: response.status,
+        };
+      },
+    },
+    {
+      id: "marketing_services",
+      label: "Marketing services page matches the public contract",
+      run: async () => {
+        const { response, body } = await fetchText(servicesUrl, timeoutMs);
+
+        return {
+          ok: htmlResponseOk(response) && Boolean(servicesExpectation?.marker) && body.includes(servicesExpectation.marker),
+          status: response.status,
+        };
+      },
+    },
+    {
+      id: "app_services_redirect",
+      label: "App-host services route redirects to the marketing host",
+      run: async () => {
+        const target = new URL("/services", marketingBaseUrl).toString();
+        const { response, location } = await fetchRedirect(appServicesUrl, timeoutMs);
+
+        return {
+          ok: [301, 308].includes(response.status) && matchesRedirectLocation(location, target, "/services"),
+          status: response.status,
+          location,
         };
       },
     },

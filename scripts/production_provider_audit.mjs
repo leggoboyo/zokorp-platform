@@ -390,7 +390,7 @@ async function main() {
       label: "Production route smoke check",
       ok: smoke.outcome === "pass",
       outcome: smoke.outcome,
-      regressions: smoke.regressions,
+      classification: smoke.classification ?? null,
     },
     {
       id: "marketing_headers",

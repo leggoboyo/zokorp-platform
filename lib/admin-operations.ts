@@ -208,6 +208,23 @@ const INTERNAL_FAILURE_CONFIGS = [
 ] as const;
 
 const SECURITY_SIGNAL_ACTIONS = ["security.csp_violation", "security.csp_ingest_failed"] as const;
+const PUBLIC_CONTRACT_SIGNAL_CONFIGS = [
+  {
+    key: "production-smoke",
+    action: "internal.production_smoke_audit.run",
+    title: "Production smoke contract",
+    cadenceLabel: "Expected daily or on demand",
+    href: "/admin/readiness",
+  },
+  {
+    key: "browser-journey",
+    action: "internal.browser_customer_journey_audit.run",
+    title: "Browser customer journey contract",
+    cadenceLabel: "Expected daily or on demand",
+    href: "/admin/readiness",
+  },
+] as const;
+const PUBLIC_CONTRACT_SIGNAL_ACTIONS = PUBLIC_CONTRACT_SIGNAL_CONFIGS.map((item) => item.action);
 
 type OperationsIssue = {
   id: string;
@@ -234,12 +251,14 @@ export type AdminOperationsSnapshot = {
     automationAttention: number;
     internalFailures: number;
     securitySignals: number;
+    publicContractAttention: number;
   };
   architectureEmailIssues: OperationsIssue[];
   crmSyncIssues: OperationsIssue[];
   estimateCompanionIssues: OperationsIssue[];
   bookedCallSignals: OperationsIssue[];
   automationHealthSignals: OperationsIssue[];
+  publicContractSignals: OperationsIssue[];
   internalFailureSignals: OperationsIssue[];
   securitySignals: OperationsIssue[];
   followUpAttentionIssues: OperationsIssue[];
@@ -262,6 +281,15 @@ function readString(record: Record<string, unknown> | null, key: string) {
 function readNumber(record: Record<string, unknown> | null, key: string) {
   const value = record?.[key];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readStringArray(record: Record<string, unknown> | null, key: string) {
+  const value = record?.[key];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
 function actionMatches(actions: readonly string[], action: string) {
@@ -292,7 +320,7 @@ function formatRelativeAge(date: Date) {
 export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnapshot> {
   const staleThreshold = new Date(Date.now() - FOLLOW_UP_ATTENTION_WINDOW_MS);
 
-  const [emailOutboxes, crmLeads, estimateCompanions, toolRuns, legacyToolRunLogs, bookedCalls, flaggedBookedCallLogs, automationHealthLogs, internalFailureLogs, securitySignalLogs, staleServiceRequests, serviceRequestCrmAttention] = await Promise.all([
+  const [emailOutboxes, crmLeads, estimateCompanions, toolRuns, legacyToolRunLogs, bookedCalls, flaggedBookedCallLogs, automationHealthLogs, publicContractAuditLogs, internalFailureLogs, securitySignalLogs, staleServiceRequests, serviceRequestCrmAttention] = await Promise.all([
     db.architectureReviewEmailOutbox.findMany({
       where: {
         status: {
@@ -428,6 +456,17 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
     db.auditLog.findMany({
       where: {
         action: {
+          in: PUBLIC_CONTRACT_SIGNAL_ACTIONS,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 20,
+    }),
+    db.auditLog.findMany({
+      where: {
+        action: {
           in: INTERNAL_FAILURE_CONFIGS.map((item) => item.action),
         },
       },
@@ -552,12 +591,13 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
     const isFailure = actionMatches(automation.failureActions, latest.action);
     const isWarning = actionMatches(automation.warningActions, latest.action);
     const isStale = !isFailure && !isWarning && Date.now() - latest.createdAt.getTime() > automation.staleAfterMs;
+    const isNotConfigured = latest.action.includes(".not_configured");
 
     return {
       id: `${automation.key}:${latest.id}`,
       createdAt: latest.createdAt,
       title: automation.title,
-      statusLabel: isFailure ? "failed" : isWarning ? "warning" : isStale ? "stale" : "healthy",
+      statusLabel: isNotConfigured ? "not configured" : isFailure ? "failing" : isWarning ? "warning" : isStale ? "stale" : "healthy",
       statusTone: isFailure ? "danger" : isWarning || isStale ? "warning" : "success",
       summary: `${automation.cadenceLabel} · Last signal ${formatRelativeAge(latest.createdAt)}`,
       details: [
@@ -569,6 +609,68 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
         readNumber(metadata, "failed") !== null ? `Failed ${readNumber(metadata, "failed")}` : null,
       ].filter((value): value is string => Boolean(value)),
       href: automation.href,
+    } satisfies OperationsIssue;
+  }).sort((left, right) => {
+    const tonePriority = { danger: 0, warning: 1, info: 2, secondary: 3, success: 4 } as const;
+    const byTone = tonePriority[left.statusTone] - tonePriority[right.statusTone];
+    if (byTone !== 0) {
+      return byTone;
+    }
+
+    return right.createdAt.getTime() - left.createdAt.getTime();
+  });
+
+  const publicContractSignals = PUBLIC_CONTRACT_SIGNAL_CONFIGS.map((config) => {
+    const latest = publicContractAuditLogs.find((item) => item.action === config.action);
+
+    if (!latest) {
+      return {
+        id: `${config.key}:missing`,
+        createdAt: new Date(0),
+        title: config.title,
+        statusLabel: "no recent signal",
+        statusTone: "warning" as const,
+        summary: config.cadenceLabel,
+        details: [
+          "No recent public-contract audit record was found for this check.",
+        ],
+        href: config.href,
+      } satisfies OperationsIssue;
+    }
+
+    const metadata = asRecord(latest.metadataJson);
+    const classificationKind = readString(metadata, "classificationKind");
+    const statusLabel =
+      classificationKind === "undeployed content mismatch"
+        ? "stale"
+        : classificationKind === "missing operator secret/provider access"
+          ? "not configured"
+          : classificationKind === "true regression"
+            ? "failing"
+            : "healthy";
+    const statusTone =
+      statusLabel === "healthy"
+        ? ("success" as const)
+        : statusLabel === "failing"
+          ? ("danger" as const)
+          : ("warning" as const);
+
+    return {
+      id: `${config.key}:${latest.id}`,
+      createdAt: latest.createdAt,
+      title: config.title,
+      statusLabel,
+      statusTone,
+      summary: `${config.cadenceLabel} · Last run ${formatRelativeAge(latest.createdAt)}`,
+      details: [
+        readString(metadata, "classificationLabel")
+          ? `Classification ${readString(metadata, "classificationLabel")}`
+          : null,
+        readString(metadata, "classificationDetail"),
+        readString(metadata, "outcome") ? `Outcome ${readString(metadata, "outcome")}` : null,
+        ...readStringArray(metadata, "failingStepLabels").slice(0, 3),
+      ].filter((value): value is string => Boolean(value)),
+      href: config.href,
     } satisfies OperationsIssue;
   }).sort((left, right) => {
     const tonePriority = { danger: 0, warning: 1, info: 2, secondary: 3, success: 4 } as const;
@@ -868,6 +970,7 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
       recentBookedCalls: bookedCalls.length + flaggedBookedCallSignals.length,
       followUpAttention: staleServiceRequests.length + staleEstimatesWithoutFollowUp.length,
       automationAttention: automationHealthSignals.filter((item) => item.statusTone === "danger" || item.statusTone === "warning").length,
+      publicContractAttention: publicContractSignals.filter((item) => item.statusTone !== "success").length,
       internalFailures: internalFailureSignals.length,
       securitySignals: securitySignals.length,
     },
@@ -948,6 +1051,7 @@ export async function getAdminOperationsSnapshot(): Promise<AdminOperationsSnaps
       ...flaggedBookedCallSignals,
     ].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime()),
     automationHealthSignals,
+    publicContractSignals,
     internalFailureSignals,
     securitySignals,
     followUpAttentionIssues: [

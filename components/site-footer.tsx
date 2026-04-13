@@ -42,7 +42,7 @@ export function SiteFooter() {
             />
           </div>
           <p className="mt-4 max-w-sm text-sm leading-7 text-[rgb(var(--z-ink-soft))]">
-            Founder-led AWS architecture, AI/ML advisory, readiness support, and software for teams that need clear next steps.
+            Founder-led AWS architecture, validation, optimization, and software for SMB teams that need clear next steps.
           </p>
           <p className="mt-4 text-sm font-medium text-[rgb(var(--z-ink))]">{PUBLIC_LAUNCH_CONTACT.location}</p>
           <p className="mt-2 text-sm text-[rgb(var(--z-ink-soft))]">

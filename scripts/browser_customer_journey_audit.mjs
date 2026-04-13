@@ -39,6 +39,8 @@ import {
   writeJsonFile,
   writePageScreenshot,
 } from "./playwright_audit_support.mjs";
+import { diagnoseAuditCredentialFailure } from "./audit_account_support.mjs";
+import { classifyAuditSummary, postAuditSummaryIfConfigured } from "./public_contract_audit_support.mjs";
 
 function sameOrigin(left, right) {
   try {
@@ -489,7 +491,7 @@ async function runAppJourney(page, steps, config) {
   }
 }
 
-async function runAuthenticatedJourney(page, steps, config) {
+async function runAuthenticatedJourney(page, steps, config, diagnostics) {
   if (!config.loginEmail || !config.loginPassword) {
     steps.push(
       buildStep("app_auth_login", "Authenticated app journey", "skipped", {
@@ -519,21 +521,25 @@ async function runAuthenticatedJourney(page, steps, config) {
   });
 
   if (page.url().includes("/login")) {
+    const authFailureDetail = diagnoseAuditCredentialFailure({
+      currentUrl: page.url(),
+      responseFailures: diagnostics.responseFailures,
+    });
     steps.push(
       buildStep("app_auth_login", "Authenticated app journey", "blocked", {
-        detail: "Configured JOURNEY_EMAIL/JOURNEY_PASSWORD did not establish a local authenticated session.",
+        detail: authFailureDetail,
         url: page.url(),
       }),
     );
     steps.push(
       buildStep("app_billing", "Billing page", "blocked", {
-        detail: "Blocked because the configured authenticated session could not be established.",
+        detail: `Blocked because authenticated verification could not be established. ${authFailureDetail}`,
       }),
     );
     for (const product of APP_PRODUCT_EXPECTATIONS) {
       steps.push(
         buildStep(`app_auth_${product.slug}`, `Authenticated product page: ${product.label}`, "blocked", {
-          detail: "Blocked because the configured authenticated session could not be established.",
+          detail: `Blocked because authenticated verification could not be established. ${authFailureDetail}`,
         }),
       );
     }
@@ -707,7 +713,7 @@ export async function runBrowserCustomerJourneyAudit(options = {}) {
   try {
     await runMarketingJourney(page, steps, config);
     await runAppJourney(page, steps, config);
-    await runAuthenticatedJourney(page, steps, config);
+    await runAuthenticatedJourney(page, steps, config, diagnostics);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     steps.push(
@@ -743,12 +749,18 @@ export async function runBrowserCustomerJourneyAudit(options = {}) {
     outcome: outcomeFromSteps(steps),
   };
 
+  summary.classification = classifyAuditSummary(summary);
+
   writeJsonFile(join(outputDir, "summary.json"), summary);
   return summary;
 }
 
 async function main() {
   const summary = await runBrowserCustomerJourneyAudit();
+  const ingest = await postAuditSummaryIfConfigured(summary, "browser_customer_journey_audit");
+  if (ingest) {
+    summary.ingest = ingest;
+  }
 
   console.log(`Marketing base URL: ${summary.baseUrls.marketing}`);
   console.log(`App base URL: ${summary.baseUrls.app}`);
@@ -758,6 +770,8 @@ async function main() {
     const suffix = step.detail ? ` (${step.detail})` : "";
     console.log(`- ${step.status.toUpperCase()} ${step.label}${suffix}`);
   }
+  console.log("");
+  console.log(`Classification: ${summary.classification.label.toUpperCase()}`);
   console.log("");
   console.log("JSON summary:");
   console.log(JSON.stringify(summary, null, 2));

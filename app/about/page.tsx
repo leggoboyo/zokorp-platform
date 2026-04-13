@@ -11,7 +11,7 @@ import { buildMarketingPageMetadata, getMarketingSiteUrl } from "@/lib/site";
 export const metadata = buildMarketingPageMetadata({
   title: "About ZoKorp",
   description:
-    "Founder-led AWS architecture, AI/ML advisory, and software built by Zohaib Khawaja for teams that need a credible next step.",
+    "Founder-led AWS architecture, validation, optimization, and software built by Zohaib Khawaja for SMB teams that need a credible next step.",
   path: "/about",
 });
 
@@ -20,19 +20,19 @@ const backgroundChapters = [
     company: "Amazon Web Services",
     role: "Partner Solutions Architect",
     detail:
-      "Worked with AWS partners on AI/ML architecture, readiness, and validated delivery patterns across GPU-heavy workloads and production planning.",
+      "Worked with AWS partners on architecture reviews, readiness work, delivery patterns, and the technical decisions that sit between design and implementation.",
   },
   {
     company: "Microsoft",
     role: "AI Solutions Engineer",
     detail:
-      "Designed AI infrastructure and architecture guidance for enterprise teams that needed clear decisions around training, inference, and adoption tradeoffs.",
+      "Worked on cloud and AI-related architecture decisions where teams needed clearer infrastructure, delivery, and adoption tradeoffs.",
   },
   {
     company: "Nordic Global",
     role: "Senior AI Solutions Architect",
     detail:
-      "Delivered applied AI architecture in healthcare environments where technical choices had to respect operational constraints, compatibility, and real-world implementation pressure.",
+      "Delivered architecture work in healthcare environments where technical choices had to respect operational constraints, compatibility, and real implementation pressure.",
   },
 ] as const;
 
@@ -55,9 +55,9 @@ const operatingPrinciples = [
 ] as const;
 
 const fitSignals = [
-  "Teams that need AWS architecture review before building further.",
-  "Founders and operators who want direct AI/ML infrastructure advice without enterprise theater.",
-  "Organizations preparing for readiness, validation, or delivery checkpoints that need stronger structure.",
+  "SMB teams that need AWS architecture review before they spend more money or time.",
+  "Operators who want direct founder guidance without hiring a full MSP or large consultancy.",
+  "Teams preparing for readiness, validation, cost cleanup, or a tightly scoped implementation step.",
 ] as const;
 
 export default function AboutPage() {

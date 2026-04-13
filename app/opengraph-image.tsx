@@ -30,16 +30,16 @@ export default function OpenGraphImage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 900 }}>
           <div style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.05, color: "#101828" }}>
-            AWS architecture, AI/ML advisory, and software that lead to real delivery.
+            Founder-led AWS architecture, validation, and optimization for SMB teams.
           </div>
           <div style={{ fontSize: 28, color: "#475467" }}>
-            Founder-led consulting plus software for teams that need clear next steps.
+            Productized services plus software for teams that need a clear next step.
           </div>
         </div>
         <div style={{ display: "flex", gap: 16, fontSize: 22, color: "#344054" }}>
           <div>Architecture Review</div>
           <div>AWS Readiness</div>
-          <div>Software</div>
+          <div>Cost Audit</div>
         </div>
       </div>
     ),

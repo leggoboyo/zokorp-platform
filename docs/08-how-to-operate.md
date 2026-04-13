@@ -81,6 +81,8 @@
   - apex redirects to the canonical marketing host
   - both public `/api/health` routes return `status: "ok"`
   - the marketing homepage still renders its primary CTA markers
+  - the marketing `/services` page still matches the current founder-led AWS services contract
+  - `https://app.zokorp.com/services` still redirects back to the marketing host
   - the app login route still responds
 - Scheduled automation:
   - `.github/workflows/uptime-checks.yml`
@@ -92,7 +94,22 @@
   - scheduled workflows only run from the default branch
   - GitHub may auto-disable scheduled workflows after 60 days of repository inactivity, so treat the workflow list as part of launch/runbook review
 
-## 2a.4) Sentry activation checklist
+## 2a.4) Low-frequency production smoke contract
+- Workflow:
+  - `.github/workflows/production-smoke-contract.yml`
+- Schedule:
+  - daily, plus manual `workflow_dispatch`
+- What it verifies:
+  - the full split-host smoke contract in `npm run smoke:production`
+  - current `/services` content on `www`
+  - app-host marketing redirects such as `/services`
+  - canonical, robots, and host-split expectations already encoded in the repo contract
+- Operator notes:
+  - this is intentionally lower-frequency than the uptime monitor
+  - it posts the latest smoke summary into the protected internal public-contract audit ingest route so `/admin/operations` can show deployment drift
+  - if this workflow fails on a live `200` page with the expected route but the wrong marker text, treat it as an `undeployed content mismatch`, not a routing regression
+
+## 2a.5) Sentry activation checklist
 - Code support is now present for:
   - server-side error capture
   - edge/runtime request error capture
@@ -115,6 +132,12 @@
   - This provisions or rotates a dedicated non-admin verified audit account in the production database and writes local credentials to `.env.audit.local`.
   - The default audit login is `browser-audit@zokorp-platform.test`, which is intentionally synthetic and only meant for sign-in/browser checks.
   - Extra local overrides already stored in `.env.audit.local` are preserved when the command rotates the audit account.
+  - If Vercel env pull does not expose a production database URL on the operator machine, add `PRODUCTION_DIRECT_DATABASE_URL` or `PRODUCTION_DATABASE_URL` locally before rerunning the setup command.
+- Routine upkeep path:
+  - `.github/workflows/browser-customer-journey-upkeep.yml`
+  - This is the normal low-cost maintenance path for the synthetic browser-audit account and the signed-in browser contract.
+  - It provisions or rotates the audit account inside GitHub Actions using production secrets, runs `npm run journey:audit:production`, uploads Playwright artifacts, and posts the result into the protected internal public-contract audit ingest route.
+  - Use the CLI setup command mainly for workstation recovery, debugging, or one-off manual checks.
 - Command:
   - `npm run journey:audit:production`
 - Preview variant:
@@ -149,6 +172,8 @@
   - non-zero exit code if any checked browser step fails
 - Important:
   - the synthetic audit account is enough for sign-in and protected-page checks
+  - if the audit reports `401` at `/api/auth/callback/credentials`, the local browser-audit credentials are stale or invalid; rerun `npm run journey:setup:production` before treating it as a public-site regression
+  - if the GitHub workflow fails before the browser runs, check whether `PRODUCTION_DIRECT_DATABASE_URL` or `PRODUCTION_DATABASE_URL` is configured in GitHub Actions for the production environment
   - if the marketing host still redirects to `app`, the marketing-browser steps are marked `blocked` instead of `failed`
   - if you later want to verify email delivery end to end, use a real monitored inbox alias instead of the synthetic `.test` account
 
@@ -256,6 +281,22 @@
     - `https://www.zokorp.com`
     - `https://app.zokorp.com`
     - public `/api/health` routes
+- Production smoke contract:
+  - workflow: `.github/workflows/production-smoke-contract.yml`
+  - requires:
+    - `CRON_SECRET`
+  - uses:
+    - `https://app.zokorp.com/api/internal/audit-results/public-contract`
+    - `npm run smoke:production`
+- Browser customer-journey upkeep:
+  - workflow: `.github/workflows/browser-customer-journey-upkeep.yml`
+  - requires:
+    - `CRON_SECRET`
+    - `PRODUCTION_DIRECT_DATABASE_URL` or `PRODUCTION_DATABASE_URL`
+  - uses:
+    - `npm run journey:setup:production` logic inside GitHub Actions
+    - `npm run journey:audit:production`
+    - `https://app.zokorp.com/api/internal/audit-results/public-contract`
 - Operator note:
   - `/admin/operations` is now the first stop for retrying Zoho lead sync, retrying service-request CRM sync, retrying estimate sync, checking booked-call linkage, reviewing quote-follow-up attention, and retrying failed architecture-review email delivery from the outbox.
   - `/admin/operations` now also includes automation-health signals for the architecture queue worker, architecture follow-up sender, retention sweep, Zoho lead sync, service-request CRM sync, and estimate-companion sync so stale or failed scheduled jobs are visible without querying raw logs.

@@ -52,7 +52,10 @@ describe("ServicesPage", () => {
     expect(html).toContain("Signed in as");
     expect(html).toContain("consulting@zokorp.com");
     expect(html).toContain("Initial response within one business day");
-    expect(html).toContain("Visible consulting pricing without pretending every job is identical.");
+    expect(html).toContain("Focused AWS architecture, validation, and optimization services for SMB teams that need a clear next step.");
+    expect(html).toContain("AWS Readiness / FTR Validation");
+    expect(html).toContain("Advisory-first");
+    expect(html).toContain("Lower SLA, faster access, and direct founder involvement.");
     expect(html).toContain("https://app.zokorp.com/register");
     expect(html).not.toContain("Sign in to submit a request and track milestones from your account.");
   });

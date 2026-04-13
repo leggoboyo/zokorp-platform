@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { MARKETING_ROUTE_EXPECTATIONS } from "@/scripts/playwright_audit_contract.mjs";
 import { runUptimeMonitor } from "@/scripts/uptime_monitor.mjs";
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
@@ -21,6 +22,9 @@ function htmlResponse(body = "<html><body>ok</body></html>", init?: ResponseInit
 }
 
 describe("uptime monitor", () => {
+  const servicesMarker =
+    MARKETING_ROUTE_EXPECTATIONS.find((item) => item.path === "/services")?.marker ?? "Architecture Review";
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -44,6 +48,19 @@ describe("uptime monitor", () => {
           return htmlResponse(
             "<html><body>Account access and software live here. Company browsing and services stay on</body></html>",
           );
+        }
+
+        if (url === "https://www.zokorp.com/services") {
+          return htmlResponse(`<html><body>${servicesMarker}</body></html>`);
+        }
+
+        if (url === "https://app.zokorp.com/services") {
+          return new Response(null, {
+            status: 308,
+            headers: {
+              location: "https://www.zokorp.com/services",
+            },
+          });
         }
 
         if (url === "https://www.zokorp.com/api/health") {
@@ -73,7 +90,7 @@ describe("uptime monitor", () => {
     const summary = await runUptimeMonitor();
 
     expect(summary.totals.fail).toBe(0);
-    expect(summary.totals.pass).toBe(6);
+    expect(summary.totals.pass).toBe(8);
   });
 
   it("fails when the app root no longer renders the landing page marker", async () => {
@@ -93,6 +110,19 @@ describe("uptime monitor", () => {
 
         if (url === "https://app.zokorp.com") {
           return htmlResponse("<html><body>wrong app shell</body></html>");
+        }
+
+        if (url === "https://www.zokorp.com/services") {
+          return htmlResponse(`<html><body>${servicesMarker}</body></html>`);
+        }
+
+        if (url === "https://app.zokorp.com/services") {
+          return new Response(null, {
+            status: 308,
+            headers: {
+              location: "https://www.zokorp.com/services",
+            },
+          });
         }
 
         if (url.endsWith("/api/health")) {
@@ -135,6 +165,19 @@ describe("uptime monitor", () => {
           return htmlResponse(
             "<html><body>Account access and software live here. Company browsing and services stay on</body></html>",
           );
+        }
+
+        if (url === "https://www.zokorp.com/services") {
+          return htmlResponse(`<html><body>${servicesMarker}</body></html>`);
+        }
+
+        if (url === "https://app.zokorp.com/services") {
+          return new Response(null, {
+            status: 308,
+            headers: {
+              location: "https://www.zokorp.com/services",
+            },
+          });
         }
 
         if (url === "https://www.zokorp.com/api/health") {
@@ -182,7 +225,7 @@ describe("uptime monitor", () => {
     const summary = await runUptimeMonitor();
 
     expect(summary.totals.pass).toBe(0);
-    expect(summary.totals.fail).toBe(6);
+    expect(summary.totals.fail).toBe(8);
     expect(summary.results.every((item) => item.ok === false)).toBe(true);
   });
 });

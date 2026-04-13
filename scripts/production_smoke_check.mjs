@@ -25,6 +25,7 @@ import {
   shouldUseCompatibilityBaseUrl,
   toAbsoluteUrl,
 } from "./playwright_audit_support.mjs";
+import { classifyAuditSummary, postAuditSummaryIfConfigured } from "./public_contract_audit_support.mjs";
 import { pathToFileURL } from "node:url";
 
 const controlHosts = ["http://example.com", "https://vercel.com"];
@@ -544,13 +545,16 @@ function printHumanReport(summary) {
   console.log("");
   if (summary.outcome === "pass") {
     console.log("Outcome: PASS");
+    console.log(`Classification: ${summary.classification.label.toUpperCase()}`);
     return;
   }
   if (summary.outcome === "blocked") {
     console.log("Outcome: BLOCKED");
+    console.log(`Classification: ${summary.classification.label.toUpperCase()}`);
     return;
   }
   console.log("Outcome: FAIL");
+  console.log(`Classification: ${summary.classification.label.toUpperCase()}`);
 }
 
 export async function runProductionSmokeCheck(options = {}) {
@@ -851,6 +855,16 @@ export async function runProductionSmokeCheck(options = {}) {
     ? "blocked"
     : outcomeFromSteps(steps);
 
+  const classification = classifyAuditSummary({
+    steps,
+    outcome,
+    baseUrls: {
+      apex: apexBaseUrl || null,
+      marketing: marketingBaseUrl,
+      app: appBaseUrl,
+    },
+  });
+
   return {
     checkedAt: new Date().toISOString(),
     baseUrls: {
@@ -862,11 +876,16 @@ export async function runProductionSmokeCheck(options = {}) {
     steps,
     controlHosts: controlResults,
     outcome,
+    classification,
   };
 }
 
 async function main() {
   const summary = await runProductionSmokeCheck();
+  const ingest = await postAuditSummaryIfConfigured(summary, "production_smoke_check");
+  if (ingest) {
+    summary.ingest = ingest;
+  }
   printHumanReport(summary);
   console.log("");
   console.log("JSON summary:");

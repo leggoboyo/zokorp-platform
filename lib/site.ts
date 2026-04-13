@@ -12,9 +12,9 @@ export const siteConfig = {
   appUrl: process.env.APP_SITE_URL ?? DEFAULT_APP_SITE_URL,
   legacySiteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? process.env.APP_SITE_URL ?? DEFAULT_APP_SITE_URL,
   description:
-    "Founder-led AWS architecture, AI/ML advisory, and software for teams that need practical delivery.",
+    "Founder-led AWS architecture, validation, and optimization for SMB teams that need a clear next step.",
   platformDescription:
-    "ZoKorp combines AWS AI delivery, account-linked software, and practical validation workflows in one customer platform.",
+    "ZoKorp combines account-linked software, AWS validation workflows, and practical founder-led follow-through in one customer platform.",
   supportEmail: PUBLIC_LAUNCH_CONTACT.primaryEmail,
   location: PUBLIC_LAUNCH_CONTACT.location,
   linkedInUrl: PUBLIC_LAUNCH_CONTACT.linkedInUrl,

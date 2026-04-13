@@ -6,8 +6,8 @@ export const apexBaseUrl = process.env.JOURNEY_APEX_BASE_URL ?? "https://zokorp.
 export const mutationMode = (process.env.E2E_MUTATION_MODE ?? "readonly").toLowerCase();
 
 export const requiredMarketingRoutes = [
-  { path: "/", heading: "AWS architecture review, remediation, and software for teams that need a credible next step." },
-  { path: "/services", heading: "Architecture review first. Remediation, readiness, and implementation when the next step is real." },
+  { path: "/", heading: "AWS architecture, validation, and optimization for SMB teams that need a clear next step." },
+  { path: "/services", heading: "Focused AWS architecture, validation, and optimization services for SMB teams that need a clear next step." },
   { path: "/about", heading: "Built by a technical founder who has spent time inside AWS, Microsoft, and real delivery work." },
   { path: "/contact", heading: "Start the right conversation without getting pushed into signup first." },
   { path: "/pricing", heading: "Public price anchors for consulting, and straightforward pricing for the software that is ready." },
@@ -45,11 +45,11 @@ function inferLocalCanonicalBaseUrl(baseUrl: string, subdomain: "www" | "app") {
 
 export const expectedMarketingCanonicalBaseUrl =
   process.env.JOURNEY_EXPECTED_MARKETING_CANONICAL_BASE_URL ??
-  inferLocalCanonicalBaseUrl(marketingBaseUrl, "www") ??
+  (singleOriginMode ? null : inferLocalCanonicalBaseUrl(marketingBaseUrl, "www")) ??
   "https://www.zokorp.com";
 export const expectedAppCanonicalBaseUrl =
   process.env.JOURNEY_EXPECTED_APP_CANONICAL_BASE_URL ??
-  inferLocalCanonicalBaseUrl(appBaseUrl, "app") ??
+  (singleOriginMode ? null : inferLocalCanonicalBaseUrl(appBaseUrl, "app")) ??
   "https://app.zokorp.com";
 
 export function buildUrl(baseUrl: string, path: string) {
@@ -117,7 +117,11 @@ export function attachPageDiagnostics(page: Page) {
 
   page.on("requestfailed", (request) => {
     const failureText = request.failure()?.errorText ?? "unknown";
-    if (failureText === "net::ERR_ABORTED") {
+    const isSpeedInsightsDebugScript =
+      failureText === "net::ERR_BLOCKED_BY_ORB" &&
+      request.url().includes("va.vercel-scripts.com/v1/speed-insights/script.debug.js");
+
+    if (failureText === "net::ERR_ABORTED" || isSpeedInsightsDebugScript) {
       return;
     }
 

@@ -1,7 +1,11 @@
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminStatusOverview } from "@/components/admin/admin-status-overview";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { getAdminBillingSnapshot } from "@/lib/admin-billing";
+import { buildAdminOverview } from "@/lib/admin-overview";
+import { getAdminOperationsSnapshot } from "@/lib/admin-operations";
 import { requireAdminPageAccess } from "@/lib/admin-page-access";
 import { buildRuntimeReadinessReport, type ReadinessLevel } from "@/lib/runtime-readiness";
 
@@ -31,10 +35,31 @@ function tone(level: ReadinessLevel) {
   return "warning" as const;
 }
 
+function displayLevel(level: ReadinessLevel) {
+  if (level === "pass") {
+    return "configured";
+  }
+
+  if (level === "fail") {
+    return "failing";
+  }
+
+  return "warning";
+}
+
 export default async function AdminReadinessPage() {
   await requireAdminPageAccess("/admin/readiness");
 
   const report = buildRuntimeReadinessReport();
+  const [operationsSnapshot, billingSnapshot] = await Promise.all([
+    getAdminOperationsSnapshot(),
+    getAdminBillingSnapshot(),
+  ]);
+  const overviewItems = buildAdminOverview({
+    readinessReport: report,
+    operationsSnapshot,
+    billingSnapshot,
+  });
 
   return (
     <div className="space-y-6">
@@ -51,6 +76,8 @@ export default async function AdminReadinessPage() {
           <AdminNav current="readiness" />
         </CardHeader>
       </Card>
+
+      <AdminStatusOverview items={overviewItems} />
 
       <section className="grid gap-3 md:grid-cols-3">
         {[
@@ -95,7 +122,7 @@ export default async function AdminReadinessPage() {
                 <Alert key={check.id} tone={tone(check.level)}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <AlertTitle className="mb-0">{check.label}</AlertTitle>
-                    <Badge variant={badgeVariant(check.level)}>{check.level}</Badge>
+                    <Badge variant={badgeVariant(check.level)}>{displayLevel(check.level)}</Badge>
                   </div>
                   <AlertDescription>{check.summary}</AlertDescription>
                   {check.details && check.details.length > 0 ? (

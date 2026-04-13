@@ -1,5 +1,5 @@
-import { AccessModel, EntitlementStatus } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AccessModel, EntitlementStatus, PriceKind } from "@prisma/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   checkoutFulfillmentFindManyMock,
@@ -8,6 +8,7 @@ const {
   creditBalanceFindManyMock,
   creditLedgerEntryFindManyMock,
   stripeWebhookEventFindManyMock,
+  productFindManyMock,
   dbMock,
 } = vi.hoisted(() => {
   const checkoutFulfillmentFindManyMock = vi.fn();
@@ -16,6 +17,7 @@ const {
   const creditBalanceFindManyMock = vi.fn();
   const creditLedgerEntryFindManyMock = vi.fn();
   const stripeWebhookEventFindManyMock = vi.fn();
+  const productFindManyMock = vi.fn();
 
   return {
     checkoutFulfillmentFindManyMock,
@@ -24,6 +26,7 @@ const {
     creditBalanceFindManyMock,
     creditLedgerEntryFindManyMock,
     stripeWebhookEventFindManyMock,
+    productFindManyMock,
     dbMock: {
       checkoutFulfillment: {
         findMany: checkoutFulfillmentFindManyMock,
@@ -43,6 +46,9 @@ const {
       stripeWebhookEvent: {
         findMany: stripeWebhookEventFindManyMock,
       },
+      product: {
+        findMany: productFindManyMock,
+      },
     } as {
       checkoutFulfillment: { findMany: typeof checkoutFulfillmentFindManyMock };
       auditLog: { findMany: typeof auditLogFindManyMock };
@@ -50,6 +56,7 @@ const {
       creditBalance: { findMany: typeof creditBalanceFindManyMock };
       creditLedgerEntry: { findMany: typeof creditLedgerEntryFindManyMock };
       stripeWebhookEvent?: { findMany: typeof stripeWebhookEventFindManyMock };
+      product: { findMany: typeof productFindManyMock };
     },
   };
 });
@@ -60,12 +67,25 @@ vi.mock("@/lib/db", () => ({
 
 import { getAdminBillingSnapshot } from "@/lib/admin-billing";
 
+const originalSubscriptionApproval = process.env.PUBLIC_SUBSCRIPTION_PRICING_APPROVED;
+const originalFtrPriceId = process.env.STRIPE_PRICE_ID_FTR_SINGLE;
+const originalSdpSrpPriceId = process.env.STRIPE_PRICE_ID_SDP_SRP_SINGLE;
+const originalCompetencyPriceId = process.env.STRIPE_PRICE_ID_COMPETENCY_REVIEW;
+const originalPlatformMonthlyPriceId = process.env.STRIPE_PRICE_ID_PLATFORM_MONTHLY;
+const originalPlatformAnnualPriceId = process.env.STRIPE_PRICE_ID_PLATFORM_ANNUAL;
+
 describe("admin billing snapshot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMock.stripeWebhookEvent = {
       findMany: stripeWebhookEventFindManyMock,
     };
+    process.env.PUBLIC_SUBSCRIPTION_PRICING_APPROVED = "false";
+    delete process.env.STRIPE_PRICE_ID_FTR_SINGLE;
+    delete process.env.STRIPE_PRICE_ID_SDP_SRP_SINGLE;
+    delete process.env.STRIPE_PRICE_ID_COMPETENCY_REVIEW;
+    delete process.env.STRIPE_PRICE_ID_PLATFORM_MONTHLY;
+    delete process.env.STRIPE_PRICE_ID_PLATFORM_ANNUAL;
 
     checkoutFulfillmentFindManyMock.mockResolvedValue([
       {
@@ -183,6 +203,77 @@ describe("admin billing snapshot", () => {
         updatedAt: new Date("2026-04-04T21:00:01.000Z"),
       },
     ]);
+
+    productFindManyMock.mockResolvedValue([
+      {
+        id: "product_credit_1",
+        slug: "zokorp-validator",
+        name: "ZoKorp Validator",
+        active: true,
+        accessModel: AccessModel.ONE_TIME_CREDIT,
+        prices: [
+          {
+            id: "price_credit_1",
+            stripePriceId: "price_validatorliveftr123",
+            active: true,
+            kind: PriceKind.CREDIT_PACK,
+          },
+        ],
+      },
+      {
+        id: "product_sub_1",
+        slug: "mlops-foundation-platform",
+        name: "Forecasting Beta",
+        active: true,
+        accessModel: AccessModel.SUBSCRIPTION,
+        prices: [
+          {
+            id: "price_sub_1",
+            stripePriceId: "price_forecastinglivemonthly123",
+            active: true,
+            kind: PriceKind.SUBSCRIPTION,
+          },
+        ],
+      },
+    ]);
+  });
+
+  afterEach(() => {
+    if (originalSubscriptionApproval === undefined) {
+      delete process.env.PUBLIC_SUBSCRIPTION_PRICING_APPROVED;
+    } else {
+      process.env.PUBLIC_SUBSCRIPTION_PRICING_APPROVED = originalSubscriptionApproval;
+    }
+
+    if (originalFtrPriceId === undefined) {
+      delete process.env.STRIPE_PRICE_ID_FTR_SINGLE;
+    } else {
+      process.env.STRIPE_PRICE_ID_FTR_SINGLE = originalFtrPriceId;
+    }
+
+    if (originalSdpSrpPriceId === undefined) {
+      delete process.env.STRIPE_PRICE_ID_SDP_SRP_SINGLE;
+    } else {
+      process.env.STRIPE_PRICE_ID_SDP_SRP_SINGLE = originalSdpSrpPriceId;
+    }
+
+    if (originalCompetencyPriceId === undefined) {
+      delete process.env.STRIPE_PRICE_ID_COMPETENCY_REVIEW;
+    } else {
+      process.env.STRIPE_PRICE_ID_COMPETENCY_REVIEW = originalCompetencyPriceId;
+    }
+
+    if (originalPlatformMonthlyPriceId === undefined) {
+      delete process.env.STRIPE_PRICE_ID_PLATFORM_MONTHLY;
+    } else {
+      process.env.STRIPE_PRICE_ID_PLATFORM_MONTHLY = originalPlatformMonthlyPriceId;
+    }
+
+    if (originalPlatformAnnualPriceId === undefined) {
+      delete process.env.STRIPE_PRICE_ID_PLATFORM_ANNUAL;
+    } else {
+      process.env.STRIPE_PRICE_ID_PLATFORM_ANNUAL = originalPlatformAnnualPriceId;
+    }
   });
 
   it("surfaces webhook history and billing integrity issues together", async () => {
@@ -200,8 +291,8 @@ describe("admin billing snapshot", () => {
       summary: "cs_test_123 · cus_123",
     });
     expect(snapshot.integritySignals.map((entry) => entry.title)).toEqual([
-      "Stripe customer binding missing",
       "Subscription linkage missing",
+      "Stripe customer binding missing",
       "Credit balance mismatch",
     ]);
   });

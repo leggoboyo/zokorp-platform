@@ -1,0 +1,63 @@
+name: Production Smoke Contract
+
+on:
+  schedule:
+    - cron: "17 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-smoke-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: production smoke contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run production smoke contract
+        id: smoke
+        continue-on-error: true
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          AUDIT_RESULTS_INGEST_URL: https://app.zokorp.com/api/internal/audit-results/public-contract
+          AUDIT_RESULTS_INGEST_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/production_smoke_check.mjs | tee production-smoke.log
+
+      - name: Append workflow summary
+        if: always()
+        run: |
+          {
+            echo "## Production smoke contract"
+            echo ""
+            echo '```text'
+            tail -n 120 production-smoke.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-smoke-contract-log
+          path: production-smoke.log
+          if-no-files-found: ignore
+
+      - name: Fail when smoke did not pass
+        if: steps.smoke.outcome != 'success'
+        run: exit 1

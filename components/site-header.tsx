@@ -33,7 +33,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 isolate border-b border-[rgb(var(--z-border)/0.45)] bg-[rgba(248,246,242,0.92)] backdrop-blur-xl">
       <div className="border-b border-[rgb(var(--z-border)/0.35)] bg-[rgb(var(--z-bg))] px-4 py-2 text-center text-xs tracking-[0.12em] text-[rgb(var(--z-text))]">
-        Founder-led AWS architecture, AI/ML advisory, and software delivery.
+        Founder-led AWS architecture, validation, optimization, and software delivery.
       </div>
 
       <div className="mx-auto w-full max-w-7xl px-4 py-4 md:px-6">
@@ -52,7 +52,7 @@ export function SiteHeader() {
             </span>
             <span className="min-w-0">
               <span className="hidden text-xs uppercase tracking-[0.18em] text-[rgb(var(--z-ink-soft))] lg:block">
-                Architecture-first consulting and software
+                Architecture-first AWS consulting and software
               </span>
             </span>
           </Link>

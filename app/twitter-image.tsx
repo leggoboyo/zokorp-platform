@@ -26,10 +26,10 @@ export default function TwitterImage() {
         <div style={{ fontSize: 32, letterSpacing: 2, textTransform: "uppercase", opacity: 0.82 }}>ZoKorp</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 900 }}>
           <div style={{ fontSize: 66, fontWeight: 700, lineHeight: 1.06 }}>
-            Founder-led AWS architecture and AI/ML delivery.
+            Founder-led AWS architecture, validation, and optimization.
           </div>
           <div style={{ fontSize: 28, opacity: 0.88 }}>
-            Strategy, remediation, readiness, and software without generic startup theater.
+            Review, readiness, cost cleanup, and software without generic agency theater.
           </div>
         </div>
         <div style={{ fontSize: 22, opacity: 0.92 }}>www.zokorp.com</div>

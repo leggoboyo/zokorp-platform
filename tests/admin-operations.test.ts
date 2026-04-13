@@ -182,7 +182,7 @@ describe("admin operations snapshot", () => {
 
     expect(snapshot.stats.automationAttention).toBe(2);
     expect(snapshot.automationHealthSignals.map((entry) => [entry.title, entry.statusLabel])).toEqual([
-      ["Zoho lead sync", "failed"],
+      ["Zoho lead sync", "failing"],
       ["Architecture follow-ups", "stale"],
       ["Architecture queue worker", "healthy"],
       ["Service-request CRM sync", "healthy"],
@@ -205,6 +205,32 @@ describe("admin operations snapshot", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "smoke_ok",
+          action: "internal.production_smoke_audit.run",
+          createdAt: new Date("2026-04-04T22:05:00.000Z"),
+          metadataJson: {
+            classificationKind: "healthy",
+            classificationLabel: "healthy",
+            classificationDetail: "All checks passed.",
+            failingStepLabels: [],
+            outcome: "pass",
+          },
+        },
+        {
+          id: "journey_ok",
+          action: "internal.browser_customer_journey_audit.run",
+          createdAt: new Date("2026-04-04T22:04:00.000Z"),
+          metadataJson: {
+            classificationKind: "healthy",
+            classificationLabel: "healthy",
+            classificationDetail: "All checks passed.",
+            failingStepLabels: [],
+            outcome: "pass",
+          },
+        },
+      ])
       .mockResolvedValueOnce([
         {
           id: "internal_failure_1",
@@ -250,6 +276,7 @@ describe("admin operations snapshot", () => {
       summary: "script-src · https://example.com/script.js · https://www.zokorp.com/",
       href: "/admin/readiness",
     });
+    expect(snapshot.stats.publicContractAttention).toBe(0);
   });
 
   it("includes service-request CRM sync items in CRM attention", async () => {
@@ -286,5 +313,53 @@ describe("admin operations snapshot", () => {
       href: "/admin/service-requests",
     });
     expect(snapshot.crmSyncIssues[0].summary).toContain("SR-260409-ABCDE");
+  });
+
+  it("maps undeployed public content drift to a stale operator signal", async () => {
+    estimateCompanionFindManyMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    auditLogFindManyMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "smoke_stale",
+          action: "internal.production_smoke_audit.run",
+          createdAt: new Date("2026-04-04T22:10:00.000Z"),
+          metadataJson: {
+            classificationKind: "undeployed content mismatch",
+            classificationLabel: "undeployed content mismatch",
+            classificationDetail: "Live production still serves older services copy.",
+            failingStepLabels: ["Marketing page: Services"],
+            outcome: "fail",
+          },
+        },
+        {
+          id: "journey_healthy",
+          action: "internal.browser_customer_journey_audit.run",
+          createdAt: new Date("2026-04-04T21:45:00.000Z"),
+          metadataJson: {
+            classificationKind: "healthy",
+            classificationLabel: "healthy",
+            classificationDetail: "All checks passed.",
+            failingStepLabels: [],
+            outcome: "pass",
+          },
+        },
+      ]);
+
+    const snapshot = await getAdminOperationsSnapshot();
+
+    expect(snapshot.stats.publicContractAttention).toBe(1);
+    expect(snapshot.publicContractSignals[0]).toMatchObject({
+      title: "Production smoke contract",
+      statusLabel: "stale",
+      statusTone: "warning",
+      href: "/admin/readiness",
+    });
+    expect(snapshot.publicContractSignals[0].details).toContain("Classification undeployed content mismatch");
+    expect(snapshot.publicContractSignals[0].details).toContain("Marketing page: Services");
   });
 });
