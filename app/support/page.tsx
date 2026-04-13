@@ -16,34 +16,34 @@ export const metadata = buildMarketingPageMetadata({
 const supportTopics = [
   {
     title: "Account access",
-    detail: "Use support for sign-in issues, verification problems, or account access questions.",
+    detail: "Sign-in, verification, or account access questions.",
   },
   {
     title: "Billing",
-    detail: "Use support for checkout issues, invoice questions, or subscription management follow-up.",
+    detail: "Checkout issues, invoices, or subscription follow-up.",
   },
   {
     title: "Tool usage",
-    detail: "Use support for upload problems, entitlement questions, result-delivery issues, or unexpected product behavior.",
+    detail: "Upload problems, entitlement questions, result delivery, or unexpected behavior.",
   },
   {
     title: "Security concerns",
-    detail: "Use support immediately for suspected account compromise or unexpected access behavior.",
+    detail: "Suspected account compromise or unexpected access behavior.",
   },
 ];
 
 const supportPaths = [
   {
     title: "Use support when",
-    detail: "You need help with sign-in, billing context, result delivery, entitlements, or an unexpected platform problem.",
+    detail: "You need help with sign-in, billing, delivery, entitlements, or an unexpected platform problem.",
   },
   {
     title: "Use booking when",
-    detail: "You want to discuss architecture-review follow-up, scoped consulting, or a service request that needs a real conversation.",
+    detail: "You need a real conversation about follow-up or scoped consulting.",
   },
   {
     title: "Use services/contact when",
-    detail: "You are starting a new engagement and want ZoKorp to triage the request before any paid scope is accepted.",
+    detail: "You are starting a new engagement.",
   },
 ] as const;
 
@@ -61,33 +61,61 @@ export default function SupportPage() {
   });
 
   return (
-    <div className="space-y-8">
-      <section className="hero-surface animate-fade-up px-6 py-9 text-white md:px-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-200">Support</p>
-        <h1 className="font-display mt-2 text-balance text-4xl font-semibold">Support lives with the platform</h1>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-100 md:text-base">
-          ZoKorp support covers account access, billing context, and software usage questions tied to the app.
-        </p>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200">
-          This is a founder-led software and consulting support path, not a 24/7 managed operations desk.
-        </p>
+    <div className="marketing-stack">
+      <section className="hero-bleed hero-poster py-10 md:py-12 lg:py-16">
+        <div className="marketing-container px-4 md:px-6 xl:px-8">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
+            <div className="space-y-5">
+              <p className="enterprise-kicker">Support</p>
+              <h1 className="font-display max-w-[10ch] text-balance text-[3.1rem] font-semibold leading-[0.92] tracking-[-0.05em] text-card-foreground md:text-[5rem] lg:text-[6rem]">
+                Platform support.
+              </h1>
+              <p className="max-w-[34ch] text-base leading-7 text-muted-foreground">
+                Account access, billing, and software usage support tied to the app.
+              </p>
+            </div>
+
+            <section className="plane-dark rounded-[2.2rem] border border-white/8 px-6 py-6 md:px-7">
+              <div className="space-y-3">
+                <p className="enterprise-kicker text-white/72">Support posture</p>
+                <div className="grid gap-3">
+                  <div className="border-t border-white/12 pt-3 text-sm leading-7 text-white/78">
+                    {PUBLIC_LAUNCH_CONTACT.responseWindowLabel}
+                  </div>
+                  <div className="border-t border-white/12 pt-3 text-sm leading-7 text-white/78">
+                    Founder-led support path.
+                  </div>
+                  <div className="border-t border-white/12 pt-3 text-sm leading-7 text-white/78">
+                    This is not a 24/7 managed operations desk.
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        {supportTopics.map((topic) => (
-          <article key={topic.title} className="surface lift-card rounded-2xl p-6">
-            <h2 className="font-display text-2xl font-semibold text-slate-900">{topic.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{topic.detail}</p>
+      <section className="section-band px-5 py-5 md:px-6">
+        {supportTopics.map((topic, index) => (
+          <article
+            key={topic.title}
+            className="grid gap-5 border-t border-border/80 py-5 first:border-t-0 first:pt-0 lg:grid-cols-[auto_minmax(0,0.46fr)_minmax(0,1fr)] lg:items-start"
+          >
+            <div className="hidden lg:block lg:pt-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label">{`0${index + 1}`}</p>
+            </div>
+            <h2 className="font-display text-[2rem] font-semibold leading-[1.02] text-card-foreground">{topic.title}</h2>
+            <p className="max-w-[36ch] text-sm leading-7 text-muted-foreground">{topic.detail}</p>
           </article>
         ))}
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="section-band px-5 py-5 md:px-6">
         {supportPaths.map((path) => (
-          <Card key={path.title} className="rounded-2xl p-5">
-            <h2 className="font-display text-xl font-semibold text-slate-900">{path.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{path.detail}</p>
-          </Card>
+          <article key={path.title} className="grid gap-3 border-t border-border/80 py-5 first:border-t-0 first:pt-0 md:grid-cols-[minmax(0,0.42fr)_minmax(0,1fr)]">
+            <h2 className="font-display text-xl font-semibold text-card-foreground">{path.title}</h2>
+            <p className="text-sm leading-7 text-muted-foreground">{path.detail}</p>
+          </article>
         ))}
       </section>
 
@@ -95,9 +123,7 @@ export default function SupportPage() {
         <h2 className="font-display text-2xl font-semibold text-slate-900">How to contact support</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           Email <span className="font-medium text-slate-900">{PUBLIC_LAUNCH_CONTACT.primaryEmail}</span> with the product name,
-          your account email, and a short description of the issue. For billing issues, include the product and
-          purchase context. For security issues, mark the subject line as urgent. For Architecture Reviewer or Validator follow-up, include the estimate reference if one was generated.
-          {" "}{PUBLIC_LAUNCH_CONTACT.responseWindowLabel}.
+          your account email, and a short description of the issue. {PUBLIC_LAUNCH_CONTACT.responseWindowLabel}.
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {SOFT_LAUNCH_RESPONSE_WINDOWS.map((item) => (

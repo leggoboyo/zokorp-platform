@@ -28,9 +28,9 @@ const trustLinks = [
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.66),rgba(243,247,251,0.92))]">
-      <div className="marketing-container px-4 py-14 md:px-6 xl:px-8">
-        <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
-          <section className="space-y-5 lg:col-span-5">
+      <div className="marketing-container px-4 py-12 md:px-6 xl:px-8">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.6fr))] lg:gap-8">
+          <section className="space-y-4">
             <Image
               src={PUBLIC_LAUNCH_FOUNDER_PROFILE.logoPath}
               alt="ZoKorp"
@@ -39,8 +39,8 @@ export function SiteFooter() {
               className="h-10 w-auto"
               sizes="128px"
             />
-            <p className="measure-copy text-sm leading-7 text-muted-foreground">
-              Founder-led AWS architecture, validation, and follow-through for SMB teams that need clear scope before work starts.
+            <p className="measure-copy text-sm leading-6 text-muted-foreground">
+              AWS reviews, validation, and scoped follow-through.
             </p>
             <div className="flex flex-wrap gap-2.5">
               <span className="metric-chip">{PUBLIC_LAUNCH_CONTACT.location}</span>
@@ -57,7 +57,7 @@ export function SiteFooter() {
             </div>
           </section>
 
-          <section className="space-y-3 lg:col-span-2 lg:col-start-7">
+          <section className="space-y-3">
             <p className="enterprise-kicker">Offerings</p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               {platformLinks.map((link) => (
@@ -70,7 +70,7 @@ export function SiteFooter() {
             </ul>
           </section>
 
-          <section className="space-y-3 lg:col-span-2">
+          <section className="space-y-3">
             <p className="enterprise-kicker">Company</p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               {companyLinks.map((link) => (
@@ -83,8 +83,8 @@ export function SiteFooter() {
             </ul>
           </section>
 
-          <section className="space-y-3 lg:col-span-3">
-            <p className="enterprise-kicker">Trust and Support</p>
+          <section className="space-y-3">
+            <p className="enterprise-kicker">Legal</p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               {trustLinks.map((link) => (
                 <li key={link.href}>

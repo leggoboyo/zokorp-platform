@@ -223,52 +223,52 @@ function buildToolEngagementGuide(input: {
 }) {
   if (input.isArchitectureReviewer) {
     return {
-      title: "How review, delivery, and follow-through connect",
+      title: "How it fits",
       deliveryTitle: "Results stay tied to a verified account",
       deliveryDescription:
-        "Standard runs deliver the consulting-style report to the signed-in verified business email. Privacy mode keeps the source files in the browser first and only requests sanitized delivery when you ask for it.",
+        "Standard runs send the report to the signed-in verified business email. Privacy mode keeps files local first.",
       deliveryDetail:
-        "Use the sample report to review the output shape before you upload your own diagram. The verification gate stays in place so detailed results are not sent to unverified inboxes.",
+        "Use the sample report first. Detailed results do not go to unverified inboxes.",
       serviceDescription:
-        "Use this as the entry point for architecture work. If the review shows a clear next step, move into a scoped remediation sprint or a small advisory engagement instead of an open-ended implementation promise.",
+        "Use this as the entry point. If the review shows a clear next step, move into scoped remediation or advisory.",
     };
   }
 
   if (input.isValidator) {
     return {
-      title: "How validator runs turn into real delivery work",
-      deliveryTitle: "Validation results stay visible and account-linked",
+      title: "How it fits",
+      deliveryTitle: "Validation results stay account-linked",
       deliveryDescription:
-        "Validator runs return their report on screen immediately, attempt email delivery when platform email is configured, and keep the output tied to the same account that used the credit.",
+        "Validator runs return results on screen and keep the output tied to the account that used the credit.",
       deliveryDetail:
-        "The public launch stays FTR-first. Deeper validation tracks remain gated until their rulepacks and customer-facing output meet the same bar.",
+        "Public launch stays FTR-first. Deeper tracks stay gated.",
       serviceDescription:
-        "Use validator findings to decide whether you need a fixed-scope readiness package, a follow-up architecture review, or a small implementation task. This tool should narrow the work, not create vague consulting scope.",
+        "Use findings to decide whether you need readiness work, a review, or a small implementation task.",
     };
   }
 
   if (input.isMLOpsPlatform) {
     return {
-      title: "How the forecasting beta fits the suite",
-      deliveryTitle: "Forecasts are browser-first and history-linked",
+      title: "How it fits",
+      deliveryTitle: "Forecasts are browser-first",
       deliveryDescription:
-        "Forecasting beta runs return their result in-browser first and log the run to account activity. This tool does not promise managed operations or email-delivered advisory output.",
+        "Forecasting beta runs return results in-browser first and log the run to account history.",
       deliveryDetail:
-        "Use the live workspace for repeat runs and account history, then move into a scoped advisory engagement only if the forecast exposes a deeper AWS architecture or planning need.",
+        "Use the workspace for repeat runs, then move to advisory only if a deeper question appears.",
       serviceDescription:
-        "This remains a narrow beta. If the result shows a real infrastructure, data, or optimization question, move into a bounded advisory or implementation scope instead of treating the beta as a full platform engagement.",
+        "This stays a narrow beta. Move to advisory only when the result exposes a real infrastructure or planning question.",
     };
   }
 
   return {
-    title: "How this tool fits the ZoKorp suite",
-    deliveryTitle: "Account-linked access and delivery",
+    title: "How it fits",
+    deliveryTitle: "Account-linked access",
     deliveryDescription:
-      "This product keeps access, history, and customer follow-through tied to the same account so operational support stays explainable.",
+      "This product keeps access, history, and follow-through tied to the same account.",
     deliveryDetail:
-      "Use account-linked access for the software path, then move into a scoped services engagement only when the work is concrete enough to estimate cleanly.",
+      "Use the software path first, then move into services only when the work is concrete enough to estimate.",
     serviceDescription:
-      "ZoKorp uses software to narrow the work, then sells human delivery only when the next step is clear and bounded.",
+      "ZoKorp uses software to narrow the work before selling human delivery.",
   };
 }
 
@@ -526,9 +526,9 @@ export default async function SoftwareDetailPage({
     <section className="space-y-4">
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Access Options</p>
-        <h2 className="font-display text-3xl font-semibold text-slate-900">Pricing and entitlement path</h2>
+        <h2 className="font-display text-3xl font-semibold text-slate-900">Pricing</h2>
         <p className="max-w-3xl text-sm leading-6 text-slate-600 md:text-base">
-          Choose the entitlement model for this tool, then launch it under the same account.
+          Pick access, then run it.
         </p>
       </div>
 
@@ -540,7 +540,7 @@ export default async function SoftwareDetailPage({
           </CardHeader>
           <CardContent>
             <p className="max-w-2xl text-sm leading-6 text-slate-600">
-              This product is still in pilot positioning. Public checkout is intentionally hidden until pricing, refund posture, and tax handling are approved for launch.
+              This product is still in pilot positioning. Public checkout stays hidden until launch terms are approved.
             </p>
           </CardContent>
           <CardFooter>
@@ -568,7 +568,7 @@ export default async function SoftwareDetailPage({
                 <p className="text-sm leading-6 text-slate-600">
                   {price.kind === PriceKind.CREDIT_PACK
                     ? `Runs per purchase: ${price.creditsGranted}`
-                    : "Billed through Stripe checkout"}
+                    : "Stripe checkout"}
                 </p>
                 {product.slug === "zokorp-validator" && price.kind === PriceKind.CREDIT_PACK ? (
                   <p className="text-xs text-slate-500">
@@ -602,8 +602,8 @@ export default async function SoftwareDetailPage({
           <CardContent>
             <p className="max-w-2xl text-sm leading-6 text-slate-600">
               {product.accessModel === AccessModel.FREE
-                ? "No purchase is required for this product. Sign in when you want usage history and account-linked access management."
-                : "Pricing for this software item is being finalized. Once Stripe prices are mapped, checkout will appear here automatically."}
+                ? "No purchase required. Sign in when you want history and account-linked access."
+                : "Pricing for this software item is still being finalized."}
             </p>
           </CardContent>
           <CardFooter>
@@ -695,8 +695,8 @@ export default async function SoftwareDetailPage({
       bodyDescription={
         !isValidator && !isArchitectureReviewer && !isMLOpsPlatform
           ? product.accessModel === AccessModel.FREE
-            ? "This product is free to use today and can later connect to account-linked history and access controls."
-            : "This product is configured for account-based access. Sign in, purchase access, then launch it from your account context."
+            ? "This product is free to use today."
+            : "This product uses account-based access."
           : undefined
       }
       secondary={secondarySection}
@@ -737,8 +737,8 @@ export default async function SoftwareDetailPage({
           <CardContent>
             <p className="text-sm leading-6 text-slate-600">
               {product.accessModel === AccessModel.FREE
-                ? "This product is free. Sign in to keep usage history and access updates as the feature set expands."
-                : "This product is configured for account-based access. Sign in, purchase access, then launch it from your account context."}
+                ? "This product is free. Sign in to keep history."
+                : "Sign in, purchase access, then launch it from your account."}
             </p>
           </CardContent>
           <CardFooter>

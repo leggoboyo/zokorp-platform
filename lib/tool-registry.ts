@@ -17,10 +17,10 @@ const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
     variant: "architecture-reviewer",
     displayName: "Architecture Diagram Reviewer",
     productDescription:
-      "Architecture review for AWS diagrams with deterministic findings, source-backed guidance, consultation-first handling for broken designs, and bounded remediation estimates for workable submissions.",
+      "Review AWS diagrams and get findings, guidance, and a clear next step.",
     softwareHubStatus: "Architecture review",
     softwareHubSummary:
-      "Upload an architecture PNG, JPG, PDF, or SVG and receive score-based findings, source-backed guidance, and a consultation-first or bounded-remediation next step.",
+      "Upload a diagram and get findings, guidance, and a scoped next step.",
     requiresVerifiedFreeToolAccount: true,
   },
   "zokorp-validator": {
@@ -28,10 +28,10 @@ const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
     variant: "validator",
     displayName: "ZoKorpValidator",
     productDescription:
-      "FTR-first validation workflow with deterministic scoring, exact rewrite help where possible, email delivery, and estimate-first follow-up.",
+      "FTR-first validation with deterministic scoring and estimate-first follow-up.",
     softwareHubStatus: "FTR-first launch",
     softwareHubSummary:
-      "Use credit-based validation for FTR evidence today, with on-screen findings, email delivery, and actionable rewrite guidance.",
+      "Use credit-based validation for FTR evidence with on-screen findings and follow-up guidance.",
     requiresVerifiedFreeToolAccount: false,
   },
   "mlops-foundation-platform": {
@@ -39,10 +39,10 @@ const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
     variant: "mlops-forecast-beta",
     displayName: "ZoKorp Forecasting Beta",
     productDescription:
-      "Forecasting beta for SMB teams. Upload CSV or XLSX revenue history, review a deterministic forecast, and treat this as a narrow beta instead of a full MLOps platform.",
+      "Upload revenue history and review a deterministic forecast in a narrow beta workflow.",
     softwareHubStatus: "Forecasting beta",
     softwareHubSummary:
-      "Upload spreadsheet data, run a narrow revenue-forecast workflow, and expand only if your team actually needs more modules.",
+      "Upload spreadsheet data and run a narrow revenue-forecast workflow.",
     requiresVerifiedFreeToolAccount: false,
     betaLabel: "Forecasting beta only",
   },

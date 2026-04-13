@@ -42,10 +42,10 @@ export function ToolEngagementGuide({
       </CardContent>
       <CardFooter>
         <Link href={requestHref} className={buttonVariants()}>
-          Request services
+          Request help
         </Link>
         <Link href={supportHref} className={buttonVariants({ variant: "secondary" })}>
-          Contact support
+          Support
         </Link>
       </CardFooter>
     </Card>

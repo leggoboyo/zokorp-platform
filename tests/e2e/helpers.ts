@@ -6,18 +6,18 @@ export const apexBaseUrl = process.env.JOURNEY_APEX_BASE_URL ?? "https://zokorp.
 export const mutationMode = (process.env.E2E_MUTATION_MODE ?? "readonly").toLowerCase();
 
 export const requiredMarketingRoutes = [
-  { path: "/", heading: "Clear AWS architecture help for SMB teams that need the next move." },
-  { path: "/services", heading: "Four productized AWS offers up front. Follow-through only when scope is earned." },
-  { path: "/about", heading: "Former AWS. Currently at Microsoft. Operating with direct technical judgment." },
+  { path: "/", heading: "Clear AWS help for SMB teams." },
+  { path: "/services", heading: "Four AWS offers up front." },
+  { path: "/about", heading: "Former AWS. Microsoft now. Direct technical judgment." },
   { path: "/contact", heading: "Book a call or email directly." },
-  { path: "/pricing", heading: "Public price anchors first. Scoped quotes only when the work is real." },
-  { path: "/software", heading: "See the product outcome before you create an account." },
-  { path: "/media", heading: "Guides, notes, and operating perspectives" },
+  { path: "/pricing", heading: "Public price anchors first." },
+  { path: "/software", heading: "See the product before signup." },
+  { path: "/media", heading: "Short notes. Real operating detail." },
   { path: "/privacy", heading: "Privacy overview" },
   { path: "/terms", heading: "Platform terms" },
   { path: "/refunds", heading: "Refund posture" },
   { path: "/security", heading: "Current platform security posture" },
-  { path: "/support", heading: "Support lives with the platform" },
+  { path: "/support", heading: "Platform support." },
 ] as const;
 
 export function sameOrigin(left: string, right: string) {

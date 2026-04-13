@@ -51,8 +51,8 @@ describe("ServicesPage", () => {
     expect(html).toContain("utm_campaign=architecture-follow-up");
     expect(html).toContain("Signed in as");
     expect(html).toContain("consulting@zokorp.com");
-    expect(html).toContain("Four productized AWS offers up front. Follow-through only when scope is earned.");
-    expect(html).toContain("The catalog stays narrow on purpose");
+    expect(html).toContain("Four AWS offers up front.");
+    expect(html).toContain("Choose the starting point, not a generic bundle.");
     expect(html).toContain("Architecture Review");
     expect(html).toContain("$249");
     expect(html).toContain("Cloud Cost Optimization Audit");
