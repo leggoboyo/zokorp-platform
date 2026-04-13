@@ -26,12 +26,14 @@ export function LearnMore({
   const buttonId = useId();
 
   return (
-    <section className={cn("rounded-[1.6rem] border border-border bg-card p-5 shadow-[var(--shadow-soft)] md:p-6", className)}>
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-2">
+    <section className={cn("marketing-panel-muted rounded-[1.8rem] p-5 md:p-6", className)}>
+      <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-2.5">
           <p className="enterprise-kicker">{label}</p>
-          <h3 className="font-display text-2xl font-semibold text-card-foreground">{title}</h3>
-          {summary ? <p className="measure-copy text-sm leading-6 text-muted-foreground">{summary}</p> : null}
+          <h3 className="font-display max-w-[18ch] text-2xl font-semibold text-card-foreground md:text-[2rem] md:leading-[1.05]">
+            {title}
+          </h3>
+          {summary ? <p className="measure-copy text-sm leading-7 text-muted-foreground">{summary}</p> : null}
         </div>
 
         <button
@@ -39,7 +41,7 @@ export function LearnMore({
           type="button"
           aria-expanded={open}
           aria-controls={panelId}
-          className="focus-ring inline-flex min-h-10 items-center justify-center rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-card-foreground transition hover:border-border-strong hover:bg-muted"
+          className="focus-ring inline-flex min-h-10 items-center justify-center rounded-full border border-border bg-white/88 px-4 py-2 text-sm font-semibold text-card-foreground transition hover:border-border-strong hover:bg-white"
           onClick={() => setOpen((value) => !value)}
         >
           {open ? "Hide details" : label}
@@ -51,7 +53,7 @@ export function LearnMore({
         role="region"
         aria-labelledby={buttonId}
         hidden={!open}
-        className="mt-5 border-t border-border pt-5"
+        className="mt-6 border-t border-border pt-6"
       >
         {children}
       </div>

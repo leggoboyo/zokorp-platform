@@ -24,7 +24,7 @@ type SiteHeaderShellProps = {
 
 const desktopNavLinkClass = cn(
   buttonVariants({ variant: "ghost", size: "sm" }),
-  "rounded-full px-3.5 text-muted-foreground hover:text-foreground",
+  "rounded-full px-3.5 text-muted-foreground hover:bg-white/88 hover:text-foreground",
 );
 
 const focusableSelector =
@@ -220,7 +220,7 @@ export function SiteHeaderShell({
 
   return (
     <div className="flex flex-1 items-center justify-end gap-3">
-      <nav className="hidden items-center gap-1.5 rounded-full border border-border bg-white/84 px-2 py-1.5 text-sm shadow-[0_1px_0_rgba(255,255,255,0.84)_inset] md:flex">
+      <nav className="hidden items-center gap-1.5 rounded-full border border-border bg-white/68 px-2 py-1.5 text-sm shadow-[0_1px_0_rgba(255,255,255,0.84)_inset] backdrop-blur md:flex">
         {primaryLinks.map((link) => (
           <Link key={link.href} href={link.href} className={desktopNavLinkClass}>
             {link.label}
@@ -245,7 +245,7 @@ export function SiteHeaderShell({
               ref={desktopMenuRef}
               id={desktopMenuId}
               aria-label="More pages"
-              className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-card p-2 shadow-[0_20px_40px_rgba(15,23,42,0.12)]"
+              className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-[rgba(255,255,255,0.92)] p-2 shadow-[0_20px_40px_rgba(15,23,42,0.12)] backdrop-blur"
             >
               <div className="space-y-1">
                 {secondaryLinks.map((link) => (
@@ -289,7 +289,7 @@ export function SiteHeaderShell({
       {mobileOpen ? (
         <div
           data-testid="mobile-nav-backdrop"
-          className="fixed inset-0 z-[70] bg-slate-950/30 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-[70] bg-slate-950/34 backdrop-blur-sm md:hidden"
           onClick={() => closeMobileMenu(true)}
         >
           <div
@@ -298,7 +298,7 @@ export function SiteHeaderShell({
             role="dialog"
             aria-modal="true"
             aria-label="Mobile navigation"
-            className="absolute inset-y-0 right-0 flex h-dvh w-[min(92vw,420px)] flex-col border-l border-border bg-background px-5 py-5 shadow-[0_24px_60px_rgba(15,23,42,0.18)]"
+            className="absolute inset-y-0 right-0 flex h-dvh w-[min(92vw,420px)] flex-col border-l border-border bg-[rgba(247,250,253,0.98)] px-5 py-5 shadow-[0_24px_60px_rgba(15,23,42,0.18)] backdrop-blur"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-4 border-b border-border pb-4">

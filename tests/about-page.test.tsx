@@ -18,8 +18,8 @@ describe("AboutPage", () => {
   it("keeps the founder-led positioning and proof posture explicit", () => {
     const html = renderToStaticMarkup(<AboutPage />);
 
-    expect(html).toContain("Former AWS. Currently at Microsoft. Built for SMB teams that need direct technical judgment.");
-    expect(html).toContain("What buyers can actually verify");
+    expect(html).toContain("Former AWS. Currently at Microsoft. Operating with direct technical judgment.");
+    expect(html).toContain("Signals a buyer can verify without guesswork");
     expect(html).toContain("Approved public proof only");
     expect(html).toContain("Zohaib Khawaja");
     expect(html).toContain("Amazon Web Services");

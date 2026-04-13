@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useDeferredValue, useMemo, useState } from "react";
 
+import { MarketingSectionHeading } from "@/components/marketing/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -111,17 +112,18 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
 
   return (
     <section className="space-y-5">
-      <Card className="rounded-[1.7rem] border border-border bg-card p-5 md:p-6">
-        <CardHeader className="gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <p className="enterprise-kicker">Catalog filters</p>
-            <h2 className="font-display text-3xl font-semibold text-card-foreground">Browse by access model or intent</h2>
-            <p className="measure-copy text-sm leading-7 text-muted-foreground">
-              Search product names and descriptions, then narrow the list to the pricing model your team wants.
-            </p>
-          </div>
+      <div className="section-band px-5 py-5 md:px-6 md:py-6">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] lg:items-end">
+          <MarketingSectionHeading
+            eyebrow="Catalog filters"
+            title="Browse by access model or intent"
+            description="Search product names and descriptions, then narrow the list to the pricing model your team wants."
+            className="block"
+            titleClassName="max-w-[14ch] text-3xl"
+            descriptionClassName="text-sm"
+          />
 
-          <div className="w-full max-w-md">
+          <div className="w-full">
             <label htmlFor="software-search" className="sr-only">
               Search software catalog
             </label>
@@ -133,8 +135,11 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
               placeholder="Search software"
             />
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </div>
+
+        <div className="band-divider mt-5" />
+
+        <div className="mt-5 space-y-4">
           <div className="flex flex-wrap gap-2" role="group" aria-label="Filter software by access model">
             {accessFilters.map((filter) => {
               const isActive = filter.value === accessFilter;
@@ -158,57 +163,78 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
           <p className="text-sm text-muted-foreground" aria-live="polite">
             Showing {filteredProducts.length} of {products.length} product{products.length === 1 ? "" : "s"}.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {filteredProducts.length > 0 ? (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-4">
           {filteredProducts.map((product) => (
-            <Card key={product.id} lift className="rounded-[1.7rem] border border-border bg-card p-6">
-              <CardHeader className="gap-3">
+            <article
+              key={product.id}
+              className="marketing-panel lift-card grid gap-6 px-5 py-6 md:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(16rem,0.72fr)] lg:items-start"
+            >
+              <div className="space-y-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     <p className="enterprise-kicker">Software product</p>
-                    <h3 className="font-display text-2xl font-semibold text-card-foreground">
+                    <h3 className="font-display text-[2rem] font-semibold leading-[1.05] text-card-foreground">
                       {getCatalogPresentation(product).name}
                     </h3>
+                    <p className="measure-copy text-sm leading-7 text-muted-foreground">
+                      {getCatalogPresentation(product).description}
+                    </p>
                   </div>
                   <Badge variant={accessBadgeVariant[product.accessModel]}>{accessLabel[product.accessModel]}</Badge>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <p className="text-sm leading-7 text-muted-foreground">{getCatalogPresentation(product).description}</p>
 
-                <div className="rounded-2xl border border-border bg-muted p-4">
-                  <p className="enterprise-kicker">Pricing snapshot</p>
-                  <p className="mt-2 font-display text-3xl font-semibold text-card-foreground">{getPriceSummary(product)}</p>
-                  {product.prices.length > 0 ? (
-                    <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                      {product.prices.slice(0, 3).map((price) => (
-                        <li key={price.id} className="flex items-center justify-between gap-4">
-                          <span>{price.kind.replaceAll("_", " ")}</span>
-                          <span className="font-semibold text-card-foreground">{formatAmount(price.amount, price.currency)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      {product.accessModel === "FREE"
-                        ? "Launch the tool directly. Account sign-in adds usage history where supported."
-                        : "Pricing is configured per product in the admin dashboard."}
-                    </p>
-                  )}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="marketing-panel-muted rounded-[1.4rem] px-4 py-4">
+                    <p className="enterprise-kicker">Access</p>
+                    <p className="mt-2 text-sm font-semibold text-card-foreground">{accessLabel[product.accessModel]}</p>
+                  </div>
+                  <div className="marketing-panel-muted rounded-[1.4rem] px-4 py-4">
+                    <p className="enterprise-kicker">Pricing</p>
+                    <p className="mt-2 text-sm font-semibold text-card-foreground">{getPriceSummary(product)}</p>
+                  </div>
+                  <div className="marketing-panel-muted rounded-[1.4rem] px-4 py-4">
+                    <p className="enterprise-kicker">Path</p>
+                    <p className="mt-2 text-sm font-semibold text-card-foreground">Public page first</p>
+                  </div>
                 </div>
-              </CardContent>
-              <CardFooter>
-                <Link href={`/software/${product.slug}`} className={buttonVariants()}>
-                  Open product
-                </Link>
-                <Link href="/account" className={buttonVariants({ variant: "secondary" })}>
-                  View account access
-                </Link>
-              </CardFooter>
-            </Card>
+
+                <div className="flex flex-wrap gap-3">
+                  <Link href={`/software/${product.slug}`} className={buttonVariants()}>
+                    Open product
+                  </Link>
+                  <Link href="/account" className={buttonVariants({ variant: "secondary" })}>
+                    View account access
+                  </Link>
+                </div>
+              </div>
+
+              <div className="marketing-panel-muted rounded-[1.5rem] px-5 py-5">
+                <p className="enterprise-kicker">Pricing snapshot</p>
+                <p className="font-display mt-3 text-[2.35rem] font-semibold leading-none tracking-[-0.05em] text-card-foreground">
+                  {getPriceSummary(product)}
+                </p>
+                {product.prices.length > 0 ? (
+                  <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
+                    {product.prices.slice(0, 3).map((price) => (
+                      <li key={price.id} className="flex items-center justify-between gap-4 border-t border-border/70 pt-2.5 first:border-t-0 first:pt-0">
+                        <span>{price.kind.replaceAll("_", " ")}</span>
+                        <span className="font-semibold text-card-foreground">{formatAmount(price.amount, price.currency)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                    {product.accessModel === "FREE"
+                      ? "Launch the tool directly. Account sign-in adds usage history where supported."
+                      : "Pricing is configured per product in the admin dashboard."}
+                  </p>
+                )}
+              </div>
+            </article>
           ))}
         </div>
       ) : (

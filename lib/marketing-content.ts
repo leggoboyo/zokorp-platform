@@ -190,21 +190,23 @@ export const DELIVERY_PROCESS_STEPS = [
 export const HOME_PAGE_CONTENT = {
   hero: {
     eyebrow: "Founder-led AWS architecture",
-    title: "AWS architecture help with clear scope and a direct next step.",
+    title: "Clear AWS architecture help for SMB teams that need the next move.",
     lede:
-      "Former AWS Partner Solutions Architect. Currently at Microsoft. ZoKorp gives SMB teams fixed reviews, bounded follow-through, and public tools that explain what happens next.",
+      "Former AWS. Currently at Microsoft. ZoKorp gives SMB teams fixed reviews, bounded follow-through, and public tools that make the next step obvious.",
     supportingBullets: [
-      "Deterministic outputs instead of vague consulting language",
+      "Fixed reviews instead of vague consulting retainers",
       "Clear scope before work starts",
-      "Public browsing without forced signup",
-      "Direct founder contact when a call is the faster next step",
+      "Public browsing before account creation",
+      "Direct founder access when a call is the faster path",
     ],
   },
-  offersTitle: "Primary ways to start",
-  offersIntro: "Start with a fixed review, a cost audit, a clean AWS baseline, or a light advisory relationship.",
-  softwareTitle: "Public tools that make the next step easier to understand",
-  softwareIntro: "Use the tools to understand product outcomes first. Create an account only when you are ready to use the app.",
-  finalCtaTitle: "Book the first call or keep evaluating publicly.",
+  offersTitle: "Start with one of four clear paths",
+  offersIntro:
+    "Use a review, cost audit, landing zone setup, or advisory retainer to define the next move without widening the scope too early.",
+  softwareTitle: "Public tools that clarify the problem before you buy help",
+  softwareIntro:
+    "The software exists to make decisions sharper, not to hide the service model behind a login wall.",
+  finalCtaTitle: "Move to a call when the situation is easier to explain live.",
   finalCtaBullets: [
     "Initial response within one business day",
     "Clear scope before work starts",
@@ -215,9 +217,9 @@ export const HOME_PAGE_CONTENT = {
 export const SERVICES_PAGE_CONTENT = {
   hero: {
     eyebrow: "Scoped AWS services",
-    title: "Four primary AWS services, plus follow-through when the problem is clear.",
+    title: "Four productized AWS offers up front. Follow-through only when scope is earned.",
     lede:
-      "ZoKorp keeps the public catalog narrow on purpose: architecture review, cost audit, landing zone setup, and advisory. Validation and implementation stay visible, but secondary.",
+      "The catalog stays narrow on purpose: architecture review, cost audit, landing zone setup, and advisory. Validation and implementation stay visible, but secondary.",
     supportingBullets: [
       "Founder-led delivery",
       "Visible price anchors",
@@ -226,7 +228,8 @@ export const SERVICES_PAGE_CONTENT = {
     ],
   },
   primaryTitle: "Primary services",
-  primaryIntro: "These are the default entry points for SMB buyers who want direct AWS judgment without large-firm overhead.",
+  primaryIntro:
+    "These are the default entry points for SMB buyers who want direct AWS judgment without large-firm process overhead.",
   secondaryTitle: "Additional scoped work",
   secondarySummary: "Readiness validation and scoped implementation stay public, but they should not be the first thing most buyers purchase.",
   requestTitle: "Request a quote",
@@ -236,9 +239,9 @@ export const SERVICES_PAGE_CONTENT = {
 export const ABOUT_PAGE_CONTENT = {
   hero: {
     eyebrow: "Credibility stack",
-    title: "Former AWS. Currently at Microsoft. Built for SMB teams that need direct technical judgment.",
+    title: "Former AWS. Currently at Microsoft. Operating with direct technical judgment.",
     lede:
-      "ZoKorp is intentionally founder-led: direct conversations, visible certifications, Houston-based contact, and software that supports the same operating model instead of hiding it.",
+      "ZoKorp is intentionally founder-led: named background, visible certifications, Houston-based contact, and a small operating model that keeps scope visible.",
     supportingBullets: [
       "Former AWS Partner Solutions Architect",
       "Currently at Microsoft",
@@ -246,7 +249,7 @@ export const ABOUT_PAGE_CONTENT = {
       "Houston, Texas",
     ],
   },
-  credibilityTitle: "What buyers can actually verify",
+  credibilityTitle: "Signals a buyer can verify without guesswork",
   credibilityCards: [
     {
       title: "Former AWS Partner Solutions Architect",
@@ -266,9 +269,9 @@ export const ABOUT_PAGE_CONTENT = {
 export const PRICING_PAGE_CONTENT = {
   hero: {
     eyebrow: "Pricing",
-    title: "Public price anchors, clear inclusions, no inflated consulting language.",
+    title: "Public price anchors first. Scoped quotes only when the work is real.",
     lede:
-      "Pricing should help a buyer orient quickly. ZoKorp shows the visible numbers, what is included, and where estimate-first scoping still applies.",
+      "Pricing should orient a buyer quickly. ZoKorp shows the visible numbers, what is included, and where estimate-first scoping still applies.",
     supportingBullets: [
       "Visible starting prices or ranges",
       "What is included stays explicit",
@@ -284,7 +287,7 @@ export const PRICING_PAGE_CONTENT = {
 export const SOFTWARE_PAGE_CONTENT = {
   hero: {
     eyebrow: "Public software",
-    title: "Public product pages that show the outcome before you create an account.",
+    title: "See the product outcome before you create an account.",
     lede:
       "ZoKorp software exists to reduce repetitive review work and clarify product outcomes. Browse publicly first. Create an account only when you want access, history, or billing inside the app.",
     supportingBullets: [
@@ -302,7 +305,7 @@ export const SOFTWARE_PAGE_CONTENT = {
 export const CONTACT_PAGE_CONTENT = {
   hero: {
     eyebrow: "Contact ZoKorp",
-    title: "Book a call or email ZoKorp.",
+    title: "Book a call or email directly.",
     lede:
       "Initial response within one business day. Clear scope before work starts. No forced signup just to ask a question.",
     supportingBullets: [

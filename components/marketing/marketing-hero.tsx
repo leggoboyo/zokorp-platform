@@ -76,10 +76,12 @@ export function MarketingHero({
   const isPanel = mode === "panel";
 
   return (
-    <section className={cn("hero-surface px-5 py-6 md:px-8 md:py-10 lg:px-10 lg:py-12", className)}>
+    <section className={cn("hero-surface marketing-grid-lines px-5 py-6 md:px-8 md:py-10 lg:px-10 lg:py-12", className)}>
+      <div className="marketing-orbit" data-orbit="one" />
+      <div className="marketing-orbit" data-orbit="two" />
       <div
         data-hero-layout={rail ? "split" : "single"}
-        className={cn("grid gap-6 lg:grid-cols-12 lg:items-start", rail ? "lg:gap-8" : "")}
+        className={cn("relative z-10 grid gap-8 lg:grid-cols-12 lg:items-start", rail ? "lg:gap-8" : "")}
       >
         <div
           data-surface="hero-copy"
@@ -87,7 +89,7 @@ export function MarketingHero({
           className={cn(
             "lg:col-span-7",
             isPanel
-              ? "rounded-[1.9rem] border border-border bg-card p-6 text-card-foreground shadow-[var(--shadow-card)] md:p-8"
+              ? "glass-surface rounded-[2rem] p-6 text-card-foreground md:p-8 lg:p-10"
               : "text-white",
             bodyClassName,
           )}
@@ -95,8 +97,10 @@ export function MarketingHero({
           <Badge
             variant={isPanel ? "secondary" : "outline"}
             className={cn(
-              "w-fit normal-case tracking-[0.14em]",
-              isPanel ? "bg-card text-muted-foreground" : "border-white/20 bg-white/10 text-white",
+              "w-fit rounded-full px-3.5 py-1.5 normal-case tracking-[0.18em]",
+              isPanel
+                ? "bg-white/80 text-muted-foreground"
+                : "border-white/20 bg-white/10 text-white",
             )}
           >
             {eyebrow}
@@ -104,7 +108,7 @@ export function MarketingHero({
 
           <h1
             className={cn(
-              "font-display mt-5 max-w-[14ch] text-balance text-4xl font-semibold leading-[1.02] md:text-6xl",
+              "font-display mt-6 max-w-[11.5ch] text-balance text-[2.85rem] font-semibold leading-[0.98] tracking-[-0.045em] md:text-[4.5rem] lg:text-[5.35rem]",
               isPanel ? "text-card-foreground" : "text-white",
             )}
           >
@@ -114,7 +118,7 @@ export function MarketingHero({
           <p
             data-measure="lede"
             className={cn(
-              "measure-copy mt-5 text-base leading-7 md:text-lg",
+              "measure-copy mt-6 max-w-[58ch] text-base leading-7 md:text-[1.1rem] md:leading-8",
               isPanel ? "text-muted-foreground" : "text-white/88",
             )}
           >
@@ -122,24 +126,31 @@ export function MarketingHero({
           </p>
 
           {supportingBullets.length > 0 ? (
-            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+            <ul className="mt-8 grid gap-x-8 gap-y-3.5 sm:grid-cols-2">
               {supportingBullets.map((bullet) => (
                 <li
                   key={bullet}
                   className={cn(
-                    "rounded-2xl border px-4 py-3 text-sm font-medium leading-6",
+                    "relative pl-5 text-sm font-medium leading-6",
                     isPanel
-                      ? "border-border bg-muted text-card-foreground"
-                      : "border-white/12 bg-white/10 text-white",
+                      ? "text-card-foreground"
+                      : "text-white",
                   )}
                 >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "absolute left-0 top-2 size-2 rounded-full",
+                      isPanel ? "bg-brand shadow-[0_0_0_6px_rgb(var(--z-accent)/0.12)]" : "bg-white shadow-[0_0_0_6px_rgba(255,255,255,0.14)]",
+                    )}
+                  />
                   {bullet}
                 </li>
               ))}
             </ul>
           ) : null}
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-9 flex flex-wrap gap-3">
             {renderAction(primaryAction, isPanel ? "primary" : "primary")}
             {renderAction(secondaryAction, isPanel ? "secondary" : "inverse")}
             {renderAction(tertiaryAction, isPanel ? "ghost" : "inverse")}
@@ -151,9 +162,9 @@ export function MarketingHero({
                 <span
                   key={chip}
                   className={cn(
-                    "inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em]",
+                    "inline-flex items-center rounded-full border px-3.5 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.13em]",
                     isPanel
-                      ? "border-border bg-background text-muted-foreground"
+                      ? "border-border bg-white/84 text-muted-foreground"
                       : "border-white/16 bg-white/10 text-white/84",
                   )}
                 >
@@ -165,7 +176,7 @@ export function MarketingHero({
         </div>
 
         {rail ? (
-          <div data-hero-rail className={cn("space-y-4 lg:col-span-5", railClassName)}>
+          <div data-hero-rail className={cn("space-y-4 lg:col-span-5 lg:pt-2", railClassName)}>
             {rail}
           </div>
         ) : null}

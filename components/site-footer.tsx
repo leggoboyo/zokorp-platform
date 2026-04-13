@@ -27,9 +27,9 @@ const trustLinks = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-20 border-t border-border bg-white/78">
-      <div className="marketing-container px-4 py-12 md:px-6 xl:px-8">
-        <div className="grid gap-10 lg:grid-cols-12">
+    <footer className="mt-24 border-t border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.66),rgba(243,247,251,0.92))]">
+      <div className="marketing-container px-4 py-14 md:px-6 xl:px-8">
+        <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
           <section className="space-y-5 lg:col-span-5">
             <Image
               src={PUBLIC_LAUNCH_FOUNDER_PROFILE.logoPath}

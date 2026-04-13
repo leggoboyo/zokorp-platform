@@ -6,12 +6,12 @@ export const apexBaseUrl = process.env.JOURNEY_APEX_BASE_URL ?? "https://zokorp.
 export const mutationMode = (process.env.E2E_MUTATION_MODE ?? "readonly").toLowerCase();
 
 export const requiredMarketingRoutes = [
-  { path: "/", heading: "AWS architecture help with clear scope and a direct next step." },
-  { path: "/services", heading: "Four primary AWS services, plus follow-through when the problem is clear." },
-  { path: "/about", heading: "Former AWS. Currently at Microsoft. Built for SMB teams that need direct technical judgment." },
-  { path: "/contact", heading: "Book a call or email ZoKorp." },
-  { path: "/pricing", heading: "Public price anchors, clear inclusions, no inflated consulting language." },
-  { path: "/software", heading: "Public product pages that show the outcome before you create an account." },
+  { path: "/", heading: "Clear AWS architecture help for SMB teams that need the next move." },
+  { path: "/services", heading: "Four productized AWS offers up front. Follow-through only when scope is earned." },
+  { path: "/about", heading: "Former AWS. Currently at Microsoft. Operating with direct technical judgment." },
+  { path: "/contact", heading: "Book a call or email directly." },
+  { path: "/pricing", heading: "Public price anchors first. Scoped quotes only when the work is real." },
+  { path: "/software", heading: "See the product outcome before you create an account." },
   { path: "/media", heading: "Guides, notes, and operating perspectives" },
   { path: "/privacy", heading: "Privacy overview" },
   { path: "/terms", heading: "Platform terms" },
