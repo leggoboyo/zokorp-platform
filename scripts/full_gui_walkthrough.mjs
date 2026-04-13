@@ -293,13 +293,24 @@ async function runMarketingDesktop(page, steps, config) {
     );
   }
 
-  await page.goto(new URL("/services", config.marketingBaseUrl).toString(), {
+  await page.goto(new URL("/pricing", config.marketingBaseUrl).toString(), {
     waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
   for (const marker of CONSULTING_PRICE_MARKERS) {
     await assertVisibleText(page, marker, config.timeoutMs);
   }
+  steps.push(
+    buildStep("marketing_desktop_pricing_anchors", "Marketing desktop: Pricing anchors", "pass", {
+      markers: CONSULTING_PRICE_MARKERS,
+      url: page.url(),
+    }),
+  );
+
+  await page.goto(new URL("/services", config.marketingBaseUrl).toString(), {
+    waitUntil: "domcontentloaded",
+    timeout: config.timeoutMs,
+  });
   await assertVisibleText(page, "Request consultation or delivery", config.timeoutMs);
   const servicesLandmarks = await assertLandmarkBaseline(page, config.timeoutMs);
   const serviceRequestScreenshot = await writeStableSectionScreenshot(

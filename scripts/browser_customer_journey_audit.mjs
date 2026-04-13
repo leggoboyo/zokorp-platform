@@ -279,7 +279,7 @@ async function runMarketingJourney(page, steps, config) {
     );
   }
 
-  await page.goto(new URL("/services", config.marketingBaseUrl).toString(), {
+  await page.goto(new URL("/pricing", config.marketingBaseUrl).toString(), {
     waitUntil: "domcontentloaded",
     timeout: config.timeoutMs,
   });
@@ -288,8 +288,9 @@ async function runMarketingJourney(page, steps, config) {
   }
   await assertLandmarkBaseline(page, config.timeoutMs);
   steps.push(
-    buildStep("marketing_services_pricing", "Services pricing anchors", "pass", {
+    buildStep("marketing_pricing_anchors", "Pricing page: Consulting anchors", "pass", {
       markers: CONSULTING_PRICE_MARKERS,
+      url: page.url(),
     }),
   );
 }
