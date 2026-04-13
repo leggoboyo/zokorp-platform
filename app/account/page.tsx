@@ -1186,7 +1186,7 @@ export default async function AccountPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm leading-6 text-slate-600">
-                    Keep result-delivery emails separate from future outreach. Marketing follow-up stays off by default until you explicitly enable it.
+                    Keep result-delivery emails separate from optional architecture-review follow-up. These scheduled follow-up emails stay off by default until you explicitly enable them.
                   </p>
 
                   <form action={saveAccountEmailPreferencesAction} className="space-y-4">
@@ -1213,9 +1213,9 @@ export default async function AccountPage() {
                         className="mt-1 h-4 w-4 rounded border-slate-300"
                       />
                       <span className="space-y-1">
-                        <span className="block text-sm font-semibold text-slate-900">Future marketing follow-up</span>
+                        <span className="block text-sm font-semibold text-slate-900">Architecture review follow-up emails</span>
                         <span className="block text-sm leading-6 text-slate-600">
-                          Optional launch announcements, product updates, and advisory follow-up that is not required to operate your account.
+                          Optional Day 2, Day 7, and Day 14 architecture-review follow-up emails that are not required to operate your account.
                         </span>
                       </span>
                     </label>

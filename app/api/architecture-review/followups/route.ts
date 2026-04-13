@@ -2,6 +2,7 @@ import { buildArchitectureFollowUpEmail, dueFollowUpCheckpoint } from "@/lib/arc
 import { sendArchitectureReviewEmail } from "@/lib/architecture-review/sender";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
+import { buildEmailPreferenceLinks, getUserEmailPreferences } from "@/lib/email-preferences";
 import {
   createInternalAuditLog,
   jsonNoStore,
@@ -10,6 +11,25 @@ import {
 } from "@/lib/internal-route";
 
 export const runtime = "nodejs";
+
+function followUpStatusMap(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value;
+}
+
+function buildFollowUpStatusUpdate(
+  current: unknown,
+  statusKey: `day${number}`,
+  status: "sent" | "failed" | "opted_out",
+) {
+  return {
+    ...followUpStatusMap(current),
+    [statusKey]: `${status}:${new Date().toISOString()}`,
+  };
+}
 
 function providedSecret(request: Request) {
   return (
@@ -59,6 +79,7 @@ export async function POST(request: Request) {
       take: 150,
       select: {
         id: true,
+        userId: true,
         userEmail: true,
         architectureProvider: true,
         overallScore: true,
@@ -71,6 +92,7 @@ export async function POST(request: Request) {
 
     let sent = 0;
     let skipped = 0;
+    let optedOut = 0;
     let failed = 0;
 
     for (const lead of candidates) {
@@ -85,6 +107,22 @@ export async function POST(request: Request) {
         continue;
       }
 
+      const preferences = await getUserEmailPreferences(lead.userId);
+      if (!preferences.marketingFollowUpEmails) {
+        optedOut += 1;
+        await db.leadLog.update({
+          where: { id: lead.id },
+          data: {
+            followUpStatusJson: buildFollowUpStatusUpdate(
+              lead.followUpStatusJson,
+              `day${dueDay}`,
+              "opted_out",
+            ),
+          },
+        });
+        continue;
+      }
+
       const email = await buildArchitectureFollowUpEmail({
         leadId: lead.id,
         userEmail: lead.userEmail,
@@ -92,6 +130,11 @@ export async function POST(request: Request) {
         overallScore: lead.overallScore,
         topIssues: lead.topIssues,
         day: dueDay,
+        emailPreferenceLinks:
+          buildEmailPreferenceLinks({
+            userId: lead.userId,
+            email: lead.userEmail,
+          }) ?? undefined,
       });
 
       const sendResult = await sendArchitectureReviewEmail({
@@ -106,12 +149,7 @@ export async function POST(request: Request) {
         await db.leadLog.update({
           where: { id: lead.id },
           data: {
-            followUpStatusJson: {
-              ...(typeof lead.followUpStatusJson === "object" && lead.followUpStatusJson && !Array.isArray(lead.followUpStatusJson)
-                ? lead.followUpStatusJson
-                : {}),
-              [email.statusKey]: `failed:${new Date().toISOString()}`,
-            },
+            followUpStatusJson: buildFollowUpStatusUpdate(lead.followUpStatusJson, email.statusKey, "failed"),
           },
         });
         continue;
@@ -121,12 +159,7 @@ export async function POST(request: Request) {
       await db.leadLog.update({
         where: { id: lead.id },
         data: {
-          followUpStatusJson: {
-            ...(typeof lead.followUpStatusJson === "object" && lead.followUpStatusJson && !Array.isArray(lead.followUpStatusJson)
-              ? lead.followUpStatusJson
-              : {}),
-            [email.statusKey]: `sent:${new Date().toISOString()}`,
-          },
+          followUpStatusJson: buildFollowUpStatusUpdate(lead.followUpStatusJson, email.statusKey, "sent"),
         },
       });
     }
@@ -134,6 +167,7 @@ export async function POST(request: Request) {
     await createInternalAuditLog("internal.architecture_review_followups.run", {
       sent,
       skipped,
+      optedOut,
       failed,
       usedZohoSyncSecretFallback: usingZohoFallbackSecret,
     });
@@ -142,6 +176,7 @@ export async function POST(request: Request) {
       status: "ok",
       sent,
       skipped,
+      optedOut,
       failed,
     });
   } catch (error) {

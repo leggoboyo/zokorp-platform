@@ -64,7 +64,7 @@ export default async function EmailPreferencesPage({
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Email Preferences</p>
         <h1 className="font-display mt-2 text-4xl font-semibold text-slate-900">Manage delivery and follow-up email settings</h1>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-          Result emails are tied to requested tool runs and account operations. Marketing follow-up stays off by default unless you explicitly turn it on.
+          Result emails are tied to requested tool runs and account operations. Architecture-review follow-up emails stay off by default unless you explicitly turn them on.
         </p>
         <p className="mt-3 text-sm text-slate-500">Preference link for {resolved.subject.email}</p>
       </Card>
@@ -102,9 +102,9 @@ export default async function EmailPreferencesPage({
               className="mt-1 h-4 w-4 rounded border-slate-300"
             />
             <span className="space-y-1">
-              <span className="block text-sm font-semibold text-slate-900">Future marketing follow-up</span>
+              <span className="block text-sm font-semibold text-slate-900">Architecture review follow-up emails</span>
               <span className="block text-sm leading-6 text-slate-600">
-                Optional product updates, launch notices, and follow-up outreach that is not required to operate your account.
+                Optional Day 2, Day 7, and Day 14 architecture-review follow-up emails that are not required to operate your account.
               </span>
             </span>
           </label>

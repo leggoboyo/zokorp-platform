@@ -3,6 +3,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 const {
   auditCreateMock,
   buildArchitectureFollowUpEmailMock,
+  buildEmailPreferenceLinksMock,
+  getUserEmailPreferencesMock,
   isSchemaDriftErrorMock,
   leadFindManyMock,
   leadUpdateMock,
@@ -10,6 +12,8 @@ const {
 } = vi.hoisted(() => ({
   auditCreateMock: vi.fn(),
   buildArchitectureFollowUpEmailMock: vi.fn(),
+  buildEmailPreferenceLinksMock: vi.fn(),
+  getUserEmailPreferencesMock: vi.fn(),
   isSchemaDriftErrorMock: vi.fn(),
   leadFindManyMock: vi.fn(),
   leadUpdateMock: vi.fn(),
@@ -23,6 +27,11 @@ vi.mock("@/lib/architecture-review/followup", () => ({
 
 vi.mock("@/lib/architecture-review/sender", () => ({
   sendArchitectureReviewEmail: sendArchitectureReviewEmailMock,
+}));
+
+vi.mock("@/lib/email-preferences", () => ({
+  buildEmailPreferenceLinks: buildEmailPreferenceLinksMock,
+  getUserEmailPreferences: getUserEmailPreferencesMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -55,6 +64,7 @@ describe("architecture review follow-up route", () => {
     leadFindManyMock.mockResolvedValue([
       {
         id: "lead_123",
+        userId: "user_123",
         userEmail: "owner@acmecloud.com",
         architectureProvider: "aws",
         overallScore: 78,
@@ -64,6 +74,16 @@ describe("architecture review follow-up route", () => {
         followUpStatusJson: null,
       },
     ]);
+    getUserEmailPreferencesMock.mockResolvedValue({
+      operationalResultEmails: true,
+      marketingFollowUpEmails: false,
+      createdAt: null,
+      updatedAt: null,
+    });
+    buildEmailPreferenceLinksMock.mockReturnValue({
+      manageUrl: "https://app.zokorp.com/email-preferences?token=abc",
+      marketingUnsubscribeUrl: "https://app.zokorp.com/email-preferences/unsubscribe?token=abc",
+    });
     buildArchitectureFollowUpEmailMock.mockResolvedValue({
       to: "owner@acmecloud.com",
       subject: "Follow-up",
@@ -172,6 +192,103 @@ describe("architecture review follow-up route", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({
       error: "Architecture follow-up run failed.",
+    });
+  });
+
+  it("skips scheduled follow-ups when the account has not opted in", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/architecture-review/followups", {
+        method: "POST",
+        headers: {
+          "x-arch-followup-secret": "followup-secret",
+        },
+      }),
+    );
+
+    expect(buildArchitectureFollowUpEmailMock).not.toHaveBeenCalled();
+    expect(sendArchitectureReviewEmailMock).not.toHaveBeenCalled();
+    expect(leadUpdateMock).toHaveBeenCalledWith({
+      where: { id: "lead_123" },
+      data: {
+        followUpStatusJson: expect.objectContaining({
+          day7: expect.stringMatching(/^opted_out:/),
+        }),
+      },
+    });
+    expect(auditCreateMock).toHaveBeenCalledWith({
+      data: {
+        action: "internal.architecture_review_followups.run",
+        metadataJson: expect.objectContaining({
+          sent: 0,
+          skipped: 0,
+          optedOut: 1,
+          failed: 0,
+          usedZohoSyncSecretFallback: false,
+        }),
+      },
+    });
+    await expect(response.json()).resolves.toEqual({
+      status: "ok",
+      sent: 0,
+      skipped: 0,
+      optedOut: 1,
+      failed: 0,
+    });
+  });
+
+  it("sends scheduled follow-ups only when the account has opted in", async () => {
+    getUserEmailPreferencesMock.mockResolvedValueOnce({
+      operationalResultEmails: true,
+      marketingFollowUpEmails: true,
+      createdAt: new Date("2026-03-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-02T00:00:00.000Z"),
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/architecture-review/followups", {
+        method: "POST",
+        headers: {
+          "x-arch-followup-secret": "followup-secret",
+        },
+      }),
+    );
+
+    expect(buildEmailPreferenceLinksMock).toHaveBeenCalledWith({
+      userId: "user_123",
+      email: "owner@acmecloud.com",
+    });
+    expect(buildArchitectureFollowUpEmailMock).toHaveBeenCalledWith({
+      leadId: "lead_123",
+      userEmail: "owner@acmecloud.com",
+      provider: "aws",
+      overallScore: 78,
+      topIssues: "IAM",
+      day: 7,
+      emailPreferenceLinks: {
+        manageUrl: "https://app.zokorp.com/email-preferences?token=abc",
+        marketingUnsubscribeUrl: "https://app.zokorp.com/email-preferences/unsubscribe?token=abc",
+      },
+    });
+    expect(sendArchitectureReviewEmailMock).toHaveBeenCalledWith({
+      to: "owner@acmecloud.com",
+      subject: "Follow-up",
+      text: "text body",
+      html: "<p>text body</p>",
+    });
+    expect(leadUpdateMock).toHaveBeenCalledWith({
+      where: { id: "lead_123" },
+      data: {
+        followUpStatusJson: expect.objectContaining({
+          day7: expect.stringMatching(/^sent:/),
+        }),
+      },
+    });
+    await expect(response.json()).resolves.toEqual({
+      status: "ok",
+      sent: 1,
+      skipped: 0,
+      optedOut: 0,
+      failed: 0,
     });
   });
 });

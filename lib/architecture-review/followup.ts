@@ -1,6 +1,7 @@
 import type { LeadLog } from "@prisma/client";
 
 import { buildArchitectureReviewCtaLinks } from "@/lib/architecture-review/cta-links";
+import { buildEmailPreferenceFooter } from "@/lib/email-preferences";
 
 export const FOLLOW_UP_DAYS = [2, 7, 14] as const;
 
@@ -62,10 +63,17 @@ export async function buildArchitectureFollowUpEmail(input: {
   overallScore: number;
   topIssues: string;
   day: FollowUpCheckpoint;
+  emailPreferenceLinks?: {
+    manageUrl: string;
+    marketingUnsubscribeUrl: string;
+  };
 }) {
   const ctaLinks = await buildArchitectureReviewCtaLinks(input.leadId);
   const provider = input.provider.toUpperCase();
   const subject = `[ZoKorp] ${provider} architecture review follow-up (Day ${input.day})`;
+  const emailPreferenceFooter = input.emailPreferenceLinks
+    ? buildEmailPreferenceFooter(input.emailPreferenceLinks)
+    : null;
 
   const bodyLines = [
     `Architecture review follow-up (Day ${input.day})`,
@@ -77,6 +85,7 @@ export async function buildArchitectureFollowUpEmail(input: {
     "",
     `Book architecture call: ${ctaLinks.bookArchitectureCallUrl}`,
     `Request remediation plan: ${ctaLinks.requestRemediationPlanUrl}`,
+    ...(emailPreferenceFooter ? ["", emailPreferenceFooter.text] : []),
   ];
 
   const html = `
@@ -101,6 +110,7 @@ export async function buildArchitectureFollowUpEmail(input: {
             </td>
           </tr>
         </table>
+        ${emailPreferenceFooter?.html ?? ""}
       </body>
     </html>
   `;
