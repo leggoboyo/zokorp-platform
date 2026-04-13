@@ -43,7 +43,7 @@ describe("audit account support helpers", () => {
           status: 401,
         },
       ],
-    } as any);
+    });
 
     expect(message).toContain("401 at /api/auth/callback/credentials");
     expect(message).toContain("browser-customer-journey-upkeep.yml");

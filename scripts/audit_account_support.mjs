@@ -37,6 +37,15 @@ export function resolveAuditDatabaseUrl({
   return "";
 }
 
+/**
+ * @param {{
+ *   currentUrl?: string;
+ *   responseFailures?: Array<{
+ *     url?: string;
+ *     status?: number;
+ *   }>;
+ * }} [options]
+ */
 export function diagnoseAuditCredentialFailure({ currentUrl = "", responseFailures = [] } = {}) {
   const credentialFailure = responseFailures.find(
     (item) =>
