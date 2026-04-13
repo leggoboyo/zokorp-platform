@@ -7,7 +7,7 @@ export const mutationMode = (process.env.E2E_MUTATION_MODE ?? "readonly").toLowe
 
 export const requiredMarketingRoutes = [
   { path: "/", heading: "AWS architecture, validation, and optimization for SMB teams that need a clear next step." },
-  { path: "/services", heading: "Focused AWS architecture, validation, and optimization services for SMB teams that need a clear next step." },
+  { path: "/services", heading: "Six clear offers. Each one is defined, scoped, and priced." },
   { path: "/about", heading: "Built by a technical founder who has spent time inside AWS, Microsoft, and real delivery work." },
   { path: "/contact", heading: "Start the right conversation without getting pushed into signup first." },
   { path: "/pricing", heading: "Public price anchors for consulting, and straightforward pricing for the software that is ready." },

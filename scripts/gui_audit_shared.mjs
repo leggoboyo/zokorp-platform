@@ -157,7 +157,7 @@ export const MARKETING_ROUTE_CHECKS = [
     id: "marketing_services",
     label: "Services",
     path: "/services",
-    marker: "Focused AWS architecture, validation, and optimization services for SMB teams that need a clear next step.",
+    marker: "Six clear offers. Each one is defined, scoped, and priced.",
     owner: "marketing-site",
     criticality: "high",
   },

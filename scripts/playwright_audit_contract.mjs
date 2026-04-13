@@ -7,7 +7,7 @@ export const MARKETING_ROUTE_EXPECTATIONS = [
   {
     path: "/services",
     label: "Services",
-    marker: "Focused AWS architecture, validation, and optimization services for SMB teams that need a clear next step.",
+    marker: "Six clear offers. Each one is defined, scoped, and priced.",
   },
   {
     path: "/about",
