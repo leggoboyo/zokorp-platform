@@ -6,12 +6,12 @@ export const apexBaseUrl = process.env.JOURNEY_APEX_BASE_URL ?? "https://zokorp.
 export const mutationMode = (process.env.E2E_MUTATION_MODE ?? "readonly").toLowerCase();
 
 export const requiredMarketingRoutes = [
-  { path: "/", heading: "Clear AWS help for SMB teams." },
-  { path: "/services", heading: "Four AWS offers up front." },
-  { path: "/about", heading: "Former AWS. Microsoft now. Direct technical judgment." },
-  { path: "/contact", heading: "Book a call or email directly." },
-  { path: "/pricing", heading: "Public price anchors first." },
-  { path: "/software", heading: "See the product before signup." },
+  { path: "/", heading: "Clear cloud help for SMB teams." },
+  { path: "/services", heading: "Choose one starting point." },
+  { path: "/about", heading: "Signals you can verify fast." },
+  { path: "/contact", heading: "Use the form." },
+  { path: "/pricing", heading: "Price anchors first." },
+  { path: "/software", heading: "Public products first." },
   { path: "/media", heading: "Short notes. Real operating detail." },
   { path: "/privacy", heading: "Privacy overview" },
   { path: "/terms", heading: "Platform terms" },

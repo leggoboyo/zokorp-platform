@@ -128,7 +128,7 @@ export default function RootLayout({
         className={`${plusJakarta.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} bg-background text-foreground antialiased`}
       >
         <GoogleAnalytics />
-        <div className="flex min-h-screen flex-col">
+        <div className="marketing-site-shell flex min-h-screen flex-col">
           <SiteHeader />
           <main className="marketing-container w-full flex-1 px-4 py-8 md:px-6 md:py-10 xl:px-8">{children}</main>
           <SiteFooter />

@@ -35,68 +35,61 @@ export async function sendServiceRequestOperatorNotification(
 ): Promise<SendEmailResult> {
   const subject = `[ZoKorp] ${input.trackingCode} · ${SERVICE_REQUEST_TYPE_LABEL[input.type]}`;
   const requesterName = input.requesterName?.trim() || "Not provided";
-  const requesterCompanyName = input.requesterCompanyName?.trim() || "Not provided";
-  const budgetRange = input.budgetRange?.trim() || "Not provided";
-  const preferredStart = formatPreferredStart(input.preferredStart ?? null);
+  const requesterCompanyName = input.requesterCompanyName?.trim();
+  const budgetRange = input.budgetRange?.trim();
+  const preferredStart = input.preferredStart ? formatPreferredStart(input.preferredStart) : null;
+
+  const detailLines = [
+    ["Tracking code", input.trackingCode],
+    ["Request", input.title],
+    ["Type", SERVICE_REQUEST_TYPE_LABEL[input.type]],
+    ["Name", requesterName],
+    ["Email", input.requesterEmail],
+    requesterCompanyName ? ["Company", requesterCompanyName] : null,
+    budgetRange ? ["Budget range", budgetRange] : null,
+    preferredStart ? ["Preferred start", preferredStart] : null,
+  ].filter((entry): entry is [string, string] => Boolean(entry));
 
   const text = [
-    "New ZoKorp service request submitted.",
+    "New ZoKorp contact request.",
     "",
-    `Tracking code: ${input.trackingCode}`,
-    `Type: ${SERVICE_REQUEST_TYPE_LABEL[input.type]}`,
-    `Title: ${input.title}`,
-    `Requester email: ${input.requesterEmail}`,
-    `Requester name: ${requesterName}`,
-    `Requester company: ${requesterCompanyName}`,
-    `Requester source: ${input.requesterSource}`,
-    `Preferred start: ${preferredStart}`,
-    `Budget range: ${budgetRange}`,
+    ...detailLines.map(([label, value]) => `${label}: ${value}`),
     "",
     "Summary:",
     input.summary,
+    "",
+    `Reply to: ${PUBLIC_LAUNCH_CONTACT.primaryEmail}`,
   ].join("\n");
 
   const html = `
     <div style="background:#f3f6fb;padding:28px 16px;font-family:'Plus Jakarta Sans',Inter,Segoe UI,Arial,sans-serif;color:#0f172a;">
       <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #d7e2ef;border-radius:18px;overflow:hidden;">
         <div style="background:linear-gradient(135deg,#0f172a,#1d4ed8);padding:24px;color:#ffffff;">
-          <p style="margin:0;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#cbd5f5;">ZoKorp service intake</p>
+          <p style="margin:0;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#cbd5f5;">ZoKorp contact request</p>
           <h1 style="margin:10px 0 0;font-size:28px;line-height:1.15;font-weight:700;">${escapeHtml(input.trackingCode)} · ${escapeHtml(
             SERVICE_REQUEST_TYPE_LABEL[input.type],
           )}</h1>
         </div>
         <div style="padding:24px;">
           <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
-            <div style="border:1px solid #e2e8f0;border-radius:14px;padding:14px;">
-              <p style="margin:0 0 6px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Title</p>
-              <p style="margin:0;font-size:16px;line-height:1.5;color:#0f172a;">${escapeHtml(input.title)}</p>
-            </div>
-            <div style="border:1px solid #e2e8f0;border-radius:14px;padding:14px;">
-              <p style="margin:0 0 6px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Requester</p>
-              <p style="margin:0;font-size:16px;line-height:1.5;color:#0f172a;">${escapeHtml(input.requesterEmail)}</p>
-            </div>
-            <div style="border:1px solid #e2e8f0;border-radius:14px;padding:14px;">
-              <p style="margin:0 0 6px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Name</p>
-              <p style="margin:0;font-size:15px;line-height:1.5;color:#0f172a;">${escapeHtml(requesterName)}</p>
-            </div>
-            <div style="border:1px solid #e2e8f0;border-radius:14px;padding:14px;">
-              <p style="margin:0 0 6px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Company</p>
-              <p style="margin:0;font-size:15px;line-height:1.5;color:#0f172a;">${escapeHtml(requesterCompanyName)}</p>
-            </div>
-            <div style="border:1px solid #e2e8f0;border-radius:14px;padding:14px;">
-              <p style="margin:0 0 6px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Preferred start</p>
-              <p style="margin:0;font-size:15px;line-height:1.5;color:#0f172a;">${escapeHtml(preferredStart)}</p>
-            </div>
-            <div style="border:1px solid #e2e8f0;border-radius:14px;padding:14px;">
-              <p style="margin:0 0 6px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Budget range</p>
-              <p style="margin:0;font-size:15px;line-height:1.5;color:#0f172a;">${escapeHtml(budgetRange)}</p>
-            </div>
+            ${detailLines
+              .map(
+                ([label, value]) => `
+                  <div style="border:1px solid #e2e8f0;border-radius:14px;padding:14px;">
+                    <p style="margin:0 0 6px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">${escapeHtml(
+                      label,
+                    )}</p>
+                    <p style="margin:0;font-size:15px;line-height:1.5;color:#0f172a;">${escapeHtml(value)}</p>
+                  </div>
+                `,
+              )
+              .join("")}
           </div>
           <div style="margin-top:16px;border:1px solid #e2e8f0;border-radius:14px;padding:16px;background:#f8fafc;">
             <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Summary</p>
             <p style="margin:0;font-size:15px;line-height:1.7;color:#0f172a;white-space:pre-wrap;">${escapeHtml(input.summary)}</p>
           </div>
-          <p style="margin:18px 0 0;font-size:12px;line-height:1.6;color:#64748b;">Delivery target: ${escapeHtml(
+          <p style="margin:18px 0 0;font-size:12px;line-height:1.6;color:#64748b;">Reply-to target: ${escapeHtml(
             PUBLIC_LAUNCH_CONTACT.primaryEmail,
           )}</p>
         </div>

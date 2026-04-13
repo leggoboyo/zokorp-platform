@@ -2,10 +2,11 @@ import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { buildCalendlyBookingUrl } from "@/lib/calendly";
+import { auth } from "@/lib/auth";
 import { SOFT_LAUNCH_RESPONSE_WINDOWS } from "@/lib/launch-posture";
+import { getConsultationCta } from "@/lib/marketing-cta";
 import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
-import { buildMarketingPageMetadata, getMarketingSiteUrl } from "@/lib/site";
+import { buildMarketingPageMetadata } from "@/lib/site";
 
 export const metadata = buildMarketingPageMetadata({
   title: "Support",
@@ -54,9 +55,13 @@ const intakeChecklist = [
   "Short summary of the problem or request",
 ] as const;
 
-export default function SupportPage() {
-  const architectureBookingUrl = buildCalendlyBookingUrl({
-    baseUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getMarketingSiteUrl()}/services#service-request`,
+export const dynamic = "force-dynamic";
+
+export default async function SupportPage() {
+  const session = await auth();
+  const signedIn = Boolean(session?.user?.email);
+  const consultationCta = getConsultationCta({
+    signedIn,
     utmMedium: "support-page",
   });
 
@@ -144,9 +149,15 @@ export default function SupportPage() {
           </div>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
-          <a href={architectureBookingUrl} className={buttonVariants()}>
-            {PUBLIC_LAUNCH_CONTACT.bookingLabel}
-          </a>
+          {consultationCta.external ? (
+            <a href={consultationCta.href} className={buttonVariants()}>
+              {consultationCta.label}
+            </a>
+          ) : (
+            <Link href={consultationCta.href} className={buttonVariants()}>
+              {consultationCta.label}
+            </Link>
+          )}
           <Link href="/refunds" className={buttonVariants({ variant: "secondary" })}>
             Refund posture
           </Link>

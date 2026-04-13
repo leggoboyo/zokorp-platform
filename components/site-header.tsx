@@ -2,38 +2,40 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { SiteHeaderShell } from "@/components/site-header-shell";
+import { auth } from "@/lib/auth";
 import { isPasswordAuthEnabled } from "@/lib/auth-config";
-import { buildCalendlyBookingUrl } from "@/lib/calendly";
+import { getConsultationCta } from "@/lib/marketing-cta";
 import { PUBLIC_LAUNCH_FOUNDER_PROFILE } from "@/lib/public-launch-contract";
-import { getAppSiteUrl, getMarketingSiteUrl, toMarketingSiteUrl } from "@/lib/site";
+import { getAppSiteUrl } from "@/lib/site";
 
 const primaryLinks = [
-  { href: toMarketingSiteUrl("/services"), label: "Services" },
+  { href: "/services", label: "Services" },
   { href: "/software", label: "Software" },
-  { href: toMarketingSiteUrl("/pricing"), label: "Pricing" },
-  { href: toMarketingSiteUrl("/about"), label: "About" },
-  { href: toMarketingSiteUrl("/contact"), label: "Contact" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ];
 
 const secondaryLinks = [
-  { href: toMarketingSiteUrl("/media"), label: "Insights" },
-  { href: toMarketingSiteUrl("/support"), label: "Support" },
+  { href: "/media", label: "Insights" },
+  { href: "/support", label: "Support" },
   { href: `${getAppSiteUrl()}/account`, label: "Account" },
 ];
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const session = await auth();
+  const signedIn = Boolean(session?.user?.email);
   const authRuntimeReady = isPasswordAuthEnabled() && Boolean(process.env.NEXTAUTH_SECRET);
   const appSiteUrl = getAppSiteUrl();
-  const marketingSiteUrl = getMarketingSiteUrl();
-  const bookCallHref = buildCalendlyBookingUrl({
-    baseUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${marketingSiteUrl}/services#service-request`,
+  const primaryCta = getConsultationCta({
+    signedIn,
     utmMedium: "header",
   });
 
   return (
     <header className="sticky top-0 z-50 isolate border-b border-[rgb(var(--z-border)/0.28)] bg-[rgba(247,250,253,0.82)] backdrop-blur-xl">
       <div className="border-b border-white/6 bg-[rgb(var(--z-bg))] px-4 py-2 text-center text-[0.68rem] tracking-[0.16em] text-[rgb(var(--z-text))]">
-        Founder-led AWS architecture for SMB teams
+        Founder-led architecture and product guidance for SMB teams
       </div>
 
       <div className="marketing-container px-4 py-4 md:px-6 xl:px-8">
@@ -52,7 +54,7 @@ export function SiteHeader() {
             </span>
             <span className="min-w-0">
               <span className="hidden text-xs uppercase tracking-[0.18em] text-muted-foreground lg:block">
-                Clear scope. Direct technical judgment.
+                Clear scope. Less is more.
               </span>
             </span>
           </Link>
@@ -61,9 +63,12 @@ export function SiteHeader() {
             primaryLinks={primaryLinks}
             secondaryLinks={secondaryLinks}
             authRuntimeReady={authRuntimeReady}
-            bookCallHref={bookCallHref}
+            primaryCtaHref={primaryCta.href}
+            primaryCtaLabel={primaryCta.label}
+            primaryCtaExternal={primaryCta.external}
             loginHref={`${appSiteUrl}/login?callbackUrl=/software`}
             registerHref={`${appSiteUrl}/register`}
+            signedIn={signedIn}
           />
         </div>
       </div>

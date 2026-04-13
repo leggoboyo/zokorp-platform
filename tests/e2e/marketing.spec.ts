@@ -37,7 +37,7 @@ test.describe("marketing surfaces", () => {
     await assertNoPlaceholderCopy(page);
     await assertSingleH1(page);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.locator('[data-surface="hero-copy"]').getByRole("link", { name: "Book a call" })).toBeVisible();
+    await expect(page.locator('[data-surface="hero-copy"]').getByRole("link", { name: "Request a call" })).toBeVisible();
     await expect(page.locator('[data-surface="hero-copy"]').getByRole("link", { name: "View services" })).toBeVisible();
     await expect(page.url()).not.toContain("/login");
     await expectCanonical(page, buildCanonicalUrl(expectedMarketingCanonicalBaseUrl, "/"));
@@ -182,7 +182,7 @@ test.describe("marketing surfaces", () => {
     });
   }
 
-  test("service request panel stays readonly by default while still validating required fields", async ({ page }) => {
+  test("public contact form keeps the reduced required-field set while staying readonly by default", async ({ page }) => {
     test.skip(mutationMode === "mutation", "Readonly validation applies only when mutation mode is disabled.");
 
     const diagnostics = attachPageDiagnostics(page);
@@ -194,33 +194,30 @@ test.describe("marketing surfaces", () => {
       }
     });
 
-    await page.goto(buildUrl(marketingBaseUrl, "/services"), { waitUntil: "domcontentloaded" });
+    await page.goto(buildUrl(marketingBaseUrl, "/contact"), { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle");
 
     const submitButton = page.getByRole("button", { name: /Submit service request/i });
     await submitButton.click();
 
-    const titleField = page.getByLabel("Request title");
     await expect
-      .poll(async () => titleField.evaluate((element) => (element as HTMLInputElement).validationMessage.length > 0))
+      .poll(async () => page.getByLabel("Your name").evaluate((element) => (element as HTMLInputElement).validationMessage.length > 0))
       .toBe(true);
 
     await page.getByLabel("Work email").fill("tester@zokorp-example.com");
     await page.getByLabel("Your name").fill("ZoKorp Test");
-    await page.getByLabel("Company").fill("ZoKorp QA");
-    await titleField.fill("Architecture review request for QA validation");
     await page.getByLabel("What do you need?").fill(
-      "We need a founder-led AWS architecture review with remediation planning, timeline guidance, and delivery constraints.",
+      "We need help narrowing the next cloud architecture step and want a short scoped response.",
     );
 
-    const form = page.locator("#service-request form");
+    const form = page.locator("form");
     await expect
       .poll(async () => form.evaluate((node) => (node as HTMLFormElement).checkValidity()))
       .toBe(true);
     await expect(submitButton).toBeEnabled();
     expect(requestUrls).toEqual([]);
 
-    expectNoUnexpectedPageFailures(diagnostics, "service request readonly validation");
+    expectNoUnexpectedPageFailures(diagnostics, "public contact form readonly validation");
   });
 
   test("founder portrait stays visible and balanced on the about page", async ({ page }, testInfo) => {
@@ -234,9 +231,9 @@ test.describe("marketing surfaces", () => {
 
     const box = await portrait.boundingBox();
     expect(box).not.toBeNull();
-    expect((box?.width ?? 0) > (testInfo.project.name.includes("mobile") ? 180 : 220)).toBe(true);
-    expect((box?.height ?? 0) > 260).toBe(true);
-    expect(((box?.height ?? 1) / (box?.width ?? 1)) < 2.3).toBe(true);
+    expect((box?.width ?? 0) >= (testInfo.project.name.includes("mobile") ? 300 : 100)).toBe(true);
+    expect((box?.height ?? 0) >= (testInfo.project.name.includes("mobile") ? 380 : 130)).toBe(true);
+    expect(((box?.height ?? 1) / (box?.width ?? 1)) < 1.6).toBe(true);
     expect(((box?.height ?? 1) / (box?.width ?? 1)) > 1.05).toBe(true);
 
     const naturalSize = await portrait.evaluate((element) => ({
@@ -273,7 +270,7 @@ test.describe("marketing surfaces", () => {
 
     await page.goto(buildUrl(appBaseUrl, "/software"), { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("heading", { name: "See the product before signup." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Public products first." })).toBeVisible();
 
     await page.goto(buildUrl(appBaseUrl, "/account"), { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/login\?callbackUrl=%2Faccount|\/login\?callbackUrl=\/account/);

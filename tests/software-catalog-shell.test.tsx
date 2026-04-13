@@ -19,7 +19,7 @@ const products = [
     id: "prod-1",
     slug: "architecture-diagram-reviewer",
     name: "Architecture Diagram Reviewer",
-    description: "Free architecture feedback for cloud diagrams.",
+    description: "Free review for architecture diagrams.",
     accessModel: "FREE" as const,
     prices: [],
   },
@@ -42,7 +42,7 @@ const products = [
     id: "prod-3",
     slug: "mlops-foundation-platform",
     name: "ZoKorp Forecasting Beta",
-    description: "Subscription forecasting beta workflow for SMB teams.",
+    description: "Subscription forecasting beta workflow for small teams.",
     accessModel: "SUBSCRIPTION" as const,
     prices: [
       {
@@ -63,6 +63,8 @@ describe("SoftwareCatalogShell", () => {
 
   it("filters by search query across product names and descriptions", () => {
     render(<SoftwareCatalogShell products={products} />);
+
+    expect(screen.getByRole("heading", { name: /Browse by access model or intent/i })).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText(/search software catalog/i), {
       target: { value: "forecast" },
@@ -92,5 +94,14 @@ describe("SoftwareCatalogShell", () => {
     expect(screen.getByText(/^ZoKorpValidator$/i)).toBeTruthy();
     expect(screen.getByText(/^Architecture Diagram Reviewer$/i)).toBeTruthy();
     expect(screen.getByText(/ZoKorp Forecasting Beta/i)).toBeTruthy();
+  });
+
+  it("renders the table-like column labels on larger screens", () => {
+    render(<SoftwareCatalogShell products={products} />);
+
+    expect(screen.getAllByText("Product").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Access").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Price").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Action").length).toBeGreaterThan(0);
   });
 });

@@ -6,6 +6,7 @@ import { verifyArchitectureReviewCtaToken } from "@/lib/architecture-review/cta-
 import { buildCalendlyBookingUrl } from "@/lib/calendly";
 import { db } from "@/lib/db";
 import { isSchemaDriftError } from "@/lib/db-errors";
+import { getArchitectureCallBaseUrl } from "@/lib/marketing-cta";
 import { buildEstimateReferenceCode, ensureLeadInteraction, upsertLead } from "@/lib/privacy-leads";
 import { getMarketingSiteUrl } from "@/lib/site";
 
@@ -20,7 +21,7 @@ function destinationForType(
   estimateReferenceCode?: string | null,
 ) {
   if (ctaType === "book-call") {
-    const destination = process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getMarketingSiteUrl()}/services#service-request`;
+    const destination = getArchitectureCallBaseUrl();
 
     return buildCalendlyBookingUrl({
       baseUrl: destination,
@@ -28,9 +29,7 @@ function destinationForType(
     });
   }
 
-  return (
-    process.env.ARCH_REVIEW_REMEDIATION_PLAN_URL ?? `${getMarketingSiteUrl()}/services#service-request`
-  );
+  return process.env.ARCH_REVIEW_REMEDIATION_PLAN_URL ?? `${getMarketingSiteUrl()}/contact`;
 }
 
 function buildArchitectureReviewCtaEventId(token: string) {

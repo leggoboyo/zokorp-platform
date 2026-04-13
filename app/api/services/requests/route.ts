@@ -14,8 +14,8 @@ import { sendServiceRequestOperatorNotification } from "@/lib/service-request-em
 import { createServiceRequest } from "@/lib/service-requests";
 
 const requestSchema = z.object({
-  type: z.nativeEnum(ServiceRequestType),
-  title: z.string().trim().min(8).max(120),
+  type: z.nativeEnum(ServiceRequestType).optional(),
+  title: z.string().trim().max(120).optional(),
   summary: z.string().trim().min(30).max(2400),
   preferredStart: z
     .string()
@@ -27,6 +27,18 @@ const requestSchema = z.object({
   requesterName: z.string().trim().max(120).optional(),
   requesterCompanyName: z.string().trim().max(120).optional(),
 });
+
+function deriveServiceRequestTitle(summary: string) {
+  const compactSummary = summary.replace(/\s+/g, " ").trim().replace(/[.!?]+$/u, "");
+  const words = compactSummary.split(" ").filter(Boolean);
+
+  if (words.length === 0) {
+    return "Consultation request";
+  }
+
+  const derived = words.slice(0, 8).join(" ");
+  return derived.length > 120 ? `${derived.slice(0, 117).trimEnd()}...` : derived;
+}
 
 export async function POST(request: Request) {
   try {
@@ -72,6 +84,10 @@ export async function POST(request: Request) {
       return jsonNoStore({ error: "Invalid service request input." }, { status: 400 });
     }
 
+    const summary = parsed.data.summary.trim();
+    const providedTitle = parsed.data.title?.trim();
+    const title = providedTitle && providedTitle.length >= 8 ? providedTitle : deriveServiceRequestTitle(summary);
+    const type = parsed.data.type ?? ServiceRequestType.CONSULTATION;
     const requesterEmail = signedInUser?.email ?? parsed.data.requesterEmail?.trim().toLowerCase();
     if (!requesterEmail) {
       return jsonNoStore(
@@ -87,15 +103,23 @@ export async function POST(request: Request) {
       );
     }
 
+    const requesterName = signedInUser?.name ?? parsed.data.requesterName?.trim() ?? null;
+    if (!signedInUser && !requesterName) {
+      return jsonNoStore(
+        { error: "Name is required when submitting without an account." },
+        { status: 400 },
+      );
+    }
+
     const created = await createServiceRequest({
       userId: signedInUser?.id ?? null,
       requesterEmail,
-      requesterName: signedInUser?.name ?? parsed.data.requesterName ?? null,
+      requesterName,
       requesterCompanyName: parsed.data.requesterCompanyName ?? null,
       requesterSource: signedInUser ? "account" : "public_form",
-      type: parsed.data.type,
-      title: parsed.data.title,
-      summary: parsed.data.summary,
+      type,
+      title,
+      summary,
       preferredStart: parsed.data.preferredStart
         ? new Date(`${parsed.data.preferredStart}T00:00:00.000Z`)
         : undefined,
@@ -103,7 +127,6 @@ export async function POST(request: Request) {
     });
 
     const requesterSource = signedInUser ? "account" : "public_form";
-    const requesterName = signedInUser?.name ?? parsed.data.requesterName ?? null;
     const requesterCompanyName = parsed.data.requesterCompanyName ?? null;
     let leadId: string | null = null;
     let operatorEmailStatus: {

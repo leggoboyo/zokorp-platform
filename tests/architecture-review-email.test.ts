@@ -5,7 +5,7 @@ import { getArchitectureReviewPricingCatalogEntry } from "@/lib/architecture-rev
 import { buildArchitectureReviewReport } from "@/lib/architecture-review/report";
 
 describe("architecture review email content", () => {
-  it("falls back to the public services CTA on the marketing host when no booking URL is configured", () => {
+  it("falls back to the working architecture follow-up booking URL when no booking URL is configured", () => {
     const previousBookingUrl = process.env.ARCH_REVIEW_BOOK_CALL_URL;
     delete process.env.ARCH_REVIEW_BOOK_CALL_URL;
 
@@ -28,8 +28,10 @@ describe("architecture review email content", () => {
 
     const content = buildArchitectureReviewEmailContent(report);
 
-    expect(content.text).toContain("https://www.zokorp.com/services#service-request");
-    expect(content.html).toContain("https://www.zokorp.com/services#service-request");
+    expect(content.text).toContain("https://calendly.com/zokorp/architecture-follow-up");
+    expect(content.text).toContain("utm_medium=architecture-review-email");
+    expect(content.html).toContain("https://calendly.com/zokorp/architecture-follow-up");
+    expect(content.html).toContain("utm_medium=architecture-review-email");
 
     if (previousBookingUrl) {
       process.env.ARCH_REVIEW_BOOK_CALL_URL = previousBookingUrl;

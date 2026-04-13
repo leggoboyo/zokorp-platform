@@ -8,8 +8,8 @@ import {
 } from "@/lib/architecture-review/pricing-catalog";
 import { configuredArchitectureRemediationRateUsdPerHour } from "@/lib/architecture-review/quote";
 import { isExpandedReviewScope } from "@/lib/architecture-review/scope";
+import { getArchitectureCallUrl } from "@/lib/marketing-cta";
 import { buildEstimateReferenceCode } from "@/lib/privacy-leads";
-import { getMarketingSiteUrl } from "@/lib/site";
 
 export type ArchitectureEstimateAuditUsage = {
   ruleId: string;
@@ -34,7 +34,9 @@ function normalizeText(value: string | null | undefined) {
 }
 
 function defaultBookingUrl() {
-  return process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${getMarketingSiteUrl()}/services#service-request`;
+  return getArchitectureCallUrl({
+    utmMedium: "architecture-review-email",
+  });
 }
 
 function roundToNearest(value: number, step: number) {

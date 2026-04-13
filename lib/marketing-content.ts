@@ -9,23 +9,18 @@ export type PublicServiceOffer = {
   prominence: "primary" | "secondary";
 };
 
-export const MARKETING_TRUST_CHIPS = [
-  "Former AWS Partner Solutions Architect",
-  "Currently at Microsoft",
-  "Houston, Texas",
-  "Initial response within one business day",
-] as const;
+export const MARKETING_TRUST_CHIPS: readonly string[] = [];
 
 export const CONSULTING_OFFERS: PublicServiceOffer[] = [
   {
     slug: "architecture-review",
     eyebrow: "Start here",
     title: "Architecture Review",
-    priceAnchor: "$249 founder review or free browser review",
-    summary: "A fast AWS read with a clear next step.",
+    priceAnchor: "$249",
+    summary: "A fast technical read with a clear next step.",
     bullets: [
       "Findings, not filler",
-      "What to validate, fix, or build next",
+      "What to fix or validate next",
       "Best first buy when scope is still forming",
     ],
     included: [
@@ -36,29 +31,11 @@ export const CONSULTING_OFFERS: PublicServiceOffer[] = [
     prominence: "primary",
   },
   {
-    slug: "aws-readiness-ftr-validation",
-    eyebrow: "Additional scoped work",
-    title: "AWS Readiness / FTR Validation",
-    priceAnchor: "from $1,500",
-    summary: "A validation pass for teams that need pass/fail clarity.",
-    bullets: [
-      "Evidence-based findings",
-      "Pass/fail output by control area",
-      "Best once the architecture is stable",
-    ],
-    included: [
-      "Control findings",
-      "Remediation guidance",
-      "Validation summary",
-    ],
-    prominence: "secondary",
-  },
-  {
     slug: "cloud-cost-optimization-audit",
     eyebrow: "One-time audit",
     title: "Cloud Cost Optimization Audit",
     priceAnchor: "from $750",
-    summary: "A bounded AWS cost review focused on waste and savings.",
+    summary: "A bounded spend review with clear priorities.",
     bullets: [
       "Waste review with clear priorities",
       "Savings tied to real spend",
@@ -76,7 +53,7 @@ export const CONSULTING_OFFERS: PublicServiceOffer[] = [
     eyebrow: "Fixed scope",
     title: "Landing Zone Setup",
     priceAnchor: "from $2,500",
-    summary: "A clean AWS baseline for IAM, networking, and security.",
+    summary: "A clean baseline for identity, network, and security.",
     bullets: [
       "Security-first baseline",
       "Clean account and network structure",
@@ -88,6 +65,42 @@ export const CONSULTING_OFFERS: PublicServiceOffer[] = [
       "Documented baseline",
     ],
     prominence: "primary",
+  },
+  {
+    slug: "advisory-retainer",
+    eyebrow: "Light support",
+    title: "Advisory Retainer",
+    priceAnchor: "from $1,500/month",
+    summary: "Light continuity after the first scoped engagement.",
+    bullets: [
+      "Decision support without a managed-service contract",
+      "Continuity after review or remediation work",
+      "Business-hours support with visible expectations",
+    ],
+    included: [
+      "Founder access",
+      "Architecture guidance",
+      "Follow-up support",
+    ],
+    prominence: "primary",
+  },
+  {
+    slug: "readiness-validation-review",
+    eyebrow: "Additional scoped work",
+    title: "Readiness / Validation Review",
+    priceAnchor: "from $1,500",
+    summary: "A validation pass for teams that need evidence and pass/fail clarity.",
+    bullets: [
+      "Evidence-based findings",
+      "Pass/fail output by control area",
+      "Best once the architecture is stable",
+    ],
+    included: [
+      "Control findings",
+      "Remediation guidance",
+      "Validation summary",
+    ],
+    prominence: "secondary",
   },
   {
     slug: "scoped-implementation",
@@ -107,37 +120,19 @@ export const CONSULTING_OFFERS: PublicServiceOffer[] = [
     ],
     prominence: "secondary",
   },
-  {
-    slug: "advisory-retainer",
-    eyebrow: "Light support",
-    title: "Advisory Retainer",
-    priceAnchor: "from $1,500/month",
-    summary: "Monthly founder access for teams that want continuity.",
-    bullets: [
-      "Decision support without managed services",
-      "Continuity after review or remediation",
-      "Business-hours support with clear expectations",
-    ],
-    included: [
-      "Founder access",
-      "Architecture guidance",
-      "Follow-up support",
-    ],
-    prominence: "primary",
-  },
 ] as const;
 
 export const PRIMARY_CONSULTING_OFFERS = CONSULTING_OFFERS.filter((offer) => offer.prominence === "primary");
 export const SECONDARY_CONSULTING_OFFERS = CONSULTING_OFFERS.filter((offer) => offer.prominence === "secondary");
 
 export const SPECIALIST_ADVISORY = {
-  title: "AI / ML Advisory",
+  title: "Specialist Advisory",
   priceAnchor: "from $3,500",
-  summary: "Kept secondary on purpose. Use it only for a real AWS AI or ML decision.",
+  summary: "Used only when the problem is narrow enough to scope.",
   bullets: [
-    "Guidance for a defined AI or ML use case",
+    "Best for specialist AI or validation questions",
+    "Secondary to the core review and setup work",
     "Scope before build work starts",
-    "Secondary to the core AWS offer",
   ],
 } as const;
 
@@ -146,7 +141,7 @@ export const SOFTWARE_HIGHLIGHTS = [
     title: "Architecture Diagram Reviewer",
     href: "/software/architecture-diagram-reviewer",
     summary: "Review an architecture and get a concrete next step.",
-    audience: "Teams that want fast AWS architecture feedback.",
+    audience: "Teams that want fast cloud architecture feedback.",
     outcome: "Review findings and a clearer remediation path.",
     cta: "Open reviewer",
   },
@@ -164,104 +159,71 @@ export const SOFTWARE_HIGHLIGHTS = [
     summary: "A narrow forecasting workflow kept separate from general consulting.",
     audience: "Teams evaluating a focused forecasting workflow.",
     outcome: "Public product context before signup or billing.",
-    cta: "View forecasting beta",
-  },
-] as const;
-
-export const DELIVERY_PROCESS_STEPS = [
-  {
-    title: "Review first",
-    detail: "Start with a review or audit.",
-  },
-  {
-    title: "Scope clearly",
-    detail: "Use the findings to decide what comes next.",
-  },
-  {
-    title: "Deliver the next step",
-    detail: "Move only when the problem is clear enough to scope.",
-  },
-  {
-    title: "Stay supported if needed",
-    detail: "Use light advisory only when continuity matters.",
+    cta: "View beta",
   },
 ] as const;
 
 export const HOME_PAGE_CONTENT = {
   hero: {
-    eyebrow: "Founder-led AWS architecture",
-    title: "Clear AWS help for SMB teams.",
-    lede:
-      "Former AWS. Microsoft now. Fixed reviews, scoped follow-through, and public tools that make the next step obvious.",
+    eyebrow: "Founder-led cloud architecture",
+    title: "Clear cloud help for SMB teams.",
+    lede: "Reviews, setup, cost work, and practical follow-through. Start small. Decide with evidence.",
     supportingBullets: [
-      "Fixed reviews",
-      "Clear scope before work starts",
-      "Public browsing first",
-      "Direct founder access",
+      "Clear next step",
+      "Visible pricing",
+      "Public product pages",
     ],
   },
-  offersTitle: "Start with one of four paths",
-  offersIntro:
-    "Review, audit, setup, or retainer. Start small, then decide.",
-  softwareTitle: "Public tools before paid help",
-  softwareIntro:
-    "Use the tools first. Buy help when the next step is clear.",
-  finalCtaTitle: "Move to a call when the situation is easier to explain live.",
-  finalCtaBullets: [
-    "Initial response within one business day",
-    "Clear scope before work starts",
-    "No fake proof wall or invented outcomes",
-  ],
+  founderTitle: "Founder-led",
+  founderSummary: "Small practice. Clear scope. Direct follow-through.",
+  offersTitle: "Start with one path",
+  offersIntro: "Four scoped entry points. No generic bundle.",
+  softwareTitle: "Public tools first",
+  softwareIntro: "See the product before signup or billing.",
 } as const;
 
 export const SERVICES_PAGE_CONTENT = {
   hero: {
-    eyebrow: "Scoped AWS services",
-    title: "Four AWS offers up front.",
-    lede:
-      "Start with a review, cost audit, landing zone setup, or retainer. Validation and implementation stay secondary.",
+    eyebrow: "Services",
+    title: "Choose one starting point.",
+    lede: "Start with a review, cost audit, setup, or retainer. Broader work only after the path is clear.",
     supportingBullets: [
-      "Founder-led delivery",
-      "Price anchors",
-      "Clear scope before work starts",
+      "Visible starting prices",
+      "Estimate-first scoping",
       "One-business-day response",
     ],
   },
   primaryTitle: "Primary services",
-  primaryIntro:
-    "These are the default entry points.",
+  primaryIntro: "Pick the first move, not a generic package.",
   secondaryTitle: "Additional scoped work",
-  secondarySummary: "Validation and implementation stay public, but secondary.",
-  requestTitle: "Request a quote",
-  requestIntro: "Use the form when you need a quote.",
+  secondarySummary: "Validation and implementation stay available, but not as the first buy.",
+  requestTitle: "Need follow-up?",
+  requestIntro: "Use the public contact form when you want a scoped response.",
 } as const;
 
 export const ABOUT_PAGE_CONTENT = {
   hero: {
-    eyebrow: "Credibility stack",
-    title: "Former AWS. Microsoft now. Direct technical judgment.",
-    lede:
-      "Named background, visible certifications, Houston contact, and a small operating model.",
+    eyebrow: "Founder",
+    title: "Signals you can verify fast.",
+    lede: "One founder. Named background. Visible certifications. Houston, TX.",
     supportingBullets: [
-      "Former AWS Partner Solutions Architect",
-      "Currently at Microsoft",
-      "AWS SA Pro, ML Specialty, Security Specialty",
-      "Houston, Texas",
+      "AWS certifications",
+      "Houston, TX",
+      "Small operating model",
     ],
   },
-  credibilityTitle: "Signals you can verify fast",
-  credibilityCards: [
+  proofRows: [
     {
-      title: "Former AWS Partner Solutions Architect",
-      detail: "Architecture, readiness, and delivery experience stay central.",
+      title: "Background",
+      detail: "Former AWS Partner Solutions Architect. Microsoft.",
     },
     {
-      title: "Currently at Microsoft",
-      detail: "Present-day technical context stays visible.",
+      title: "Certifications",
+      detail: "AWS Solutions Architect Professional, Machine Learning Specialty, and Security Specialty.",
     },
     {
-      title: "AWS certifications and Houston location",
-      detail: "Certifications and a real operating location keep trust concrete.",
+      title: "Operating model",
+      detail: "Small by design so the public site, product pages, and service work all say the same thing.",
     },
   ],
 } as const;
@@ -269,49 +231,38 @@ export const ABOUT_PAGE_CONTENT = {
 export const PRICING_PAGE_CONTENT = {
   hero: {
     eyebrow: "Pricing",
-    title: "Public price anchors first.",
-    lede:
-      "Visible numbers, inclusions, and where estimate-first scoping still applies.",
+    title: "Visible price anchors first.",
+    lede: "Use the public numbers first. Quote only what still needs scoping.",
     supportingBullets: [
       "Visible starting prices",
       "What is included",
-      "Scoped quotes where needed",
+      "Estimate-first for broader work",
     ],
   },
-  consultingTitle: "Primary consulting offers",
-  consultingIntro: "Use the public numbers first. Quote only what still needs scoping.",
-  secondarySummary: "Validation and implementation are public, but not the first buy.",
-  softwareTitle: "Software pricing and access",
+  consultingTitle: "Consulting offers",
+  consultingIntro: "Read the table, then request follow-up only if the scope still needs work.",
+  secondarySummary: "Validation and implementation are available, but not the first buy.",
+  softwareTitle: "Software pricing",
 } as const;
 
 export const SOFTWARE_PAGE_CONTENT = {
   hero: {
-    eyebrow: "Public software",
-    title: "See the product before signup.",
-    lede:
-      "Browse first. Create an account when you want access, history, or billing.",
+    eyebrow: "Software",
+    title: "See the product first.",
+    lede: "Browse publicly. Create an account only when access, history, or billing matters.",
     supportingBullets: [
       "What it does",
       "Who it is for",
       "What you get",
-      "Account later, not first",
     ],
   },
   spotlightTitle: "Public product paths",
   spotlightIntro: "Each product should scan in seconds.",
-  accessSummary: "Marketing on `www`. Usage and billing in `app`.",
+  accessSummary: "Public pages on `www`. Usage and billing in `app`.",
 } as const;
 
 export const CONTACT_PAGE_CONTENT = {
-  hero: {
-    eyebrow: "Contact ZoKorp",
-    title: "Book a call or email directly.",
-    lede:
-      "Reply within one business day. Clear scope before work starts.",
-    supportingBullets: [
-      "Book a call for context",
-      "Email for direct questions",
-      "Houston, Texas",
-    ],
-  },
+  eyebrow: "Contact",
+  title: "Use the form.",
+  lede: "Public requests go to consulting@zokorp.com. Initial response within one business day.",
 } as const;

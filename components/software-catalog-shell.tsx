@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useDeferredValue, useMemo, useState } from "react";
 
-import { MarketingSectionHeading } from "@/components/marketing/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +63,7 @@ function formatAmount(amount: number, currency: string) {
 
 function getPriceSummary(product: CatalogProduct) {
   if (product.prices.length === 0) {
-    return product.accessModel === "FREE" ? "No purchase required" : "Pricing available after account setup";
+    return product.accessModel === "FREE" ? "No purchase" : "Pricing later";
   }
 
   const amounts = product.prices.map((price) => formatAmount(price.amount, price.currency));
@@ -81,7 +80,12 @@ function getCatalogPresentation(product: CatalogProduct) {
 
   return {
     name: toolDefinition?.displayName ?? product.name,
-    description: toolDefinition?.productDescription ?? product.description,
+    description:
+      toolDefinition?.productDescription ??
+      product.description
+        .replaceAll("AWS", "cloud")
+        .replaceAll("FTR", "validation")
+        .replaceAll("SMB", "small teams"),
   };
 }
 
@@ -112,15 +116,16 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
   return (
     <section className="space-y-5">
       <div className="section-band px-5 py-5 md:px-6 md:py-6">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] lg:items-end">
-          <MarketingSectionHeading
-            eyebrow="Catalog filters"
-            title="Browse by access model or intent"
-            description="Search product names and descriptions, then narrow the list to the pricing model your team wants."
-            className="block"
-            titleClassName="max-w-[14ch] text-3xl"
-            descriptionClassName="text-sm"
-          />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] lg:items-end">
+          <div className="space-y-2">
+            <p className="enterprise-kicker">Catalog filters</p>
+            <h2 className="font-display max-w-[12ch] text-[2rem] font-semibold leading-[0.98] text-foreground md:text-[2.6rem]">
+              Browse by access model or intent
+            </h2>
+            <p className="max-w-[42ch] text-sm leading-7 text-muted-foreground">
+              Search product names or descriptions, then narrow the list by access model.
+            </p>
+          </div>
 
           <div className="w-full">
             <label htmlFor="software-search" className="sr-only">
@@ -136,111 +141,91 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
           </div>
         </div>
 
-        <div className="band-divider mt-5" />
+        <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Filter software by access model">
+          {accessFilters.map((filter) => {
+            const isActive = filter.value === accessFilter;
 
-        <div className="mt-5 space-y-4">
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter software by access model">
-            {accessFilters.map((filter) => {
-              const isActive = filter.value === accessFilter;
-
-              return (
-                <button
-                  key={filter.value}
-                  type="button"
-                  onClick={() => setAccessFilter(filter.value)}
-                  className={cn(
-                    buttonVariants({ variant: isActive ? "primary" : "secondary", size: "sm" }),
-                    !isActive && "bg-card",
-                  )}
-                  aria-pressed={isActive}
-                >
-                  {filter.label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-sm text-muted-foreground" aria-live="polite">
-            Showing {filteredProducts.length} of {products.length} product{products.length === 1 ? "" : "s"}.
-          </p>
+            return (
+              <button
+                key={filter.value}
+                type="button"
+                onClick={() => setAccessFilter(filter.value)}
+                className={cn(
+                  buttonVariants({ variant: isActive ? "primary" : "secondary", size: "sm" }),
+                  !isActive && "bg-card",
+                )}
+                aria-pressed={isActive}
+              >
+                {filter.label}
+              </button>
+            );
+          })}
         </div>
+
+        <p className="mt-4 text-sm text-muted-foreground" aria-live="polite">
+          Showing {filteredProducts.length} of {products.length} product{products.length === 1 ? "" : "s"}.
+        </p>
       </div>
 
       {filteredProducts.length > 0 ? (
-        <div className="section-band px-5 py-5 md:px-6">
-          {filteredProducts.map((product, index) => (
-            <article
-              key={product.id}
-              className="grid gap-6 border-t border-border/80 py-6 first:border-t-0 first:pt-0 lg:grid-cols-[auto_minmax(0,0.52fr)_minmax(0,1fr)_auto] lg:items-start"
-            >
-              <div className="hidden lg:block lg:pt-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label">{`0${index + 1}`}</p>
-              </div>
-              <div className="space-y-5">
-                <div className="space-y-2.5">
+        <div className="overflow-hidden rounded-[2.1rem] border border-border/80 bg-white/72 shadow-[0_20px_80px_rgba(36,71,126,0.06)] backdrop-blur-sm">
+          <div className="hidden border-b border-border/70 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label md:grid md:grid-cols-[minmax(0,1.55fr)_minmax(9rem,0.75fr)_minmax(10rem,0.82fr)_auto]">
+            <span>Product</span>
+            <span>Access</span>
+            <span>Price</span>
+            <span className="text-right">Action</span>
+          </div>
+
+          {filteredProducts.map((product, index) => {
+            const presentation = getCatalogPresentation(product);
+            const priceSummary = getPriceSummary(product);
+
+            return (
+              <article
+                key={product.id}
+                className="grid gap-4 border-b border-border/80 px-5 py-5 last:border-b-0 md:grid-cols-[3rem_minmax(0,1.55fr)_minmax(9rem,0.75fr)_minmax(10rem,0.82fr)_auto] md:items-start md:gap-5"
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label md:pt-2">{`0${index + 1}`}</div>
+
+                <div className="space-y-2">
                   <p className="enterprise-kicker">Software product</p>
-                  <h3 className="font-display text-[2rem] font-semibold leading-[1.02] text-card-foreground">
-                    {getCatalogPresentation(product).name}
+                  <h3 className="font-display max-w-[14ch] text-[1.45rem] font-semibold leading-[1.02] text-card-foreground md:text-[1.75rem]">
+                    {presentation.name}
                   </h3>
-                  <p className="measure-copy max-w-[34ch] text-sm leading-7 text-muted-foreground">
-                    {getCatalogPresentation(product).description}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,0.84fr)]">
-                <div className="grid gap-3">
-                  <div className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
-                    <span className="font-semibold">Access:</span> {accessLabel[product.accessModel]}
-                  </div>
-                  <div className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
-                    <span className="font-semibold">Pricing:</span> {getPriceSummary(product)}
-                  </div>
-                  <div className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
-                    <span className="font-semibold">Path:</span> Public page first
-                  </div>
-                  {product.prices.length > 0 ? (
-                    <div className="border-t border-border/80 pt-3">
-                      <ul className="space-y-2.5 text-sm text-muted-foreground">
-                        {product.prices.slice(0, 3).map((price) => (
-                          <li key={price.id} className="flex items-center justify-between gap-4">
-                            <span>{price.kind.replaceAll("_", " ")}</span>
-                            <span className="font-semibold text-card-foreground">{formatAmount(price.amount, price.currency)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <div className="border-t border-border/80 pt-3 text-sm leading-6 text-muted-foreground">
-                      {product.accessModel === "FREE"
-                        ? "Launch the tool directly. Account sign-in adds usage history where supported."
-                        : "Pricing is configured per product in the admin dashboard."}
-                    </div>
-                  )}
+                  <p className="max-w-[34ch] text-sm leading-6 text-muted-foreground">{presentation.description}</p>
                 </div>
 
-                <div className="space-y-3 rounded-[1.35rem] border border-border/80 bg-white/55 px-4 py-4 backdrop-blur-sm">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label">Access</p>
                   <Badge variant={accessBadgeVariant[product.accessModel]} className="w-fit">
                     {accessLabel[product.accessModel]}
                   </Badge>
-                  <p className="font-display text-[2.2rem] font-semibold leading-none tracking-[-0.05em] text-card-foreground">
-                    {getPriceSummary(product)}
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    <Link href={`/software/${product.slug}`} className={buttonVariants()}>
-                      Open product
-                    </Link>
-                    <Link href="/account" className={buttonVariants({ variant: "secondary" })}>
-                      View account access
-                    </Link>
-                  </div>
+                  <p className="text-sm leading-6 text-muted-foreground">Public page first.</p>
                 </div>
-              </div>
 
-              <div className="flex items-start lg:justify-end">
-                <span className="metric-chip">{accessLabel[product.accessModel]}</span>
-              </div>
-            </article>
-          ))}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label">Price</p>
+                  <p className="font-display text-[1.65rem] font-semibold leading-none tracking-[-0.04em] text-card-foreground">
+                    {priceSummary}
+                  </p>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {product.accessModel === "FREE"
+                      ? "Open access."
+                      : product.prices.length > 0
+                        ? `${product.prices.length} price${product.prices.length === 1 ? "" : " points"}`
+                        : "Set later"}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2 md:items-end">
+                  <Link href={`/software/${product.slug}`} className={buttonVariants({ variant: "secondary" })}>
+                    Open product
+                  </Link>
+                  <span className="text-xs uppercase tracking-[0.18em] text-foreground-label">Direct page</span>
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <div className="section-band px-6 py-6">

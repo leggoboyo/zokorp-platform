@@ -1,4 +1,5 @@
 import { createArchitectureReviewCtaToken } from "@/lib/architecture-review/cta-token";
+import { getArchitectureCallUrl } from "@/lib/marketing-cta";
 import { getAppSiteUrl, getMarketingSiteUrl } from "@/lib/site";
 
 function ctaSecret() {
@@ -12,9 +13,10 @@ export async function buildArchitectureReviewCtaLinks(leadId: string) {
 
   if (!secret) {
     return {
-      bookArchitectureCallUrl: process.env.ARCH_REVIEW_BOOK_CALL_URL ?? `${marketingSiteUrl}/services#service-request`,
-      requestRemediationPlanUrl:
-        process.env.ARCH_REVIEW_REMEDIATION_PLAN_URL ?? `${marketingSiteUrl}/services#service-request`,
+      bookArchitectureCallUrl: getArchitectureCallUrl({
+        utmMedium: "architecture-review-email",
+      }),
+      requestRemediationPlanUrl: process.env.ARCH_REVIEW_REMEDIATION_PLAN_URL ?? `${marketingSiteUrl}/contact`,
     };
   }
 

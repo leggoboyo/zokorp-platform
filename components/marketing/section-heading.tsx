@@ -8,6 +8,7 @@ type MarketingSectionHeadingProps = {
   className?: string;
   titleClassName?: string;
   descriptionClassName?: string;
+  titleAs?: "h1" | "h2" | "h3";
 };
 
 export function MarketingSectionHeading({
@@ -18,14 +19,19 @@ export function MarketingSectionHeading({
   className,
   titleClassName,
   descriptionClassName,
+  titleAs = "h2",
 }: MarketingSectionHeadingProps) {
+  const TitleTag = titleAs;
+
   return (
     <header className={cn("marketing-section-heading gap-5", className)}>
       <div className="space-y-3">
         <p className="enterprise-kicker">{eyebrow}</p>
-        <h2 className={cn("font-display max-w-[16ch] text-3xl font-semibold text-foreground md:text-4xl", titleClassName)}>
+        <TitleTag
+          className={cn("font-display max-w-[16ch] text-3xl font-semibold text-foreground md:text-4xl", titleClassName)}
+        >
           {title}
-        </h2>
+        </TitleTag>
       </div>
 
       {description || aside ? (

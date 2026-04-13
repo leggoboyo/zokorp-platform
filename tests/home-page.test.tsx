@@ -4,6 +4,10 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+const { authMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
+}));
+
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: { href: string; children: ReactNode }) => (
     <a href={href} {...props}>
@@ -12,20 +16,28 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("@/lib/auth", () => ({
+  auth: authMock,
+}));
+
 import HomePage from "@/app/page";
 
 describe("HomePage", () => {
-  it("keeps the founder-led AWS offer model explicit on the public homepage", () => {
-    const html = renderToStaticMarkup(<HomePage />);
+  it("keeps the founder-led offer model explicit on the public homepage", async () => {
+    authMock.mockResolvedValue(null);
 
-    expect(html).toContain("Clear AWS help for SMB teams.");
-    expect(html).toContain("Former AWS. Microsoft now.");
+    const html = renderToStaticMarkup(await HomePage());
+
+    expect(html).toContain("Clear cloud help for SMB teams.");
+    expect(html).toContain("Small practice. Clear scope. Direct follow-through.");
     expect(html).toContain("Initial response within one business day");
     expect(html).toContain("Architecture Review");
     expect(html).toContain("Cloud Cost Optimization Audit");
     expect(html).toContain("Landing Zone Setup");
     expect(html).toContain("Advisory Retainer");
-    expect(html).toContain("Direct founder access");
+    expect(html).toContain("Public tools first");
+    expect(html).toContain("Request a call");
+    expect(html).not.toContain("Microsoft");
     expect(html).not.toContain("AWS Readiness / FTR Validation");
     expect(html).not.toContain("Scoped Implementation");
     expect(html).not.toContain("AI/ML advisory");

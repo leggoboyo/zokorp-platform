@@ -34,16 +34,19 @@ describe("public contact and policy pages", () => {
   it("keeps consulting@zokorp.com as the primary public support identity and preserves launch-safe policy language", async () => {
     authMock.mockResolvedValue(null);
 
-    const supportHtml = renderToStaticMarkup(<SupportPage />);
-    const privacyHtml = renderToStaticMarkup(<PrivacyPage />);
-    const refundsHtml = renderToStaticMarkup(<RefundsPage />);
-    const termsHtml = renderToStaticMarkup(<TermsPage />);
+    const contactHtml = renderToStaticMarkup(await ContactPage());
+    const supportHtml = renderToStaticMarkup(await SupportPage());
+    const privacyHtml = renderToStaticMarkup(await PrivacyPage());
+    const refundsHtml = renderToStaticMarkup(await RefundsPage());
+    const termsHtml = renderToStaticMarkup(await TermsPage());
 
     expect(ContactPage).toBeTypeOf("function");
     expect(contactMetadata.alternates?.canonical).toBe("https://www.zokorp.com/contact");
-    expect(contactMetadata.description).toContain("Book a call");
+    expect(contactMetadata.description).toContain("Public requests go to consulting@zokorp.com");
+    expect(contactHtml).toContain("Use the form.");
+    expect(contactHtml).toContain("Service request panel");
     expect(supportHtml).toContain("consulting@zokorp.com");
-    expect(supportHtml).toContain("Book a call");
+    expect(supportHtml).toContain("Request a call");
     expect(supportHtml).toContain("not a 24/7 managed operations desk");
     expect(supportHtml).toContain("What to include");
     expect(privacyHtml).toContain("consulting@zokorp.com");

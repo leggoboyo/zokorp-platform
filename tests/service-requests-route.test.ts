@@ -116,6 +116,13 @@ describe("service requests route", () => {
   it("returns success even when audit logging fails after a signed-in request is created", async () => {
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
+    createServiceRequestMock.mockImplementation(async (input) => ({
+      id: "sr_123",
+      trackingCode: "SR-260326-ABCDE",
+      status: "SUBMITTED",
+      ...input,
+    }));
+
     const response = await POST(
       new Request("https://app.zokorp.com/api/services/requests", {
         method: "POST",
@@ -124,8 +131,6 @@ describe("service requests route", () => {
           origin: "https://app.zokorp.com",
         },
         body: JSON.stringify({
-          type: "CONSULTATION",
-          title: "ATLAS-AUDIT-2026-03-26 service request",
           summary: "Need a production-readiness consultation for an AWS delivery and tooling launch plan.",
           budgetRange: "Undecided",
         }),
@@ -147,6 +152,7 @@ describe("service requests route", () => {
         requesterName: "Zohaib Khawaja",
         requesterSource: "account",
         type: "CONSULTATION",
+        title: "Need a production-readiness consultation for an AWS delivery",
       }),
     );
     expect(sendServiceRequestOperatorNotificationMock).toHaveBeenCalledWith(
@@ -197,6 +203,13 @@ describe("service requests route", () => {
     userFindUniqueMock.mockResolvedValue(null);
     auditCreateMock.mockResolvedValue({});
 
+    createServiceRequestMock.mockImplementation(async (input) => ({
+      id: "sr_123",
+      trackingCode: "SR-260326-ABCDE",
+      status: "SUBMITTED",
+      ...input,
+    }));
+
     const response = await POST(
       new Request("https://app.zokorp.com/api/services/requests", {
         method: "POST",
@@ -205,8 +218,6 @@ describe("service requests route", () => {
           origin: "https://app.zokorp.com",
         },
         body: JSON.stringify({
-          type: "CONSULTATION",
-          title: "Need architecture remediation help",
           summary: "Need follow-up help translating a scored architecture review into a short remediation plan.",
           requesterEmail: "founder@customerco.com",
           requesterName: "Customer Founder",
@@ -230,6 +241,8 @@ describe("service requests route", () => {
         requesterName: "Customer Founder",
         requesterCompanyName: "CustomerCo",
         requesterSource: "public_form",
+        type: "CONSULTATION",
+        title: "Need follow-up help translating a scored architecture review",
       }),
     );
     expect(upsertLeadMock).toHaveBeenCalledWith({
@@ -282,8 +295,6 @@ describe("service requests route", () => {
           origin: "https://app.zokorp.com",
         },
         body: JSON.stringify({
-          type: "CONSULTATION",
-          title: "short",
           summary: "too short",
         }),
       }),
@@ -308,8 +319,6 @@ describe("service requests route", () => {
           origin: "https://app.zokorp.com",
         },
         body: JSON.stringify({
-          type: "CONSULTATION",
-          title: "Need architecture remediation help",
           summary: "Need follow-up help translating a scored architecture review into a short remediation plan.",
           requesterEmail: "founder@gmail.com",
           requesterName: "Customer Founder",
@@ -342,8 +351,6 @@ describe("service requests route", () => {
           origin: "https://www.zokorp.com",
         },
         body: JSON.stringify({
-          type: "CONSULTATION",
-          title: "Need architecture remediation help",
           summary: "Need follow-up help translating a scored architecture review into a short remediation plan.",
           requesterEmail: "founder@customerco.com",
           requesterName: "Customer Founder",
@@ -374,8 +381,6 @@ describe("service requests route", () => {
           origin: "https://www.zokorp.com",
         },
         body: JSON.stringify({
-          type: "CONSULTATION",
-          title: "Need architecture remediation help",
           summary: "Need follow-up help translating a scored architecture review into a short remediation plan.",
           requesterEmail: "founder@customerco.com",
           requesterName: "Customer Founder",

@@ -2,27 +2,27 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_FOUNDER_PROFILE } from "@/lib/public-launch-contract";
-import { getAppSiteUrl, toMarketingSiteUrl } from "@/lib/site";
+import { getAppSiteUrl } from "@/lib/site";
 
 const platformLinks = [
   { href: "/software", label: "Software" },
-  { href: toMarketingSiteUrl("/services"), label: "Services" },
-  { href: toMarketingSiteUrl("/pricing"), label: "Pricing" },
+  { href: "/services", label: "Services" },
+  { href: "/pricing", label: "Pricing" },
   { href: `${getAppSiteUrl()}/account`, label: "Account" },
 ];
 
 const companyLinks = [
-  { href: toMarketingSiteUrl("/about"), label: "About" },
-  { href: toMarketingSiteUrl("/contact"), label: "Contact" },
-  { href: toMarketingSiteUrl("/media"), label: "Insights" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+  { href: "/media", label: "Insights" },
 ];
 
 const trustLinks = [
-  { href: toMarketingSiteUrl("/security"), label: "Security" },
-  { href: toMarketingSiteUrl("/privacy"), label: "Privacy" },
-  { href: toMarketingSiteUrl("/refunds"), label: "Refunds" },
-  { href: toMarketingSiteUrl("/terms"), label: "Terms" },
-  { href: toMarketingSiteUrl("/support"), label: "Support" },
+  { href: "/security", label: "Security" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/refunds", label: "Refunds" },
+  { href: "/terms", label: "Terms" },
+  { href: "/support", label: "Support" },
 ];
 
 export function SiteFooter() {
@@ -40,13 +40,10 @@ export function SiteFooter() {
               sizes="128px"
             />
             <p className="measure-copy text-sm leading-6 text-muted-foreground">
-              AWS reviews, validation, and scoped follow-through.
+              Cloud reviews, public product paths, and scoped follow-through.
             </p>
-            <div className="flex flex-wrap gap-2.5">
-              <span className="metric-chip">{PUBLIC_LAUNCH_CONTACT.location}</span>
-              <span className="metric-chip">{PUBLIC_LAUNCH_CONTACT.responseWindowLabel}</span>
-            </div>
             <div className="space-y-1 text-sm text-muted-foreground">
+              <p>{PUBLIC_LAUNCH_CONTACT.location}</p>
               <p className="font-medium text-foreground">{PUBLIC_LAUNCH_CONTACT.primaryEmail}</p>
               <a
                 href={PUBLIC_LAUNCH_CONTACT.linkedInUrl}

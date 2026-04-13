@@ -119,9 +119,6 @@ describe("ServiceRequestPanel", () => {
     fireEvent.change(screen.getByLabelText(/company/i), {
       target: { value: "ZoKorp" },
     });
-    fireEvent.change(screen.getByLabelText(/request title/i), {
-      target: { value: "ATLAS-AUDIT-2026-03-26 service request" },
-    });
     fireEvent.change(screen.getByLabelText(/what do you need/i), {
       target: { value: "Need a production-readiness consultation for an AWS delivery and tooling launch plan." },
     });
@@ -131,7 +128,7 @@ describe("ServiceRequestPanel", () => {
     await waitFor(() => expect(screen.getByText(/request recorded/i)).toBeTruthy());
     expect(screen.getByRole("link", { name: /create account later/i }).getAttribute("href")).toBe("/register");
     expect(screen.getByText(/no account is required for the first contact/i)).toBeTruthy();
-    expect(screen.getByText(/personal email domains are not accepted for zokorp service requests/i)).toBeTruthy();
+    expect(screen.getByText(/use your business email and zokorp will reply there/i)).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/services/requests",
       expect.objectContaining({

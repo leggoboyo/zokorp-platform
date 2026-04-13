@@ -17,9 +17,12 @@ type SiteHeaderShellProps = {
   primaryLinks: NavLink[];
   secondaryLinks: NavLink[];
   authRuntimeReady: boolean;
-  bookCallHref: string;
+  primaryCtaHref: string;
+  primaryCtaLabel: string;
+  primaryCtaExternal?: boolean;
   loginHref: string;
   registerHref: string;
+  signedIn?: boolean;
 };
 
 const desktopNavLinkClass = cn(
@@ -74,9 +77,12 @@ export function SiteHeaderShell({
   primaryLinks,
   secondaryLinks,
   authRuntimeReady,
-  bookCallHref,
+  primaryCtaHref,
+  primaryCtaLabel,
+  primaryCtaExternal = false,
   loginHref,
   registerHref,
+  signedIn = false,
 }: SiteHeaderShellProps) {
   const pathname = usePathname();
   const desktopMenuId = useId();
@@ -193,28 +199,36 @@ export function SiteHeaderShell({
     };
   }, [mobileOpen]);
 
-  const bookCallAction = (
-    <a href={bookCallHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-      Book a call
+  const primaryCtaAction = primaryCtaExternal ? (
+    <a href={primaryCtaHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+      {primaryCtaLabel}
     </a>
+  ) : (
+    <Link href={primaryCtaHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+      {primaryCtaLabel}
+    </Link>
   );
 
   const authActions = !authRuntimeReady ? (
     <>
-      {bookCallAction}
+      {primaryCtaAction}
       <Badge variant="warning" className="normal-case tracking-normal">
         Auth setup pending
       </Badge>
     </>
   ) : (
     <>
-      {bookCallAction}
-      <Link href={loginHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-        Sign in
-      </Link>
-      <Link href={registerHref} className={buttonVariants({ variant: "primary", size: "sm" })}>
-        Create account
-      </Link>
+      {primaryCtaAction}
+      {signedIn ? null : (
+        <>
+          <Link href={loginHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            Sign in
+          </Link>
+          <Link href={registerHref} className={buttonVariants({ variant: "primary", size: "sm" })}>
+            Create account
+          </Link>
+        </>
+      )}
     </>
   );
 
@@ -304,7 +318,7 @@ export function SiteHeaderShell({
             <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
               <div>
                 <p className="enterprise-kicker">Navigation</p>
-                <p className="mt-1 text-sm text-muted-foreground">Book a call or choose the next page.</p>
+                <p className="mt-1 text-sm text-muted-foreground">{primaryCtaLabel} or choose the next page.</p>
               </div>
               <button
                 type="button"

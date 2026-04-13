@@ -544,7 +544,7 @@ export default async function SoftwareDetailPage({
             </p>
           </CardContent>
           <CardFooter>
-            <Link href={toMarketingSiteUrl("/services#service-request")} className={buttonVariants()}>
+            <Link href={toMarketingSiteUrl("/contact")} className={buttonVariants()}>
               Request pilot access
             </Link>
             <Link href={toMarketingSiteUrl("/pricing")} className={buttonVariants({ variant: "secondary" })}>
@@ -649,7 +649,7 @@ export default async function SoftwareDetailPage({
         deliveryDescription={engagementGuide.deliveryDescription}
         deliveryDetail={engagementGuide.deliveryDetail}
         serviceDescription={engagementGuide.serviceDescription}
-        requestHref={toMarketingSiteUrl("/services#service-request")}
+        requestHref={toMarketingSiteUrl("/contact")}
         supportHref={toMarketingSiteUrl("/support")}
       />
     </div>

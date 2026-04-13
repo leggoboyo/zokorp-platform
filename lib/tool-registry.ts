@@ -17,7 +17,7 @@ const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
     variant: "architecture-reviewer",
     displayName: "Architecture Diagram Reviewer",
     productDescription:
-      "Review AWS diagrams and get findings, guidance, and a clear next step.",
+      "Review a cloud architecture diagram and get findings, guidance, and a clear next step.",
     softwareHubStatus: "Architecture review",
     softwareHubSummary:
       "Upload a diagram and get findings, guidance, and a scoped next step.",

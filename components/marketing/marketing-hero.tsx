@@ -76,7 +76,7 @@ export function MarketingHero({
   const isPanel = mode === "panel";
   const isPoster = mode === "poster";
   const sectionClassName = isPoster
-    ? "hero-bleed hero-poster py-10 md:py-12 lg:py-16"
+    ? "hero-bleed hero-poster py-8 md:py-10 lg:py-12"
     : "hero-surface marketing-grid-lines px-5 py-6 md:px-8 md:py-10 lg:px-10 lg:py-12";
   const wrapperClassName = isPoster ? "marketing-container px-4 md:px-6 xl:px-8" : "";
 
@@ -90,7 +90,7 @@ export function MarketingHero({
           className={cn(
             "relative z-10 grid gap-8 lg:grid-cols-12 lg:items-start",
             rail ? "lg:gap-8" : "",
-            isPoster ? "lg:min-h-[calc(100svh-8rem)] lg:items-center" : "",
+            isPoster ? "lg:items-start" : "",
           )}
         >
           <div
@@ -122,8 +122,8 @@ export function MarketingHero({
           <h1
             className={cn(
               isPoster
-                ? "font-display mt-6 max-w-[10.5ch] text-balance text-[3.35rem] font-semibold leading-[0.92] tracking-[-0.055em] md:text-[5.45rem] lg:text-[6.8rem]"
-                : "font-display mt-6 max-w-[11.5ch] text-balance text-[2.85rem] font-semibold leading-[0.98] tracking-[-0.045em] md:text-[4.5rem] lg:text-[5.35rem]",
+                ? "font-display mt-5 max-w-[10.5ch] text-balance text-[3.1rem] font-semibold leading-[0.92] tracking-[-0.055em] md:text-[4.5rem] lg:text-[5.2rem]"
+                : "font-display mt-5 max-w-[11.5ch] text-balance text-[2.5rem] font-semibold leading-[0.98] tracking-[-0.045em] md:text-[4rem] lg:text-[4.7rem]",
               isPoster || isPanel ? "text-card-foreground" : "text-white",
             )}
           >
@@ -134,7 +134,7 @@ export function MarketingHero({
             data-measure="lede"
             className={cn(
               isPoster
-                ? "measure-copy mt-6 max-w-[52ch] text-base leading-7 text-muted-foreground md:text-[1.18rem] md:leading-8"
+                ? "measure-tight mt-5 max-w-[48ch] text-base leading-7 text-muted-foreground md:text-[1.05rem] md:leading-8"
                 : "measure-copy mt-6 max-w-[58ch] text-base leading-7 md:text-[1.1rem] md:leading-8",
               isPoster || isPanel ? "text-muted-foreground" : "text-white/88",
             )}
@@ -143,7 +143,7 @@ export function MarketingHero({
           </p>
 
           {supportingBullets.length > 0 ? (
-            <ul className={cn("mt-8 grid gap-x-8 gap-y-3.5 sm:grid-cols-2", isPoster ? "max-w-[56rem]" : "")}>
+            <ul className={cn("mt-7 grid gap-x-8 gap-y-3.5 sm:grid-cols-2", isPoster ? "max-w-[44rem]" : "")}>
               {supportingBullets.map((bullet) => (
                 <li
                   key={bullet}
@@ -167,7 +167,7 @@ export function MarketingHero({
             </ul>
           ) : null}
 
-          <div className="mt-9 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap gap-3">
             {renderAction(primaryAction, isPanel ? "primary" : "primary")}
             {renderAction(secondaryAction, isPanel ? "secondary" : "inverse")}
             {renderAction(tertiaryAction, isPanel ? "ghost" : "inverse")}

@@ -56,6 +56,7 @@ export function ServiceRequestPanel({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedRequest, setSubmittedRequest] = useState<SubmissionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   const submitLabel = useMemo(() => {
@@ -72,17 +73,21 @@ export function ServiceRequestPanel({
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    const body = {
-      type: String(formData.get("type") ?? "") as ServiceRequestType,
-      title: String(formData.get("title") ?? "").trim(),
-      summary: String(formData.get("summary") ?? "").trim(),
-      preferredStart: String(formData.get("preferredStart") ?? "").trim() || undefined,
-      budgetRange: String(formData.get("budgetRange") ?? "").trim() || undefined,
-      requesterEmail: !isSignedIn ? String(formData.get("requesterEmail") ?? "").trim() || undefined : undefined,
-      requesterName: !isSignedIn ? String(formData.get("requesterName") ?? "").trim() || undefined : undefined,
-      requesterCompanyName:
-        !isSignedIn ? String(formData.get("requesterCompanyName") ?? "").trim() || undefined : undefined,
-    };
+    const body = isSignedIn
+      ? {
+          type: String(formData.get("type") ?? "") as ServiceRequestType,
+          title: String(formData.get("title") ?? "").trim(),
+          summary: String(formData.get("summary") ?? "").trim(),
+          preferredStart: String(formData.get("preferredStart") ?? "").trim() || undefined,
+          budgetRange: String(formData.get("budgetRange") ?? "").trim() || undefined,
+        }
+      : {
+          requesterEmail: String(formData.get("requesterEmail") ?? "").trim() || undefined,
+          requesterName: String(formData.get("requesterName") ?? "").trim() || undefined,
+          requesterCompanyName: String(formData.get("requesterCompanyName") ?? "").trim() || undefined,
+          budgetRange: String(formData.get("budgetRange") ?? "").trim() || undefined,
+          summary: String(formData.get("summary") ?? "").trim(),
+        };
 
     setIsSubmitting(true);
     setSubmittedRequest(null);
@@ -123,6 +128,9 @@ export function ServiceRequestPanel({
     setError(null);
     window.requestAnimationFrame(() => {
       titleInputRef.current?.focus();
+      if (!titleInputRef.current) {
+        formRef.current?.querySelector<HTMLInputElement>('[name="requesterName"]')?.focus();
+      }
     });
   }
 
@@ -140,7 +148,7 @@ export function ServiceRequestPanel({
       </div>
 
       <p className="enterprise-copy mt-3 max-w-3xl text-sm">
-        Submit this form to start a service conversation immediately. Signed-in customers get an account-linked request right away, and public prospects can submit first and attach account history later using the same email.
+        Share your name, work email, and what you need. Optional details help route the request faster.
       </p>
 
       {isSignedIn ? (
@@ -152,22 +160,12 @@ export function ServiceRequestPanel({
         </Alert>
       ) : (
         <Alert tone="info" className="mt-5">
-          <p>
-            No account is required for the first contact. Use your business email. Personal email domains are not
-            accepted for ZoKorp service requests, and matching that business email later lets the request show up in
-            your account timeline.
-          </p>
+          <p>No account is required for the first contact. Use your business email and ZoKorp will reply there.</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link
-              href={loginHref}
-              className={buttonVariants({ size: "sm" })}
-            >
+            <Link href={loginHref} className={buttonVariants({ size: "sm" })}>
               Sign in instead
             </Link>
-            <Link
-              href={registerHref}
-              className={buttonVariants({ variant: "secondary", size: "sm" })}
-            >
+            <Link href={registerHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
               Create account
             </Link>
           </div>
@@ -202,76 +200,51 @@ export function ServiceRequestPanel({
           </div>
         </Alert>
       ) : (
-        <form onSubmit={onSubmit} className="mt-5 grid gap-4 md:grid-cols-2">
-          <label className="space-y-1">
-            <span className={fieldLabelClassName}>Request type</span>
-            <Select
-              name="type"
-              defaultValue="CONSULTATION"
-              required
-            >
-              {requestTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </label>
-
-          <label className="space-y-1">
-            <span className={fieldLabelClassName}>Preferred start date</span>
-            <Input
-              type="date"
-              name="preferredStart"
-            />
-          </label>
-
-          {!isSignedIn ? (
+        <form ref={formRef} onSubmit={onSubmit} className="mt-5 grid gap-4 md:grid-cols-2">
+          {isSignedIn ? (
             <>
               <label className="space-y-1">
-                <span className={fieldLabelClassName}>Work email</span>
-                <Input
-                  type="email"
-                  name="requesterEmail"
-                  required
-                  placeholder="you@company.com"
-                />
-                <span className={fieldHelpClassName}>
-                  Business email only. Personal inbox domains are rejected automatically.
-                </span>
+                <span className={fieldLabelClassName}>Request type</span>
+                <Select name="type" defaultValue="CONSULTATION" required>
+                  {requestTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </label>
 
               <label className="space-y-1">
-                <span className={fieldLabelClassName}>Your name</span>
-                <Input
-                  name="requesterName"
-                  maxLength={120}
-                  placeholder="Full name"
-                />
+                <span className={fieldLabelClassName}>Preferred start date</span>
+                <Input type="date" name="preferredStart" />
               </label>
 
               <label className="space-y-1 md:col-span-2">
-                <span className={fieldLabelClassName}>Company</span>
+                <span className={fieldLabelClassName}>Request title</span>
                 <Input
-                  name="requesterCompanyName"
+                  ref={titleInputRef}
+                  name="title"
+                  required
+                  minLength={8}
                   maxLength={120}
-                  placeholder="Company or team name"
+                  placeholder="Example: readiness review for an upcoming launch"
                 />
               </label>
             </>
-          ) : null}
+          ) : (
+            <>
+              <label className="space-y-1">
+                <span className={fieldLabelClassName}>Your name</span>
+                <Input name="requesterName" maxLength={120} required placeholder="Full name" />
+              </label>
 
-          <label className="space-y-1 md:col-span-2">
-            <span className={fieldLabelClassName}>Request title</span>
-            <Input
-              ref={titleInputRef}
-              name="title"
-              required
-              minLength={8}
-              maxLength={120}
-              placeholder="Example: FTR readiness consultation for AI advisory offering"
-            />
-          </label>
+              <label className="space-y-1">
+                <span className={fieldLabelClassName}>Work email</span>
+                <Input type="email" name="requesterEmail" required placeholder="you@company.com" />
+                <span className={fieldHelpClassName}>Business email only.</span>
+              </label>
+            </>
+          )}
 
           <label className="space-y-1 md:col-span-2">
             <span className={fieldLabelClassName}>What do you need?</span>
@@ -280,23 +253,40 @@ export function ServiceRequestPanel({
               required
               minLength={30}
               maxLength={2400}
-              placeholder="Describe scope, goals, timelines, and any constraints."
+              placeholder="Short scope, goals, and any constraints."
             />
           </label>
 
-          <label className="space-y-1">
-            <span className={fieldLabelClassName}>Budget range</span>
-            <Select
-              name="budgetRange"
-              defaultValue="Undecided"
-            >
-              {budgetOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </Select>
-          </label>
+          {!isSignedIn ? (
+            <>
+              <label className="space-y-1">
+                <span className={fieldLabelClassName}>Company</span>
+                <Input name="requesterCompanyName" maxLength={120} placeholder="Company or team" />
+              </label>
+
+              <label className="space-y-1">
+                <span className={fieldLabelClassName}>Budget range</span>
+                <Select name="budgetRange" defaultValue="Undecided">
+                  {budgetOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            </>
+          ) : (
+            <label className="space-y-1">
+              <span className={fieldLabelClassName}>Budget range</span>
+              <Select name="budgetRange" defaultValue="Undecided">
+                {budgetOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
 
           <div className="flex items-end">
             <Button type="submit" disabled={isSubmitting}>
