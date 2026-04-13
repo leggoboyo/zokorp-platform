@@ -55,9 +55,17 @@ export default defineConfig({
       },
     },
     {
+      name: "wide-chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1920, height: 1080 },
+      },
+    },
+    {
       name: "mobile-chromium",
       use: {
         ...devices["Pixel 7"],
+        viewport: { width: 390, height: 844 },
       },
     },
   ],

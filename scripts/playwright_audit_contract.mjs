@@ -2,32 +2,32 @@ export const MARKETING_ROUTE_EXPECTATIONS = [
   {
     path: "/",
     label: "Homepage",
-    marker: "AWS architecture, validation, and optimization for SMB teams that need a clear next step.",
+    marker: "AWS architecture help with clear scope and a direct next step.",
   },
   {
     path: "/services",
     label: "Services",
-    marker: "Six clear offers. Each one is defined, scoped, and priced.",
+    marker: "Four primary AWS services, plus follow-through when the problem is clear.",
   },
   {
     path: "/about",
     label: "About",
-    marker: "Built by a technical founder who has spent time inside AWS, Microsoft, and real delivery work.",
+    marker: "Former AWS. Currently at Microsoft. Built for SMB teams that need direct technical judgment.",
   },
   {
     path: "/contact",
     label: "Contact",
-    marker: "Start the right conversation without getting pushed into signup first.",
+    marker: "Book a call or email ZoKorp.",
   },
   {
     path: "/pricing",
     label: "Pricing",
-    marker: "Public price anchors for consulting, and straightforward pricing for the software that is ready.",
+    marker: "Public price anchors, clear inclusions, no inflated consulting language.",
   },
   {
     path: "/software",
     label: "Software",
-    marker: "Software that supports the consulting model instead of pretending to replace it.",
+    marker: "Public product pages that show the outcome before you create an account.",
   },
   {
     path: "/media",
@@ -90,7 +90,7 @@ export const APP_ROUTE_EXPECTATIONS = [
   {
     path: "/software",
     label: "Software hub",
-    marker: "Software that supports the consulting model instead of pretending to replace it.",
+    marker: "Public product pages that show the outcome before you create an account.",
     expectedCanonicalHost: "marketing",
     expectedRobotsHeader: "noindex, follow",
   },
@@ -227,9 +227,8 @@ export const MARKETING_MORE_MENU_LABELS = ["Insights", "Support"];
 export const FOOTER_LEGAL_LINK_LABELS = ["Security", "Privacy", "Refunds", "Terms", "Support"];
 
 export const CONSULTING_PRICE_MARKERS = [
-  "Free to under $200",
-  "Usually $500-$1,500",
-  "Usually $1,200-$2,000",
-  "Hourly or scoped quote",
-  "Light monthly retainer",
+  "$249 founder review or free browser review",
+  "from $750",
+  "from $2,500",
+  "from $1,500/month",
 ];

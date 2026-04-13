@@ -19,7 +19,7 @@ export const RadioCard = React.forwardRef<HTMLInputElement, RadioCardProps>(func
         "focus-ring block rounded-2xl border p-4 transition",
         checked
           ? "border-brand bg-brand text-white shadow-[var(--shadow-soft)]"
-          : "border-border bg-white text-foreground hover:border-border-strong hover:bg-background-elevated",
+          : "border-border bg-card text-card-foreground hover:border-border-strong hover:bg-muted",
         disabled && "cursor-not-allowed opacity-60",
         wrapperClassName,
       )}
@@ -37,7 +37,7 @@ export const RadioCard = React.forwardRef<HTMLInputElement, RadioCardProps>(func
           aria-hidden="true"
           className={cn(
             "mt-1 flex size-4 shrink-0 items-center justify-center rounded-full border",
-            checked ? "border-white bg-white/20" : "border-border-strong bg-white",
+            checked ? "border-white bg-white/20" : "border-border-strong bg-background",
           )}
         >
           <span className={cn("size-2 rounded-full", checked ? "bg-white" : "bg-transparent")} />
@@ -46,7 +46,7 @@ export const RadioCard = React.forwardRef<HTMLInputElement, RadioCardProps>(func
         <span className="space-y-1">
           <span className="block text-sm font-semibold">{label}</span>
           {description ? (
-            <span className={cn("block text-xs leading-5", checked ? "text-white/85" : "text-foreground-muted")}>
+            <span className={cn("block text-xs leading-5", checked ? "text-white/85" : "text-muted-foreground")}>
               {description}
             </span>
           ) : null}

@@ -6,10 +6,10 @@ const variantClasses = {
   primary:
     "border-transparent bg-brand text-white shadow-[0_14px_30px_rgb(var(--z-accent)/0.22)] hover:bg-brand-strong",
   secondary:
-    "border-[rgba(148,163,184,0.32)] bg-white text-foreground shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] hover:border-[rgba(71,85,105,0.4)] hover:bg-background-elevated",
+    "border-border bg-card text-card-foreground shadow-[0_1px_0_rgba(255,255,255,0.8)_inset] hover:border-border-strong hover:bg-muted",
   outline:
-    "border-[rgba(148,163,184,0.32)] bg-white/80 text-foreground hover:border-[rgba(71,85,105,0.4)] hover:bg-background-elevated",
-  ghost: "border-transparent bg-transparent text-foreground hover:bg-background-elevated/90",
+    "border-border bg-background/80 text-foreground hover:border-border-strong hover:bg-muted",
+  ghost: "border-transparent bg-transparent text-foreground hover:bg-muted/90",
   inverse:
     "border-white/15 bg-white/[0.08] text-white shadow-[0_1px_0_rgba(255,255,255,0.06)_inset] hover:border-white/25 hover:bg-white/[0.14]",
   destructive: "border-transparent bg-danger text-white hover:brightness-95",
@@ -19,7 +19,7 @@ const variantClasses = {
 const sizeClasses = {
   sm: "min-h-9 rounded-lg px-3 py-2 text-xs",
   md: "min-h-10 rounded-xl px-4 py-2.5 text-sm",
-  lg: "min-h-11 rounded-xl px-5 py-3 text-sm",
+  lg: "min-h-11 rounded-xl px-5 py-3 text-[0.95rem]",
   icon: "size-10 rounded-xl p-0",
 } as const;
 

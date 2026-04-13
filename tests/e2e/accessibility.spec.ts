@@ -49,7 +49,7 @@ test.describe("accessibility coverage", () => {
     await page.goto(buildUrl(appBaseUrl, "/software"), { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle");
 
-    await expect(page.getByRole("heading", { name: "Software that supports the consulting model instead of pretending to replace it." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Public product pages that show the outcome before you create an account." })).toBeVisible();
     await expectNoSeriousViolations(page, "app /software");
     expectNoUnexpectedPageFailures(diagnostics, "accessibility app /software");
   });

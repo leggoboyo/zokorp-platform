@@ -1,13 +1,14 @@
 import Link from "next/link";
 
 import { SoftwareCatalogShell } from "@/components/software-catalog-shell";
+import { LearnMore } from "@/components/marketing/learn-more";
+import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { isPublicSubscriptionPricingApproved } from "@/lib/billing-readiness";
 import { CatalogUnavailableError, getSoftwareCatalogCached } from "@/lib/catalog";
-import { SOFTWARE_HIGHLIGHTS } from "@/lib/marketing-content";
+import { MARKETING_TRUST_CHIPS, SOFTWARE_HIGHLIGHTS, SOFTWARE_PAGE_CONTENT } from "@/lib/marketing-content";
 import { PUBLIC_LAUNCH_CONTACT } from "@/lib/public-launch-contract";
 import { buildMarketingPageMetadata, getAppSiteUrl, getMarketingSiteUrl, toMarketingSiteUrl } from "@/lib/site";
 import { getToolDefinitions } from "@/lib/tool-registry";
@@ -17,7 +18,7 @@ export const revalidate = 300;
 export const metadata = buildMarketingPageMetadata({
   title: "Software",
   description:
-    "Public software catalog for ZoKorp tools, product explanations, and app-linked access when you are ready to create an account.",
+    "Public software catalog for ZoKorp tools, product explanations, and account-linked access when you are ready to use the app.",
   path: "/software",
 });
 
@@ -29,19 +30,10 @@ const spotlightItems = getToolDefinitions().map((tool) => ({
   href: `/software/${tool.slug}`,
 }));
 
-const productModelNotes = [
-  {
-    title: "Public first look",
-    detail: "You can understand what the software does before creating an account.",
-  },
-  {
-    title: "Account when useful",
-    detail: "Create an account when you want usage history, protected access, or billing inside the app.",
-  },
-  {
-    title: "Consulting bridge",
-    detail: "If a product surfaces the real work to do, ZoKorp can turn that into a scoped consulting next step.",
-  },
+const accessNotes = [
+  "Browse publicly before creating an account.",
+  "Create an account when you want product access, usage history, or billing.",
+  "If a product surfaces the real work to do, ZoKorp can turn that into a scoped next step.",
 ] as const;
 
 export default async function SoftwarePage() {
@@ -66,66 +58,36 @@ export default async function SoftwarePage() {
     : "Subscription pricing stays gated until approved";
 
   return (
-    <div className="enterprise-shell space-y-10 md:space-y-12">
-      <section className="rounded-[2rem] border border-[rgb(var(--z-border)/0.55)] bg-[image:var(--z-gradient-hero)] px-6 py-8 shadow-[var(--z-shadow-panel)] md:px-8 md:py-10">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start">
-          <div>
-            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">ZoKorp software</p>
-            <h1 className="font-display mt-4 max-w-4xl text-balance text-4xl font-semibold leading-tight text-slate-950 md:text-6xl">
-              Software that supports the consulting model instead of pretending to replace it.
-            </h1>
-            <p className="enterprise-copy mt-5 max-w-3xl text-base md:text-lg">
-              The product side of ZoKorp exists to remove repetitive review work, make findings easier to act on, and
-              give buyers a self-serve way to understand the company before committing to a call.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={`${appSiteUrl}/register`} className={buttonVariants({ size: "lg" })}>
-                Create account
-              </Link>
-              <Link href={toMarketingSiteUrl("/pricing")} className={buttonVariants({ variant: "secondary", size: "lg" })}>
-                Review pricing
-              </Link>
-              <Link href={toMarketingSiteUrl("/services")} className={buttonVariants({ variant: "ghost", size: "lg" })}>
-                View services
-              </Link>
-            </div>
-            <div className="mt-8 flex flex-wrap gap-2">
-              <Badge variant="secondary" className="bg-white text-slate-700">
-                {activeProductBadge}
-              </Badge>
-              <Badge variant="secondary" className="bg-white text-slate-700">
-                {subscriptionBadge}
-              </Badge>
-              <Badge variant="secondary" className="bg-white text-slate-700">
-                Marketing on {new URL(marketingSiteUrl).host}
-              </Badge>
-            </div>
-          </div>
-
-          <Card className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+    <div className="marketing-stack">
+      <MarketingHero
+        eyebrow={SOFTWARE_PAGE_CONTENT.hero.eyebrow}
+        title={SOFTWARE_PAGE_CONTENT.hero.title}
+        lede={SOFTWARE_PAGE_CONTENT.hero.lede}
+        supportingBullets={SOFTWARE_PAGE_CONTENT.hero.supportingBullets}
+        proofChips={MARKETING_TRUST_CHIPS}
+        primaryAction={{ href: `${appSiteUrl}/register`, label: "Create account" }}
+        secondaryAction={{ href: "/pricing", label: "See pricing", variant: "secondary" }}
+        tertiaryAction={{ href: "/services", label: "View services", variant: "ghost" }}
+        rail={
+          <Card tone="plain" className="theme-dark rounded-[1.85rem] border border-border p-6 shadow-none md:p-7">
             <CardHeader className="gap-2 px-0">
-              <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">How to use this page</p>
-              <h2 className="font-display text-3xl font-semibold text-slate-950">Browse publicly. Use the app when you are ready.</h2>
+              <p className="enterprise-kicker">Access model</p>
+              <h2 className="font-display text-2xl font-semibold">Public first. Account when useful.</h2>
             </CardHeader>
             <CardContent className="space-y-3 px-0">
-              {productModelNotes.map((note) => (
-                <div key={note.title} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                  <h3 className="text-lg font-semibold text-slate-950">{note.title}</h3>
-                  <p className="enterprise-copy mt-2 text-sm">{note.detail}</p>
+              {accessNotes.map((note) => (
+                <div key={note} className="rounded-2xl border border-border bg-card px-4 py-4 text-sm text-card-foreground">
+                  {note}
                 </div>
               ))}
+              <div className="flex flex-wrap gap-2">
+                <span className="metric-chip">{activeProductBadge}</span>
+                <span className="metric-chip">{subscriptionBadge}</span>
+              </div>
             </CardContent>
-            <CardFooter className="px-0">
-              <Link href={`${appSiteUrl}/login?callbackUrl=/software`} className={buttonVariants({ variant: "secondary" })}>
-                Sign in
-              </Link>
-              <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className={buttonVariants({ variant: "ghost" })}>
-                Email ZoKorp
-              </a>
-            </CardFooter>
           </Card>
-        </div>
-      </section>
+        }
+      />
 
       {catalogUnavailable ? (
         <Alert tone="warning" className="rounded-2xl border-amber-200 bg-amber-50/70">
@@ -138,28 +100,35 @@ export default async function SoftwarePage() {
         <SoftwareCatalogShell products={products} />
       )}
 
-      <section className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Current product surfaces</p>
-            <h2 className="font-display text-3xl font-semibold text-slate-950">Three public product paths, one company narrative.</h2>
-          </div>
-          <Link href={toMarketingSiteUrl("/services#service-request")} className={buttonVariants({ variant: "secondary" })}>
-            Request product help
-          </Link>
+      <section className="space-y-5">
+        <div className="space-y-3">
+          <p className="enterprise-kicker">Public product paths</p>
+          <h2 className="font-display max-w-[16ch] text-3xl font-semibold text-foreground md:text-4xl">
+            {SOFTWARE_PAGE_CONTENT.spotlightTitle}
+          </h2>
+          <p className="measure-copy text-base leading-7 text-muted-foreground">
+            {SOFTWARE_PAGE_CONTENT.spotlightIntro}
+          </p>
         </div>
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
-          {spotlightItems.map((item) => (
-            <Card key={item.title} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-none">
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          {SOFTWARE_HIGHLIGHTS.map((item) => (
+            <Card key={item.href} className="rounded-[1.6rem] border border-border bg-card p-6 shadow-none">
               <CardHeader className="gap-2 px-0">
-                <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">{item.status}</p>
-                <h3 className="font-display text-2xl font-semibold text-slate-950">{item.title}</h3>
+                <p className="enterprise-kicker">Outcome-focused</p>
+                <h3 className="font-display text-2xl font-semibold text-card-foreground">{item.title}</h3>
               </CardHeader>
-              <CardContent className="px-0">
-                <p className="enterprise-copy text-sm">{item.summary}</p>
+              <CardContent className="space-y-4 px-0">
+                <p className="text-sm leading-7 text-muted-foreground">{item.summary}</p>
+                <div className="rounded-2xl border border-border bg-muted px-4 py-4 text-sm text-card-foreground">
+                  <span className="font-semibold">Who it is for:</span> {item.audience}
+                </div>
+                <div className="rounded-2xl border border-border bg-muted px-4 py-4 text-sm text-card-foreground">
+                  <span className="font-semibold">What you get:</span> {item.outcome}
+                </div>
               </CardContent>
               <CardFooter className="px-0">
-                <Link href={item.href} className={buttonVariants()}>
+                <Link href={item.href} className={buttonVariants({ variant: "secondary" })}>
                   {item.cta}
                 </Link>
               </CardFooter>
@@ -168,54 +137,38 @@ export default async function SoftwarePage() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <Card className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
-          <CardHeader className="gap-2 px-0">
-            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Software bridge</p>
-            <h2 className="font-display text-3xl font-semibold text-slate-950">What each product is for right now.</h2>
-          </CardHeader>
-          <CardContent className="space-y-3 px-0">
-            {SOFTWARE_HIGHLIGHTS.map((item) => (
-              <div key={item.href} className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-950">{item.title}</h3>
-                    <p className="enterprise-copy mt-2 text-sm">{item.summary}</p>
-                  </div>
-                  <Link href={item.href} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                    {item.cta}
-                  </Link>
-                </div>
+      <LearnMore
+        title="How account access works"
+        summary={SOFTWARE_PAGE_CONTENT.accessSummary}
+      >
+        <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="rounded-2xl border border-border bg-background px-4 py-4 text-sm leading-7 text-card-foreground">
+            Marketing lives on <span className="font-semibold">{new URL(marketingSiteUrl).host}</span> so buyers can understand the company and product outcomes without forced signup. Product use, history, and billing stay on <span className="font-semibold">{new URL(appSiteUrl).host}</span>.
+          </div>
+          <div className="grid gap-3">
+            {spotlightItems.map((item) => (
+              <div key={item.title} className="rounded-2xl border border-border bg-card px-4 py-4 text-sm text-card-foreground">
+                <span className="font-semibold">{item.title}:</span> {item.summary}
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </LearnMore>
 
-        <Card className="enterprise-dark rounded-[1.8rem] p-6 shadow-none md:p-8">
-          <CardHeader className="gap-2 px-0">
-            <p className="enterprise-kicker text-white/72">Why the split matters</p>
-            <h2 className="font-display text-3xl font-semibold">Marketing lives on `www`. The app stays on `app`.</h2>
-          </CardHeader>
-          <CardContent className="space-y-3 px-0">
-            <p className="text-sm leading-7 text-slate-200">
-              That means the software can stay product-oriented, while the public site explains the company, the
-              services, and the founder-led delivery model without forcing login just to browse.
-            </p>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-100">
-              If you are ready to use a product, create an account on <span className="font-semibold">{new URL(appSiteUrl).host}</span>.
-              If you are still evaluating, stay on the public site and keep reading.
-            </div>
-          </CardContent>
-          <CardFooter className="px-0">
-            <Link href={`${appSiteUrl}/register`} className={buttonVariants()}>
-              Create account
-            </Link>
-            <Link href={toMarketingSiteUrl("/contact")} className={buttonVariants({ variant: "inverse" })}>
-              Contact ZoKorp
-            </Link>
-          </CardFooter>
-        </Card>
-      </section>
+      <Card tone="plain" className="theme-dark rounded-[1.8rem] border border-border p-6 shadow-none md:p-8">
+        <CardHeader className="gap-2 px-0">
+          <p className="enterprise-kicker">Need product help?</p>
+          <h2 className="font-display text-3xl font-semibold">Use the public product pages first, then ask for scoped help when the outcome is clear.</h2>
+        </CardHeader>
+        <CardFooter className="px-0">
+          <Link href={toMarketingSiteUrl("/services#service-request")} className={buttonVariants()}>
+            Request product help
+          </Link>
+          <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className={buttonVariants({ variant: "inverse" })}>
+            Email ZoKorp
+          </a>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

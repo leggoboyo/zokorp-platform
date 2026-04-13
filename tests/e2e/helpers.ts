@@ -6,12 +6,12 @@ export const apexBaseUrl = process.env.JOURNEY_APEX_BASE_URL ?? "https://zokorp.
 export const mutationMode = (process.env.E2E_MUTATION_MODE ?? "readonly").toLowerCase();
 
 export const requiredMarketingRoutes = [
-  { path: "/", heading: "AWS architecture, validation, and optimization for SMB teams that need a clear next step." },
-  { path: "/services", heading: "Six clear offers. Each one is defined, scoped, and priced." },
-  { path: "/about", heading: "Built by a technical founder who has spent time inside AWS, Microsoft, and real delivery work." },
-  { path: "/contact", heading: "Start the right conversation without getting pushed into signup first." },
-  { path: "/pricing", heading: "Public price anchors for consulting, and straightforward pricing for the software that is ready." },
-  { path: "/software", heading: "Software that supports the consulting model instead of pretending to replace it." },
+  { path: "/", heading: "AWS architecture help with clear scope and a direct next step." },
+  { path: "/services", heading: "Four primary AWS services, plus follow-through when the problem is clear." },
+  { path: "/about", heading: "Former AWS. Currently at Microsoft. Built for SMB teams that need direct technical judgment." },
+  { path: "/contact", heading: "Book a call or email ZoKorp." },
+  { path: "/pricing", heading: "Public price anchors, clear inclusions, no inflated consulting language." },
+  { path: "/software", heading: "Public product pages that show the outcome before you create an account." },
   { path: "/media", heading: "Guides, notes, and operating perspectives" },
   { path: "/privacy", heading: "Privacy overview" },
   { path: "/terms", heading: "Platform terms" },

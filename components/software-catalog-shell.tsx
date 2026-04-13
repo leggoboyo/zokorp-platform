@@ -111,12 +111,12 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
 
   return (
     <section className="space-y-5">
-      <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5 md:p-6">
+      <Card className="rounded-[1.7rem] border border-border bg-card p-5 md:p-6">
         <CardHeader className="gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
-            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Catalog Filters</p>
-            <h2 className="font-display text-3xl font-semibold text-slate-900">Browse by access model or intent</h2>
-            <p className="enterprise-copy max-w-2xl text-sm">
+            <p className="enterprise-kicker">Catalog filters</p>
+            <h2 className="font-display text-3xl font-semibold text-card-foreground">Browse by access model or intent</h2>
+            <p className="measure-copy text-sm leading-7 text-muted-foreground">
               Search product names and descriptions, then narrow the list to the pricing model your team wants.
             </p>
           </div>
@@ -146,7 +146,7 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
                   onClick={() => setAccessFilter(filter.value)}
                   className={cn(
                     buttonVariants({ variant: isActive ? "primary" : "secondary", size: "sm" }),
-                    !isActive && "bg-white",
+                    !isActive && "bg-card",
                   )}
                   aria-pressed={isActive}
                 >
@@ -155,7 +155,7 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
               );
             })}
           </div>
-          <p className="text-sm text-[rgb(var(--z-ink-soft))]" aria-live="polite">
+          <p className="text-sm text-muted-foreground" aria-live="polite">
             Showing {filteredProducts.length} of {products.length} product{products.length === 1 ? "" : "s"}.
           </p>
         </CardContent>
@@ -164,12 +164,12 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
       {filteredProducts.length > 0 ? (
         <div className="grid gap-5 lg:grid-cols-2">
           {filteredProducts.map((product) => (
-            <Card key={product.id} lift className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+            <Card key={product.id} lift className="rounded-[1.7rem] border border-border bg-card p-6">
               <CardHeader className="gap-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-2">
-                    <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Software Product</p>
-                    <h3 className="font-display text-2xl font-semibold text-slate-900">
+                    <p className="enterprise-kicker">Software product</p>
+                    <h3 className="font-display text-2xl font-semibold text-card-foreground">
                       {getCatalogPresentation(product).name}
                     </h3>
                   </div>
@@ -177,22 +177,22 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
                 </div>
               </CardHeader>
               <CardContent className="space-y-5">
-                <p className="enterprise-copy text-sm">{getCatalogPresentation(product).description}</p>
+                <p className="text-sm leading-7 text-muted-foreground">{getCatalogPresentation(product).description}</p>
 
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/85 p-4">
-                  <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Pricing Snapshot</p>
-                  <p className="mt-2 font-display text-3xl font-semibold text-slate-900">{getPriceSummary(product)}</p>
+                <div className="rounded-2xl border border-border bg-muted p-4">
+                  <p className="enterprise-kicker">Pricing snapshot</p>
+                  <p className="mt-2 font-display text-3xl font-semibold text-card-foreground">{getPriceSummary(product)}</p>
                   {product.prices.length > 0 ? (
-                    <ul className="mt-3 space-y-2 text-sm text-[rgb(var(--z-ink-soft))]">
+                    <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                       {product.prices.slice(0, 3).map((price) => (
                         <li key={price.id} className="flex items-center justify-between gap-4">
                           <span>{price.kind.replaceAll("_", " ")}</span>
-                          <span className="font-semibold text-slate-900">{formatAmount(price.amount, price.currency)}</span>
+                          <span className="font-semibold text-card-foreground">{formatAmount(price.amount, price.currency)}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-3 text-sm text-[rgb(var(--z-ink-soft))]">
+                    <p className="mt-3 text-sm text-muted-foreground">
                       {product.accessModel === "FREE"
                         ? "Launch the tool directly. Account sign-in adds usage history where supported."
                         : "Pricing is configured per product in the admin dashboard."}
@@ -212,13 +212,13 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
           ))}
         </div>
       ) : (
-        <Card tone="muted" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
+        <Card tone="muted" className="rounded-[1.7rem] border border-border p-6">
           <CardHeader>
-            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">No Matches</p>
-            <h3 className="font-display text-2xl font-semibold text-slate-900">No software fits the current filters</h3>
+            <p className="enterprise-kicker">No matches</p>
+            <h3 className="font-display text-2xl font-semibold text-card-foreground">No software fits the current filters</h3>
           </CardHeader>
           <CardContent>
-            <p className="enterprise-copy text-sm">
+            <p className="text-sm leading-7 text-muted-foreground">
               Clear the search term or switch back to all access models to see the full catalog.
             </p>
           </CardContent>

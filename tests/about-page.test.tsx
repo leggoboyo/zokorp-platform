@@ -18,16 +18,15 @@ describe("AboutPage", () => {
   it("keeps the founder-led positioning and proof posture explicit", () => {
     const html = renderToStaticMarkup(<AboutPage />);
 
-    expect(html).toContain("Built by a technical founder");
-    expect(html).toContain("Founder-led by default");
-    expect(html).toContain("Specific claims only");
-    expect(html).toContain("Software and services stay connected");
-    expect(html).toContain("Public proof posture");
+    expect(html).toContain("Former AWS. Currently at Microsoft. Built for SMB teams that need direct technical judgment.");
+    expect(html).toContain("What buyers can actually verify");
+    expect(html).toContain("Approved public proof only");
     expect(html).toContain("Zohaib Khawaja");
     expect(html).toContain("Amazon Web Services");
     expect(html).toContain("Microsoft");
-    expect(html).toContain("Concrete founder credibility without fake proof");
-    expect(html).toContain("without hiring a full MSP or large consultancy");
+    expect(html).toContain("Nordic Global");
+    expect(html).toContain("No fake logos. No invented guarantees.");
+    expect(html).toContain("Initial response within one business day");
     expect(html).not.toContain("AI/ML advisory");
   });
 });

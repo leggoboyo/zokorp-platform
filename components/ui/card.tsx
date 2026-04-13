@@ -8,10 +8,10 @@ type CardProps = React.HTMLAttributes<HTMLDivElement> & {
 };
 
 const toneClasses = {
-  default: "bg-surface shadow-[var(--shadow-card)]",
+  default: "bg-card text-card-foreground shadow-[var(--shadow-card)]",
   glass:
-    "border-[rgba(183,197,218,0.75)] bg-[linear-gradient(140deg,var(--surface-glass-start),var(--surface-glass-end))] shadow-[var(--shadow-glass)] supports-[backdrop-filter]:backdrop-blur-[10px]",
-  muted: "bg-surface-muted shadow-[var(--shadow-soft)]",
+    "border-[rgba(183,197,218,0.75)] bg-[linear-gradient(140deg,var(--surface-glass-start),var(--surface-glass-end))] text-card-foreground shadow-[var(--shadow-glass)] supports-[backdrop-filter]:backdrop-blur-[10px]",
+  muted: "bg-muted text-card-foreground shadow-[var(--shadow-soft)]",
   plain: "",
 } as const;
 

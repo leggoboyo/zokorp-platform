@@ -7,7 +7,7 @@ const toneClasses = {
   success: "border-emerald-200 bg-emerald-50 text-emerald-900",
   warning: "border-amber-200 bg-amber-50 text-amber-900",
   danger: "border-rose-200 bg-rose-50 text-rose-900",
-  neutral: "border-border bg-white/90 text-foreground",
+  neutral: "border-border bg-card text-card-foreground",
 } as const;
 
 type AlertProps = React.HTMLAttributes<HTMLDivElement> & {

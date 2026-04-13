@@ -1,162 +1,314 @@
-export const CONSULTING_OFFERS = [
+export type PublicServiceOffer = {
+  slug: string;
+  eyebrow: string;
+  title: string;
+  priceAnchor: string;
+  summary: string;
+  bullets: string[];
+  included: string[];
+  prominence: "primary" | "secondary";
+};
+
+export const MARKETING_TRUST_CHIPS = [
+  "Former AWS Partner Solutions Architect",
+  "Currently at Microsoft",
+  "Houston, Texas",
+  "Initial response within one business day",
+] as const;
+
+export const CONSULTING_OFFERS: PublicServiceOffer[] = [
   {
     slug: "architecture-review",
-    eyebrow: "Entry point",
+    eyebrow: "Start here",
     title: "Architecture Review",
-    priceAnchor: "Free browser review or founder review under $200",
-    summary:
-      "Start here when you need a founder-led AWS architecture read before you commit to broader delivery work.",
+    priceAnchor: "$249 founder review or free browser review",
+    summary: "The fastest way to get a direct AWS architecture read and a scoped next step.",
     bullets: [
-      "Architecture findings tied to practical next steps",
+      "Deterministic findings instead of vague consulting language",
       "Clear guidance on whether to validate, optimize, or implement next",
-      "A low-friction entry point into scoped follow-through work",
+      "Best first purchase when the real scope is still forming",
     ],
+    included: [
+      "Priority risks and gaps",
+      "Clear next-step recommendation",
+      "Founder-led review output",
+    ],
+    prominence: "primary",
   },
   {
     slug: "aws-readiness-ftr-validation",
-    eyebrow: "Fixed scope",
+    eyebrow: "Additional scoped work",
     title: "AWS Readiness / FTR Validation",
-    priceAnchor: "Typically $500-$1,500",
-    summary:
-      "A structured validation pass for teams that need pass/fail clarity, issues, and remediation guidance before submission or review.",
+    priceAnchor: "from $1,500",
+    summary: "A structured validation pass for teams that need pass/fail clarity before launch, review, or audit.",
     bullets: [
-      "Pass/fail posture with specific issues called out",
-      "Evidence and control gaps translated into a usable next-step list",
-      "A repeatable validation service instead of open-ended consulting time",
+      "Evidence-based readiness findings",
+      "Pass/fail style output by control area",
+      "Best used once the architecture is stable enough to validate",
     ],
+    included: [
+      "Control-area findings",
+      "Remediation guidance",
+      "Validation-ready summary",
+    ],
+    prominence: "secondary",
   },
   {
     slug: "cloud-cost-optimization-audit",
     eyebrow: "One-time audit",
     title: "Cloud Cost Optimization Audit",
-    priceAnchor: "Typically $500-$1,500",
-    summary:
-      "A focused cost review for AWS environments that need clearer savings opportunities, cleaner waste reduction, and a better ROI story.",
+    priceAnchor: "from $750",
+    summary: "A bounded AWS cost review focused on waste, savings opportunities, and the changes worth making first.",
     bullets: [
       "Waste and inefficiency review with clear priorities",
-      "Savings opportunities tied to practical remediation guidance",
-      "A bounded audit instead of an ongoing optimization retainer",
+      "Savings guidance tied to actual AWS spend",
+      "Good fit when the bill no longer matches the value",
     ],
+    included: [
+      "Spend review",
+      "Savings priorities",
+      "Remediation guidance",
+    ],
+    prominence: "primary",
   },
   {
     slug: "landing-zone-setup",
     eyebrow: "Fixed scope",
     title: "Landing Zone Setup",
-    priceAnchor: "Typically $1,200-$2,000",
-    summary:
-      "A clean AWS baseline for teams that need IAM, networking, and security fundamentals set up correctly before more work begins.",
+    priceAnchor: "from $2,500",
+    summary: "A clean AWS baseline for teams that need IAM, networking, and security basics set up correctly.",
     bullets: [
-      "Tight-scope environment setup for SMB teams",
-      "IAM, networking, and security-baseline guidance",
-      "No enterprise platform over-promising",
+      "Security-first AWS baseline",
+      "Clean account and networking structure",
+      "Better foundation before broader delivery work starts",
     ],
+    included: [
+      "IAM baseline",
+      "Network baseline",
+      "Documented starting point",
+    ],
+    prominence: "primary",
   },
   {
     slug: "scoped-implementation",
-    eyebrow: "Follow-through",
+    eyebrow: "Additional scoped work",
     title: "Scoped Implementation",
-    priceAnchor: "Hourly or scoped quote",
-    summary:
-      "Hands-on work for the next technical step after a review, validation, or audit has made the path clear enough to scope cleanly.",
+    priceAnchor: "from $1,250 per sprint or $149/hr",
+    summary: "Hands-on follow-through for the next technical step after a review or audit has already made the path clear.",
     bullets: [
-      "Bounded implementation instead of vague delivery engagements",
-      "Best used after findings have already narrowed the real work",
-      "Direct founder involvement without turning into an MSP contract",
+      "Bounded implementation instead of open-ended delivery",
+      "Clear stop point and handoff",
+      "Used only after the actual work is specific enough to scope cleanly",
     ],
+    included: [
+      "Defined work scope",
+      "Hands-on fixes",
+      "Clear handoff",
+    ],
+    prominence: "secondary",
   },
   {
     slug: "advisory-retainer",
     eyebrow: "Light support",
     title: "Advisory Retainer",
-    priceAnchor: "Light monthly retainer",
-    summary:
-      "Ongoing guidance for teams that want continuity after a project without buying a managed-service relationship or strict SLA coverage.",
+    priceAnchor: "from $1,500/month",
+    summary: "Monthly founder access for teams that want continuity after the initial architecture work is underway.",
     bullets: [
-      "Monthly founder access for email or Slack guidance",
-      "Advisory-first support with limited scope and lower SLA",
-      "Best after architecture, readiness, or implementation work is already underway",
+      "Decision support without a managed-service contract",
+      "Clearer continuity after review or remediation work",
+      "Business-hours support with visible expectations",
     ],
+    included: [
+      "Founder access",
+      "Architecture guidance",
+      "Follow-up review support",
+    ],
+    prominence: "primary",
   },
 ] as const;
 
-export const CONSULTING_PRICE_OPTIONS = [
-  {
-    title: "Architecture Advisory Review",
-    price: "Free to under $200",
-    summary:
-      "The entry point for teams that need a credible founder-led read before deciding what work is actually worth buying.",
-  },
-  {
-    title: "AWS Readiness / FTR Validation",
-    price: "Usually $500-$1,500",
-    summary:
-      "A fixed-scope validation package with pass/fail posture, issues, and remediation guidance.",
-  },
-  {
-    title: "Cloud Cost Optimization Audit",
-    price: "Usually $500-$1,500",
-    summary:
-      "A one-time audit for SMB teams that need clearer savings opportunities and cost cleanup priorities.",
-  },
-  {
-    title: "Landing Zone Setup",
-    price: "Usually $1,200-$2,000",
-    summary:
-      "A clean AWS setup for IAM, networking, and security-baseline work without enterprise bloat.",
-  },
-  {
-    title: "Scoped Implementation",
-    price: "Hourly or scoped quote",
-    summary:
-      "Use this when the issue is already clear enough to finish the next technical step without turning it into an open-ended engagement.",
-  },
-  {
-    title: "Advisory Retainer",
-    price: "Light monthly retainer",
-    summary:
-      "Limited ongoing founder guidance for teams that want continuity without a full MSP or strict SLA relationship.",
-  },
-] as const;
+export const PRIMARY_CONSULTING_OFFERS = CONSULTING_OFFERS.filter((offer) => offer.prominence === "primary");
+export const SECONDARY_CONSULTING_OFFERS = CONSULTING_OFFERS.filter((offer) => offer.prominence === "secondary");
+
+export const SPECIALIST_ADVISORY = {
+  title: "AI / ML Advisory",
+  priceAnchor: "from $3,500",
+  summary: "Kept secondary on purpose. Use it only when there is a real AWS-based AI or ML architecture decision to make.",
+  bullets: [
+    "Architecture guidance for a defined AI or ML use case",
+    "Scope and delivery recommendations before build work starts",
+    "Secondary to the core AWS architecture offering",
+  ],
+} as const;
 
 export const SOFTWARE_HIGHLIGHTS = [
   {
     title: "Architecture Diagram Reviewer",
     href: "/software/architecture-diagram-reviewer",
-    summary:
-      "A public entry point for architecture reviews, follow-up calls, and bounded remediation conversations.",
+    summary: "Review an architecture, surface findings, and turn the result into a concrete next step.",
+    audience: "Teams that want fast AWS architecture feedback before buying broader work.",
+    outcome: "Review findings and a clearer remediation conversation.",
     cta: "Open reviewer",
   },
   {
     title: "ZoKorpValidator",
     href: "/software/zokorp-validator",
-    summary:
-      "Evidence-heavy validation software for workflows that should not stay manual forever.",
+    summary: "Run evidence-heavy validation without keeping the entire workflow manual forever.",
+    audience: "Teams that need repeatable validation output with audit-style structure.",
+    outcome: "A more consistent validation workflow and clearer output quality.",
     cta: "Open validator",
   },
   {
     title: "Forecasting beta",
     href: "/software/mlops-foundation-platform",
-    summary:
-      "A narrow forecasting workflow that stays secondary to the core AWS architecture and validation business.",
+    summary: "A narrow forecasting workflow that stays secondary to the core AWS architecture business.",
+    audience: "Teams evaluating a focused forecasting workflow rather than general consulting.",
+    outcome: "Public product context before account creation or billing.",
     cta: "View forecasting beta",
   },
 ] as const;
 
 export const DELIVERY_PROCESS_STEPS = [
   {
-    title: "Review",
-    detail: "Start with architecture, readiness, or cost findings before buying broader delivery work.",
+    title: "Review first",
+    detail: "Start with a review or audit before buying broader implementation work.",
   },
   {
-    title: "Validate",
-    detail: "Use fixed-scope validation and audit work when the team needs pass/fail clarity, issue lists, or savings guidance.",
+    title: "Scope clearly",
+    detail: "Use the findings to decide what is worth validating, fixing, or buying next.",
   },
   {
-    title: "Implement",
-    detail: "Move into scoped implementation only after the next technical step is clear enough to define tightly.",
+    title: "Deliver the next step",
+    detail: "Move into bounded follow-through only after the actual problem is clear enough to define.",
   },
   {
-    title: "Advise",
-    detail: "Use light monthly guidance when continuity matters but a managed-service relationship does not.",
+    title: "Stay supported if needed",
+    detail: "Use light advisory only when continuity matters after the initial work is underway.",
   },
 ] as const;
+
+export const HOME_PAGE_CONTENT = {
+  hero: {
+    eyebrow: "Founder-led AWS architecture",
+    title: "AWS architecture help with clear scope and a direct next step.",
+    lede:
+      "Former AWS Partner Solutions Architect. Currently at Microsoft. ZoKorp gives SMB teams fixed reviews, bounded follow-through, and public tools that explain what happens next.",
+    supportingBullets: [
+      "Deterministic outputs instead of vague consulting language",
+      "Clear scope before work starts",
+      "Public browsing without forced signup",
+      "Direct founder contact when a call is the faster next step",
+    ],
+  },
+  offersTitle: "Primary ways to start",
+  offersIntro: "Start with a fixed review, a cost audit, a clean AWS baseline, or a light advisory relationship.",
+  softwareTitle: "Public tools that make the next step easier to understand",
+  softwareIntro: "Use the tools to understand product outcomes first. Create an account only when you are ready to use the app.",
+  finalCtaTitle: "Book the first call or keep evaluating publicly.",
+  finalCtaBullets: [
+    "Initial response within one business day",
+    "Clear scope before work starts",
+    "No fake proof wall or invented outcomes",
+  ],
+} as const;
+
+export const SERVICES_PAGE_CONTENT = {
+  hero: {
+    eyebrow: "Scoped AWS services",
+    title: "Four primary AWS services, plus follow-through when the problem is clear.",
+    lede:
+      "ZoKorp keeps the public catalog narrow on purpose: architecture review, cost audit, landing zone setup, and advisory. Validation and implementation stay visible, but secondary.",
+    supportingBullets: [
+      "Founder-led delivery",
+      "Visible price anchors",
+      "Clear scope before work starts",
+      "Initial response within one business day",
+    ],
+  },
+  primaryTitle: "Primary services",
+  primaryIntro: "These are the default entry points for SMB buyers who want direct AWS judgment without large-firm overhead.",
+  secondaryTitle: "Additional scoped work",
+  secondarySummary: "Readiness validation and scoped implementation stay public, but they should not be the first thing most buyers purchase.",
+  requestTitle: "Request a quote",
+  requestIntro: "Use the request form when you already know a structured quote is the right next step.",
+} as const;
+
+export const ABOUT_PAGE_CONTENT = {
+  hero: {
+    eyebrow: "Credibility stack",
+    title: "Former AWS. Currently at Microsoft. Built for SMB teams that need direct technical judgment.",
+    lede:
+      "ZoKorp is intentionally founder-led: direct conversations, visible certifications, Houston-based contact, and software that supports the same operating model instead of hiding it.",
+    supportingBullets: [
+      "Former AWS Partner Solutions Architect",
+      "Currently at Microsoft",
+      "AWS SA Pro, ML Specialty, Security Specialty",
+      "Houston, Texas",
+    ],
+  },
+  credibilityTitle: "What buyers can actually verify",
+  credibilityCards: [
+    {
+      title: "Former AWS Partner Solutions Architect",
+      detail: "Architecture, readiness, and delivery experience stay central to the public positioning.",
+    },
+    {
+      title: "Currently at Microsoft",
+      detail: "Present-day technical context matters, so the current Microsoft background stays visible.",
+    },
+    {
+      title: "AWS certifications and Houston location",
+      detail: "Professional and specialty certifications plus a real operating location make the trust posture concrete.",
+    },
+  ],
+} as const;
+
+export const PRICING_PAGE_CONTENT = {
+  hero: {
+    eyebrow: "Pricing",
+    title: "Public price anchors, clear inclusions, no inflated consulting language.",
+    lede:
+      "Pricing should help a buyer orient quickly. ZoKorp shows the visible numbers, what is included, and where estimate-first scoping still applies.",
+    supportingBullets: [
+      "Visible starting prices or ranges",
+      "What is included stays explicit",
+      "Broader implementation still moves through scoped quotes",
+    ],
+  },
+  consultingTitle: "Primary consulting offers",
+  consultingIntro: "Use the public numbers to understand the buying model. Use a quote when broader work still needs scoping.",
+  secondarySummary: "Validation and implementation stay public, but they should only be bought once the actual need is clear.",
+  softwareTitle: "Software pricing and access",
+} as const;
+
+export const SOFTWARE_PAGE_CONTENT = {
+  hero: {
+    eyebrow: "Public software",
+    title: "Public product pages that show the outcome before you create an account.",
+    lede:
+      "ZoKorp software exists to reduce repetitive review work and clarify product outcomes. Browse publicly first. Create an account only when you want access, history, or billing inside the app.",
+    supportingBullets: [
+      "What it does stays visible",
+      "Who it is for stays visible",
+      "What you get stays visible",
+      "Account creation happens later, not first",
+    ],
+  },
+  spotlightTitle: "Public product paths",
+  spotlightIntro: "Each product should be understandable in a few seconds: what it does, who it is for, and what you get next.",
+  accessSummary: "Marketing stays on `www`. Product use, history, and billing stay on `app`.",
+} as const;
+
+export const CONTACT_PAGE_CONTENT = {
+  hero: {
+    eyebrow: "Contact ZoKorp",
+    title: "Book a call or email ZoKorp.",
+    lede:
+      "Initial response within one business day. Clear scope before work starts. No forced signup just to ask a question.",
+    supportingBullets: [
+      "Book a call when a real conversation is the faster next step",
+      "Email when you already know what you want to ask",
+      "Houston, Texas",
+    ],
+  },
+} as const;

@@ -2,11 +2,18 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { buildCalendlyBookingUrl } from "@/lib/calendly";
-import { CONSULTING_OFFERS, DELIVERY_PROCESS_STEPS, SOFTWARE_HIGHLIGHTS } from "@/lib/marketing-content";
+import {
+  DELIVERY_PROCESS_STEPS,
+  HOME_PAGE_CONTENT,
+  MARKETING_TRUST_CHIPS,
+  PRIMARY_CONSULTING_OFFERS,
+  SOFTWARE_HIGHLIGHTS,
+} from "@/lib/marketing-content";
 import {
   PUBLIC_LAUNCH_CONTACT,
   PUBLIC_LAUNCH_FOUNDER_PROFILE,
@@ -17,16 +24,9 @@ import { buildMarketingPageMetadata, getMarketingSiteUrl, siteConfig } from "@/l
 export const metadata: Metadata = buildMarketingPageMetadata({
   title: "Founder-Led AWS Architecture, Validation, and Optimization",
   description:
-    "Founder-led AWS architecture, validation, optimization, and software for SMB teams that need a clear next step without forced signup.",
+    "Founder-led AWS architecture reviews, cost audits, landing-zone work, and advisory for SMB teams that need a clear next step.",
   path: "/",
 });
-
-const trustSignals = [
-  "Founder-led AWS architecture guidance",
-  "AWS SA Pro, ML Specialty, Security Specialty",
-  "Direct founder involvement instead of a sales handoff chain",
-  "Public browsing on www, protected tool runs on app",
-];
 
 export default function HomePage() {
   const marketingSiteUrl = getMarketingSiteUrl();
@@ -64,249 +64,216 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="enterprise-shell space-y-12 md:space-y-16">
+    <div className="marketing-stack">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
-      <section className="rounded-[2rem] border border-[rgb(var(--z-border)/0.55)] bg-[image:var(--z-gradient-hero)] px-6 py-8 shadow-[var(--z-shadow-panel)] md:px-8 md:py-10 lg:px-10 lg:py-12">
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] xl:items-start">
-          <div
-            data-surface="hero-copy"
-            className="rounded-[1.75rem] bg-[rgb(var(--z-panel))] p-6 shadow-[0_16px_36px_rgba(15,23,42,0.05)] md:p-7"
-          >
-            <Badge variant="secondary" className="border-slate-200 bg-white/90 text-slate-700">
-              Founder-led AWS consultancy + software
-            </Badge>
-            <h1 className="font-display mt-5 max-w-4xl text-balance text-4xl font-semibold leading-[1.02] text-slate-950 md:text-[4.25rem]">
-              AWS architecture, validation, and optimization for SMB teams that need a clear next step.
-            </h1>
-            <p className="enterprise-copy mt-5 max-w-3xl text-base md:text-[1.1rem]">
-              ZoKorp helps teams move from architecture questions to a tighter next step: a review, a fixed-scope
-              validation, a cost audit, a landing-zone setup, a scoped implementation task, or a light advisory
-              retainer. Public browsing stays open, and software supports the work instead of replacing it.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <a href={bookingUrl} className={buttonVariants({ size: "lg" })}>
-                Book a call
-              </a>
-              <Link href="/software" className={buttonVariants({ variant: "secondary", size: "lg" })}>
-                Explore software
-              </Link>
-              <Link href="/services#service-request" className={buttonVariants({ variant: "ghost", size: "lg" })}>
-                Get a quote
-              </Link>
-            </div>
-
-            <div className="mt-10 grid gap-3 sm:grid-cols-2">
-              {trustSignals.map((signal) => (
-                <div
-                  key={signal}
-                  className="rounded-2xl border border-[rgb(var(--z-border)/0.45)] bg-white/88 px-4 py-3 text-sm font-medium text-[rgb(var(--z-ink-soft))] backdrop-blur-sm"
-                >
-                  {signal}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Card tone="plain" className="overflow-hidden rounded-[1.85rem] border border-slate-200 bg-white shadow-[0_24px_44px_rgba(15,23,42,0.08)]">
-              <div className="grid gap-5 p-4 md:grid-cols-[minmax(240px,300px)_1fr] md:p-5">
-                <div className="portrait-frame relative min-h-[340px] overflow-hidden rounded-[1.45rem] bg-[linear-gradient(180deg,#e2e8f4_0%,#cad4e5_100%)] md:min-h-[420px]">
+      <MarketingHero
+        eyebrow={HOME_PAGE_CONTENT.hero.eyebrow}
+        title={HOME_PAGE_CONTENT.hero.title}
+        lede={HOME_PAGE_CONTENT.hero.lede}
+        supportingBullets={HOME_PAGE_CONTENT.hero.supportingBullets}
+        proofChips={MARKETING_TRUST_CHIPS}
+        primaryAction={{ href: bookingUrl, label: "Book a call", external: true }}
+        secondaryAction={{ href: "/services", label: "View services", variant: "secondary" }}
+        tertiaryAction={{ href: "/pricing", label: "See pricing", variant: "ghost" }}
+        rail={
+          <>
+            <Card className="overflow-hidden rounded-[1.85rem] border border-border bg-card shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+              <div className="grid gap-5 p-4 md:grid-cols-[minmax(220px,270px)_1fr] md:p-5">
+                <div className="portrait-frame relative min-h-[320px] md:min-h-[360px]">
                   <Image
                     src={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
                     alt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
                     fill
                     className="object-cover object-[center_12%]"
-                    sizes="(max-width: 768px) 100vw, 320px"
+                    sizes="(max-width: 768px) 100vw, 280px"
                     priority
                   />
                 </div>
-                <div className="flex flex-col justify-between py-2 pr-2">
-                  <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Founder</p>
-                  <h2 className="font-display mt-2 text-3xl font-semibold text-slate-950">
-                    {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
-                  </h2>
-                  <p className="mt-1 text-sm font-medium text-slate-700">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
-                  <p className="enterprise-kicker mt-1 text-[rgb(var(--z-ink-label))]">{PUBLIC_LAUNCH_CONTACT.location}</p>
-                  <p className="enterprise-copy mt-4 text-sm">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials.map((credential) => (
-                      <Badge key={credential} variant="secondary" className="border border-slate-200 bg-slate-50 text-slate-700">
-                        {credential}
+
+                <div className="flex flex-col justify-between gap-4 py-2">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <p className="enterprise-kicker">Founder</p>
+                      <h2 className="font-display text-3xl font-semibold text-card-foreground">
+                        {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+                      </h2>
+                      <p className="text-sm font-medium text-muted-foreground">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="secondary" className="normal-case tracking-normal">
+                        {PUBLIC_LAUNCH_FOUNDER_PROFILE.formerRoleLabel}
                       </Badge>
-                    ))}
+                      <Badge variant="secondary" className="normal-case tracking-normal">
+                        {PUBLIC_LAUNCH_FOUNDER_PROFILE.currentRoleLabel}
+                      </Badge>
+                    </div>
+
+                    <p className="text-sm leading-7 text-muted-foreground">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
                   </div>
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    <a
-                      href={PUBLIC_LAUNCH_CONTACT.linkedInUrl}
-                      className={buttonVariants({ variant: "secondary", size: "sm" })}
-                    >
-                      LinkedIn
-                    </a>
-                    <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-                      {PUBLIC_LAUNCH_CONTACT.primaryEmail}
-                    </a>
+
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials.map((credential) => (
+                        <Badge key={credential} variant="secondary" className="normal-case tracking-normal">
+                          {credential}
+                        </Badge>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <a href={PUBLIC_LAUNCH_CONTACT.linkedInUrl} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                        LinkedIn
+                      </a>
+                      <a href={`mailto:${PUBLIC_LAUNCH_CONTACT.primaryEmail}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                        Email ZoKorp
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
             </Card>
 
-            <Card tone="plain" className="enterprise-dark rounded-[1.85rem] p-6 shadow-[0_24px_44px_rgba(15,23,42,0.14)]">
+            <Card tone="plain" className="theme-dark rounded-[1.85rem] border border-border p-6 shadow-none">
               <CardHeader className="gap-2 px-0">
-                <p className="enterprise-kicker text-white/72">Why buyers trust it</p>
+                <p className="enterprise-kicker">Why buyers trust the first conversation</p>
                 <h2 className="font-display text-2xl font-semibold">{PUBLIC_LAUNCH_PROOF_ASSET.title}</h2>
               </CardHeader>
               <CardContent className="space-y-3 px-0">
-                <p className="text-sm leading-7 text-slate-200">{PUBLIC_LAUNCH_PROOF_ASSET.summary}</p>
+                <p className="text-sm leading-7 text-muted-foreground">{PUBLIC_LAUNCH_PROOF_ASSET.summary}</p>
                 {PUBLIC_LAUNCH_PROOF_ASSET.highlights.map((item) => (
-                  <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-slate-100">
+                  <div key={item} className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-card-foreground">
                     {item}
                   </div>
                 ))}
               </CardContent>
             </Card>
+          </>
+        }
+      />
+
+      <section className="grid gap-8 lg:grid-cols-12 lg:items-start">
+        <div className="space-y-5 lg:col-span-8">
+          <div className="space-y-3">
+            <p className="enterprise-kicker">Primary services</p>
+            <h2 className="font-display max-w-[18ch] text-3xl font-semibold text-foreground md:text-4xl">
+              {HOME_PAGE_CONTENT.offersTitle}
+            </h2>
+            <p className="measure-copy text-base leading-7 text-muted-foreground">
+              {HOME_PAGE_CONTENT.offersIntro}
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {PRIMARY_CONSULTING_OFFERS.map((offer) => (
+              <Card key={offer.slug} className="rounded-[1.6rem] border border-border bg-card p-6 shadow-none">
+                <CardHeader className="gap-3 px-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-2">
+                      <p className="enterprise-kicker">{offer.eyebrow}</p>
+                      <h3 className="font-display text-2xl font-semibold text-card-foreground">{offer.title}</h3>
+                    </div>
+                    <Badge variant="secondary" className="normal-case tracking-normal">
+                      {offer.priceAnchor}
+                    </Badge>
+                  </div>
+                  <p className="text-sm leading-7 text-muted-foreground">{offer.summary}</p>
+                </CardHeader>
+                <CardContent className="space-y-2 px-0">
+                  {offer.bullets.map((bullet) => (
+                    <div key={bullet} className="rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-card-foreground">
+                      {bullet}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
-      </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
+        <Card tone="plain" className="theme-dark rounded-[1.8rem] border border-border p-6 shadow-none lg:col-span-4">
           <CardHeader className="gap-2 px-0">
-            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Flagship offer</p>
-            <h2 className="font-display text-3xl font-semibold text-slate-950">
-              Architecture review first. Remediation when the next step is obvious.
-            </h2>
-          </CardHeader>
-          <CardContent className="space-y-4 px-0">
-            <p className="enterprise-copy text-sm md:text-base">
-              ZoKorp is built for teams that need a serious technical review, a fixed-scope validation path, and
-              founder-led follow-through when the work is worth doing. The entry point stays intentionally narrow:
-              start with the review, then buy only the next service that fits the real issue.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {CONSULTING_OFFERS.slice(0, 3).map((offer) => (
-                <div key={offer.slug} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                  <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">{offer.eyebrow}</p>
-                  <h3 className="mt-2 text-lg font-semibold text-slate-950">{offer.title}</h3>
-                  <p className="mt-2 text-sm font-medium text-slate-700">{offer.priceAnchor}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter className="px-0">
-            <Link href="/services" className={buttonVariants()}>
-              View services
-            </Link>
-          </CardFooter>
-        </Card>
-
-        <Card tone="plain" className="enterprise-dark rounded-[1.8rem] p-6 shadow-none md:p-8">
-          <CardHeader className="gap-2 px-0">
-            <p className="enterprise-kicker text-white/72">Public pricing posture</p>
-            <h2 className="font-display text-3xl font-semibold">Visible anchors without pretending every job is fixed-scope.</h2>
+            <p className="enterprise-kicker">How work starts</p>
+            <h2 className="font-display text-3xl font-semibold">Structured on purpose.</h2>
           </CardHeader>
           <CardContent className="space-y-3 px-0">
-            {CONSULTING_OFFERS.map((offer) => (
-              <div key={offer.slug} className="flex flex-col gap-2 border-b border-white/10 pb-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                <div>
-                  <p className="text-sm font-medium text-slate-100">{offer.title}</p>
-                  <p className="mt-1 text-sm text-slate-300">{offer.summary}</p>
-                </div>
-                <p className="text-sm font-semibold text-white sm:max-w-[13rem] sm:text-right">{offer.priceAnchor}</p>
+            {DELIVERY_PROCESS_STEPS.map((step, index) => (
+              <div key={step.title} className="rounded-2xl border border-border bg-card px-4 py-4">
+                <p className="enterprise-kicker">{`0${index + 1}`}</p>
+                <h3 className="mt-2 text-lg font-semibold text-card-foreground">{step.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.detail}</p>
               </div>
             ))}
           </CardContent>
           <CardFooter className="px-0">
-            <Link href="/pricing" className={buttonVariants({ variant: "inverse" })}>
-              Review pricing
+            <Link href="/services" className={buttonVariants({ variant: "inverse" })}>
+              See all services
             </Link>
           </CardFooter>
         </Card>
       </section>
 
-      <section className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Services</p>
-            <h2 className="font-display text-3xl font-semibold text-slate-950">Six clear AWS offers. No filler, no vague transformation language.</h2>
-          </div>
-          <a href={bookingUrl} className={buttonVariants({ variant: "secondary" })}>
-            Book a call
-          </a>
+      <section className="space-y-5">
+        <div className="space-y-3">
+          <p className="enterprise-kicker">Software</p>
+          <h2 className="font-display max-w-[18ch] text-3xl font-semibold text-foreground md:text-4xl">
+            {HOME_PAGE_CONTENT.softwareTitle}
+          </h2>
+          <p className="measure-copy text-base leading-7 text-muted-foreground">
+            {HOME_PAGE_CONTENT.softwareIntro}
+          </p>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
-          {CONSULTING_OFFERS.map((offer) => (
-            <Card tone="plain" key={offer.slug} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-none">
+        <div className="grid gap-4 lg:grid-cols-3">
+          {SOFTWARE_HIGHLIGHTS.map((item) => (
+            <Card key={item.href} className="rounded-[1.6rem] border border-border bg-card p-6 shadow-none">
               <CardHeader className="gap-2 px-0">
-                <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">{offer.eyebrow}</p>
-                <h3 className="font-display text-2xl font-semibold text-slate-950">{offer.title}</h3>
-                <p className="text-sm font-medium text-slate-700">{offer.priceAnchor}</p>
+                <p className="enterprise-kicker">Public product</p>
+                <h3 className="font-display text-2xl font-semibold text-card-foreground">{item.title}</h3>
               </CardHeader>
-              <CardContent className="space-y-3 px-0">
-                <p className="enterprise-copy text-sm">{offer.summary}</p>
-                <ul className="space-y-2 text-sm text-slate-700">
-                  {offer.bullets.map((bullet) => (
-                    <li key={bullet} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                      {bullet}
-                    </li>
-                  ))}
-                </ul>
+              <CardContent className="space-y-4 px-0">
+                <p className="text-sm leading-7 text-muted-foreground">{item.summary}</p>
+                <div className="rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-card-foreground">
+                  <span className="font-semibold">Who it is for:</span> {item.audience}
+                </div>
+                <div className="rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-card-foreground">
+                  <span className="font-semibold">What you get:</span> {item.outcome}
+                </div>
               </CardContent>
+              <CardFooter className="px-0">
+                <Link href={item.href} className={buttonVariants({ variant: "secondary" })}>
+                  {item.cta}
+                </Link>
+              </CardFooter>
             </Card>
           ))}
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-[#f7f5f1] p-6 shadow-none md:p-8">
-          <CardHeader className="gap-2 px-0">
-            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">Software</p>
-            <h2 className="font-display text-3xl font-semibold text-slate-950">Software stays visible, but it does not replace the consulting story.</h2>
-          </CardHeader>
-          <CardContent className="space-y-4 px-0">
-            <p className="enterprise-copy text-sm md:text-base">
-              The software side of ZoKorp exists to remove repetitive review work, preserve account-linked history,
-              and make follow-through easier to understand. It supports the consulting model instead of pretending to
-              replace it.
-            </p>
-            <div className="space-y-3">
-              {SOFTWARE_HIGHLIGHTS.map((item) => (
-                <div key={item.href} className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-950">{item.title}</h3>
-                      <p className="enterprise-copy mt-1 text-sm">{item.summary}</p>
-                    </div>
-                    <Link href={item.href} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                      {item.cta}
-                    </Link>
-                  </div>
-                </div>
-              ))}
+      <Card tone="plain" className="theme-dark rounded-[1.9rem] border border-border p-6 shadow-none md:p-8">
+        <CardHeader className="gap-3 px-0">
+          <p className="enterprise-kicker">Next step</p>
+          <h2 className="font-display max-w-[16ch] text-3xl font-semibold md:text-4xl">
+            {HOME_PAGE_CONTENT.finalCtaTitle}
+          </h2>
+        </CardHeader>
+        <CardContent className="grid gap-3 px-0 md:grid-cols-3">
+          {HOME_PAGE_CONTENT.finalCtaBullets.map((item) => (
+            <div key={item} className="rounded-2xl border border-border bg-card px-4 py-4 text-sm text-card-foreground">
+              {item}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card tone="plain" className="rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-none md:p-8">
-          <CardHeader className="gap-2 px-0">
-            <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">How engagements run</p>
-            <h2 className="font-display text-3xl font-semibold text-slate-950">Lower SLA, tighter scope, and direct founder involvement.</h2>
-          </CardHeader>
-          <CardContent className="grid gap-4 px-0 md:grid-cols-2">
-            {DELIVERY_PROCESS_STEPS.map((step, index) => (
-              <div key={step.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="enterprise-kicker text-[rgb(var(--z-ink-label))]">
-                  Step {String(index + 1).padStart(2, "0")}
-                </p>
-                <h3 className="mt-2 text-xl font-semibold text-slate-950">{step.title}</h3>
-                <p className="enterprise-copy mt-2 text-sm">{step.detail}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </section>
+          ))}
+        </CardContent>
+        <CardFooter className="px-0">
+          <a href={bookingUrl} className={buttonVariants()}>
+            Book a call
+          </a>
+          <Link href="/contact" className={buttonVariants({ variant: "inverse" })}>
+            Contact ZoKorp
+          </Link>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

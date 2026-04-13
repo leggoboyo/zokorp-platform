@@ -9,17 +9,26 @@ import {
   buildUrl,
   expectCanonical,
   expectNoUnexpectedPageFailures,
+  expectedMarketingCanonicalBaseUrl,
   marketingBaseUrl,
   measureTextContrast,
   mutationMode,
   readLongestMotionDurations,
   requiredMarketingRoutes,
-  expectedMarketingCanonicalBaseUrl,
   singleOriginMode,
 } from "./helpers";
 
+const visualRoutes = [
+  { path: "/", slug: "home" },
+  { path: "/services", slug: "services" },
+  { path: "/about", slug: "about" },
+  { path: "/pricing", slug: "pricing" },
+  { path: "/software", slug: "software" },
+  { path: "/contact", slug: "contact" },
+] as const;
+
 test.describe("marketing surfaces", () => {
-  test("homepage keeps CTA hierarchy, single H1, and readable hero contrast", async ({ page }, testInfo) => {
+  test("homepage keeps CTA hierarchy, split desktop structure, and readable hero contrast", async ({ page }, testInfo) => {
     const diagnostics = attachPageDiagnostics(page);
 
     await page.goto(buildUrl(marketingBaseUrl, "/"), { waitUntil: "domcontentloaded" });
@@ -29,7 +38,7 @@ test.describe("marketing surfaces", () => {
     await assertSingleH1(page);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.locator('[data-surface="hero-copy"]').getByRole("link", { name: "Book a call" })).toBeVisible();
-    await expect(page.locator('[data-surface="hero-copy"]').getByRole("link", { name: "Explore software" })).toBeVisible();
+    await expect(page.locator('[data-surface="hero-copy"]').getByRole("link", { name: "View services" })).toBeVisible();
     await expect(page.url()).not.toContain("/login");
     await expectCanonical(page, buildCanonicalUrl(expectedMarketingCanonicalBaseUrl, "/"));
 
@@ -37,17 +46,37 @@ test.describe("marketing surfaces", () => {
       expect(new URL(page.url()).host).toBe(new URL(marketingBaseUrl).host);
     }
 
-    const contrastRatio = await measureTextContrast(
+    const headingContrast = await measureTextContrast(
       page,
       page.getByRole("heading", { level: 1 }),
       page.locator('[data-surface="hero-copy"]'),
     );
-    expect(contrastRatio).toBeGreaterThanOrEqual(3);
+    expect(headingContrast).toBeGreaterThanOrEqual(3);
 
-    const heroSnapshotTarget = testInfo.project.name.includes("mobile")
-      ? page.locator('[data-surface="hero-copy"]')
-      : page.locator("main section").first();
-    await expect(heroSnapshotTarget).toHaveScreenshot(`marketing-home-hero-${testInfo.project.name}.png`);
+    const ledeContrast = await measureTextContrast(
+      page,
+      page.locator('[data-measure="lede"]'),
+      page.locator('[data-surface="hero-copy"]'),
+    );
+    expect(ledeContrast).toBeGreaterThanOrEqual(4.5);
+
+    if (testInfo.project.name.includes("desktop") || testInfo.project.name.includes("wide")) {
+      const body = page.locator("[data-hero-body]");
+      const rail = page.locator("[data-hero-rail]");
+      await expect(rail).toBeVisible();
+
+      const [bodyBox, railBox, ledeBox] = await Promise.all([
+        body.boundingBox(),
+        rail.boundingBox(),
+        page.locator('[data-measure="lede"]').boundingBox(),
+      ]);
+
+      expect(bodyBox).not.toBeNull();
+      expect(railBox).not.toBeNull();
+      expect(ledeBox).not.toBeNull();
+      expect((railBox?.x ?? 0) > (bodyBox?.x ?? 0)).toBe(true);
+      expect((ledeBox?.width ?? 0) <= 760).toBe(true);
+    }
 
     expectNoUnexpectedPageFailures(diagnostics, "homepage contract");
   });
@@ -60,9 +89,11 @@ test.describe("marketing surfaces", () => {
 
     if (test.info().project.name.includes("mobile")) {
       await page.getByRole("button", { name: "Menu" }).click();
+      await page.getByRole("dialog", { name: "Mobile navigation" }).getByRole("link", { name: "Services", exact: true }).click();
+    } else {
+      await page.getByRole("banner").getByRole("link", { name: "Services", exact: true }).click();
     }
 
-    await page.getByRole("banner").getByRole("link", { name: "Services", exact: true }).click();
     await expect(page).toHaveURL(/\/services$/);
 
     await page.goto(buildUrl(marketingBaseUrl, "/"), { waitUntil: "domcontentloaded" });
@@ -70,7 +101,7 @@ test.describe("marketing surfaces", () => {
 
     if (test.info().project.name.includes("mobile")) {
       await page.getByRole("button", { name: "Menu" }).click();
-      await page.getByLabel("Mobile navigation").getByRole("link", { name: "Support", exact: true }).click();
+      await page.getByRole("dialog", { name: "Mobile navigation" }).getByRole("link", { name: "Support", exact: true }).click();
     } else {
       await page.getByRole("banner").getByRole("button", { name: "More" }).click();
       await page.getByLabel("More pages").getByRole("link", { name: "Support", exact: true }).click();
@@ -80,6 +111,44 @@ test.describe("marketing surfaces", () => {
     await expect(page.url()).not.toContain("/login");
 
     expectNoUnexpectedPageFailures(diagnostics, "navigation contract");
+  });
+
+  test("mobile menu closes on escape, click-away, and route change while keeping focus predictable", async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes("mobile"), "Mobile menu coverage only runs on the mobile project.");
+
+    const diagnostics = attachPageDiagnostics(page);
+
+    await page.goto(buildUrl(marketingBaseUrl, "/"), { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+
+    const menuTrigger = page.getByRole("button", { name: "Menu" });
+    await menuTrigger.click();
+
+    const dialog = page.getByRole("dialog", { name: "Mobile navigation" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Close" })).toBeFocused();
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(menuTrigger).toBeFocused();
+
+    await menuTrigger.click();
+    await expect(dialog).toBeVisible();
+
+    const dialogBox = await dialog.boundingBox();
+    expect(dialogBox).not.toBeNull();
+    await page.mouse.click(
+      Math.max(2, Math.floor((dialogBox?.x ?? 12) / 2)),
+      Math.floor((dialogBox?.y ?? 0) + 120),
+    );
+    await expect(dialog).toBeHidden();
+
+    await menuTrigger.click();
+    await dialog.getByRole("link", { name: "About", exact: true }).click();
+    await expect(page).toHaveURL(/\/about$/);
+    await expect(dialog).toBeHidden();
+
+    expectNoUnexpectedPageFailures(diagnostics, "mobile navigation");
   });
 
   test("required public routes stay public, readable, and canonicalized to www", async ({ page }) => {
@@ -97,6 +166,21 @@ test.describe("marketing surfaces", () => {
 
     expectNoUnexpectedPageFailures(diagnostics, "marketing route sweep");
   });
+
+  for (const route of visualRoutes) {
+    test(`${route.slug} full-page visuals stay stable`, async ({ page }, testInfo) => {
+      const diagnostics = attachPageDiagnostics(page);
+      const pageName = route.path === "/" ? "home" : route.slug;
+
+      await page.goto(buildUrl(marketingBaseUrl, route.path), { waitUntil: "domcontentloaded" });
+      await page.waitForLoadState("networkidle");
+      await assertSingleH1(page);
+
+      await expect(page).toHaveScreenshot(`marketing-page-${pageName}-${testInfo.project.name}.png`, { fullPage: true });
+
+      expectNoUnexpectedPageFailures(diagnostics, `${route.slug} visuals`);
+    });
+  }
 
   test("service request panel stays readonly by default while still validating required fields", async ({ page }) => {
     test.skip(mutationMode === "mutation", "Readonly validation applies only when mutation mode is disabled.");
@@ -189,7 +273,7 @@ test.describe("marketing surfaces", () => {
 
     await page.goto(buildUrl(appBaseUrl, "/software"), { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("heading", { name: "Software that supports the consulting model instead of pretending to replace it." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Public product pages that show the outcome before you create an account." })).toBeVisible();
 
     await page.goto(buildUrl(appBaseUrl, "/account"), { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/login\?callbackUrl=%2Faccount|\/login\?callbackUrl=\/account/);
