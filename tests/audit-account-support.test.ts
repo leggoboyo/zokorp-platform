@@ -34,7 +34,7 @@ describe("audit account support helpers", () => {
     expect(value).toContain("connection_limit=1");
   });
 
-  it("turns credential 401s into an explicit rerun-setup operator message", () => {
+  it("turns credential 401s into an explicit workflow-first operator message", () => {
     const message = diagnoseAuditCredentialFailure({
       currentUrl: "https://app.zokorp.com/login",
       responseFailures: [
@@ -46,6 +46,7 @@ describe("audit account support helpers", () => {
     } as any);
 
     expect(message).toContain("401 at /api/auth/callback/credentials");
+    expect(message).toContain("browser-customer-journey-upkeep.yml");
     expect(message).toContain("rerun `npm run journey:setup:production`");
   });
 });

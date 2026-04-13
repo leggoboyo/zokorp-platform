@@ -7,6 +7,7 @@ const OPERATOR_ACCESS_PATTERNS = [
   /no database url found/i,
   /missing \.env\.audit\.local/i,
   /rerun `npm run journey:setup:production`/i,
+  /browser-customer-journey-upkeep\.yml/i,
   /cron secret is not configured/i,
   /operator secret/i,
 ];

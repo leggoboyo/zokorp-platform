@@ -50,7 +50,8 @@ describe("public contract audit support", () => {
           id: "journey_login",
           label: "Audit sign-in",
           status: "blocked",
-          error: "401 at /api/auth/callback/credentials; rerun `npm run journey:setup:production`.",
+          error:
+            "401 at /api/auth/callback/credentials; trigger `browser-customer-journey-upkeep.yml` for the normal rotation path or rerun `npm run journey:setup:production` for manual local recovery.",
         },
       ],
     });

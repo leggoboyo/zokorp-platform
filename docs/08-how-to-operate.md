@@ -172,7 +172,7 @@
   - non-zero exit code if any checked browser step fails
 - Important:
   - the synthetic audit account is enough for sign-in and protected-page checks
-  - if the audit reports `401` at `/api/auth/callback/credentials`, the local browser-audit credentials are stale or invalid; rerun `npm run journey:setup:production` before treating it as a public-site regression
+  - if the audit reports `401` at `/api/auth/callback/credentials`, the local browser-audit credentials are stale or invalid; trigger `browser-customer-journey-upkeep.yml` for the normal rotation path, or rerun `npm run journey:setup:production` only when you are intentionally recovering the workstation-local audit credentials
   - if the GitHub workflow fails before the browser runs, check whether `PRODUCTION_DIRECT_DATABASE_URL` or `PRODUCTION_DATABASE_URL` is configured in GitHub Actions for the production environment
   - if the marketing host still redirects to `app`, the marketing-browser steps are marked `blocked` instead of `failed`
   - if you later want to verify email delivery end to end, use a real monitored inbox alias instead of the synthetic `.test` account

@@ -46,11 +46,11 @@ export function diagnoseAuditCredentialFailure({ currentUrl = "", responseFailur
   );
 
   if (credentialFailure) {
-    return "Configured JOURNEY_EMAIL/JOURNEY_PASSWORD were rejected by the live app (401 at /api/auth/callback/credentials). Local browser-audit credentials are likely stale; rerun `npm run journey:setup:production`.";
+    return "Configured JOURNEY_EMAIL/JOURNEY_PASSWORD were rejected by the live app (401 at /api/auth/callback/credentials). Local browser-audit credentials are likely stale; trigger `browser-customer-journey-upkeep.yml` for the normal rotation path or rerun `npm run journey:setup:production` for manual local recovery.";
   }
 
   if (currentUrl.includes("/login?error=")) {
-    return "Configured JOURNEY_EMAIL/JOURNEY_PASSWORD were rejected by the live app during sign-in. Local browser-audit credentials are likely stale; rerun `npm run journey:setup:production`.";
+    return "Configured JOURNEY_EMAIL/JOURNEY_PASSWORD were rejected by the live app during sign-in. Local browser-audit credentials are likely stale; trigger `browser-customer-journey-upkeep.yml` for the normal rotation path or rerun `npm run journey:setup:production` for manual local recovery.";
   }
 
   return "Configured JOURNEY_EMAIL/JOURNEY_PASSWORD did not establish a local authenticated session.";
