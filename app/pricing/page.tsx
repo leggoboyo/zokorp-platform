@@ -5,6 +5,7 @@ import { AccessModel } from "@prisma/client";
 import { LearnMore } from "@/components/marketing/learn-more";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { MarketingSectionHeading } from "@/components/marketing/section-heading";
+import { ServiceOfferRow } from "@/components/marketing/service-offer-row";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -61,6 +62,7 @@ export default async function PricingPage() {
   return (
     <div className="marketing-stack">
       <MarketingHero
+        mode="poster"
         eyebrow={PRICING_PAGE_CONTENT.hero.eyebrow}
         title={PRICING_PAGE_CONTENT.hero.title}
         lede={PRICING_PAGE_CONTENT.hero.lede}
@@ -70,12 +72,14 @@ export default async function PricingPage() {
         secondaryAction={{ href: "/software", label: "Explore software", variant: "secondary" }}
         tertiaryAction={{ href: `${appSiteUrl}/register`, label: "Create account", variant: "ghost" }}
         rail={
-          <div className="grid gap-4">
-            <section className="marketing-panel-dark rounded-[1.8rem] px-5 py-5">
+          <div className="grid gap-5">
+            <section className="plane-dark rounded-[2.3rem] border border-white/8 px-5 py-5 md:px-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <p className="enterprise-kicker">Pricing posture</p>
-                  <h2 className="font-display text-2xl font-semibold">Visible numbers first. Estimate-first scoping when needed.</h2>
+                  <p className="enterprise-kicker text-white/72">Pricing posture</p>
+                  <h2 className="font-display max-w-[9ch] text-[2.2rem] font-semibold leading-[0.96] text-white">
+                    Visible numbers first. Estimate-first scoping when needed.
+                  </h2>
                 </div>
                 <div className="grid gap-3">
                   <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] px-4 py-4 text-sm text-white/88">
@@ -90,6 +94,23 @@ export default async function PricingPage() {
                 </div>
               </div>
             </section>
+
+            <section className="section-band px-5 py-5 md:px-6">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="border-t border-border/80 pt-3">
+                  <p className="marketing-kpi-value text-card-foreground">$249</p>
+                  <p className="marketing-kpi-label">Review entry point</p>
+                </div>
+                <div className="border-t border-border/80 pt-3">
+                  <p className="marketing-kpi-value text-card-foreground">$750</p>
+                  <p className="marketing-kpi-label">Cost audit starting point</p>
+                </div>
+                <div className="border-t border-border/80 pt-3">
+                  <p className="marketing-kpi-value text-card-foreground">1 day</p>
+                  <p className="marketing-kpi-label">Initial response target</p>
+                </div>
+              </div>
+            </section>
           </div>
         }
       />
@@ -101,45 +122,19 @@ export default async function PricingPage() {
           description={PRICING_PAGE_CONTENT.consultingIntro}
         />
 
-        <div className="grid gap-4">
-          {PRIMARY_CONSULTING_OFFERS.map((offer) => (
-            <article
+        <div className="section-band px-5 py-5 md:px-6">
+          {PRIMARY_CONSULTING_OFFERS.map((offer, index) => (
+            <ServiceOfferRow
               key={offer.slug}
-              className="marketing-panel grid gap-5 px-5 py-6 md:px-6 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start"
-            >
-              <div className="space-y-3">
-                <p className="enterprise-kicker">{offer.eyebrow}</p>
-                <h3 className="font-display max-w-[12ch] text-[2rem] font-semibold leading-[1.02] text-card-foreground">
-                  {offer.title}
-                </h3>
-                <Badge variant="secondary" className="w-fit normal-case tracking-normal">
-                  {offer.priceAnchor}
-                </Badge>
-                <p className="text-sm leading-7 text-muted-foreground">{offer.summary}</p>
-              </div>
-
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(14rem,0.76fr)]">
-                <div className="space-y-3">
-                  <p className="enterprise-kicker">What is included</p>
-                  <ul className="marketing-list">
-                    {offer.included.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="marketing-panel-muted rounded-[1.4rem] px-4 py-4">
-                  <p className="enterprise-kicker">Why it exists</p>
-                  <div className="mt-3 grid gap-2.5">
-                    {offer.bullets.map((item) => (
-                      <div key={item} className="text-sm text-card-foreground">
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </article>
+              eyebrow={offer.eyebrow}
+              title={offer.title}
+              priceAnchor={offer.priceAnchor}
+              summary={offer.summary}
+              bullets={offer.bullets}
+              included={offer.included}
+              index={index + 1}
+              compact
+            />
           ))}
         </div>
       </section>
@@ -148,120 +143,145 @@ export default async function PricingPage() {
         title="Additional scoped work"
         summary={PRICING_PAGE_CONTENT.secondarySummary}
       >
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="section-band px-5 py-5 md:px-6">
           {SECONDARY_CONSULTING_OFFERS.map((offer) => (
-            <article key={offer.slug} className="marketing-panel rounded-[1.5rem] px-5 py-5">
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-2">
-                    <p className="enterprise-kicker">{offer.eyebrow}</p>
-                    <h3 className="font-display text-[1.8rem] font-semibold leading-[1.05] text-card-foreground">
-                      {offer.title}
-                    </h3>
-                  </div>
-                  <Badge variant="secondary" className="normal-case tracking-normal">
-                    {offer.priceAnchor}
-                  </Badge>
-                </div>
-                <p className="text-sm leading-7 text-muted-foreground">{offer.summary}</p>
-                <ul className="marketing-list">
-                  {offer.included.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            </article>
+            <ServiceOfferRow
+              key={offer.slug}
+              eyebrow={offer.eyebrow}
+              title={offer.title}
+              priceAnchor={offer.priceAnchor}
+              summary={offer.summary}
+              bullets={offer.bullets}
+              included={offer.included}
+              compact
+            />
           ))}
 
-          <article className="marketing-panel rounded-[1.5rem] px-5 py-5">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-2">
-                  <p className="enterprise-kicker">Specialist note</p>
-                  <h3 className="font-display text-[1.8rem] font-semibold leading-[1.05] text-card-foreground">
-                    {SPECIALIST_ADVISORY.title}
-                  </h3>
-                </div>
-                <Badge variant="secondary" className="normal-case tracking-normal">
-                  {SPECIALIST_ADVISORY.priceAnchor}
-                </Badge>
-              </div>
-              <p className="text-sm leading-7 text-muted-foreground">{SPECIALIST_ADVISORY.summary}</p>
-              <ul className="marketing-list">
-                {SPECIALIST_ADVISORY.bullets.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+          <article className="grid gap-6 border-t border-border/80 py-6 lg:grid-cols-[auto_minmax(0,0.48fr)_minmax(0,1fr)_auto] lg:items-start">
+            <div className="hidden lg:block lg:pt-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label">Note</p>
+            </div>
+            <div className="space-y-2">
+              <p className="enterprise-kicker">Specialist note</p>
+              <h3 className="font-display max-w-[12ch] text-[1.8rem] font-semibold leading-[1.02] text-card-foreground">
+                {SPECIALIST_ADVISORY.title}
+              </h3>
+              <p className="max-w-[32ch] text-sm leading-7 text-muted-foreground">{SPECIALIST_ADVISORY.summary}</p>
+            </div>
+            <ul className="marketing-list">
+              {SPECIALIST_ADVISORY.bullets.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <div className="flex items-start lg:justify-end">
+              <Badge variant="secondary" className="normal-case tracking-normal">
+                {SPECIALIST_ADVISORY.priceAnchor}
+              </Badge>
             </div>
           </article>
         </div>
       </LearnMore>
 
-      <section className="space-y-6">
-        <MarketingSectionHeading
-          eyebrow="Software"
-          title={PRICING_PAGE_CONTENT.softwareTitle}
-          description="Product pricing stays visible where it is ready. Browsing stays public. Accounts become useful when you want usage history, billing, or protected access."
-        />
+      <section className="grid gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start">
+        <div className="space-y-5">
+          <p className="enterprise-kicker">Software pricing</p>
+          <h2 className="font-display max-w-[11ch] text-[2.5rem] font-semibold leading-[0.98] text-foreground md:text-[3.4rem]">
+            Product pricing should orient the buyer without pretending the catalog is bigger than it is.
+          </h2>
+          <p className="marketing-section-copy text-base leading-7 text-muted-foreground">
+            Product pricing stays visible where it is ready. Browsing stays public. Accounts become useful when you want usage history, billing, or protected access.
+          </p>
+        </div>
 
-        {catalogUnavailable ? (
-          <Alert tone="warning" className="rounded-2xl border-amber-200 bg-amber-50/70">
-            <AlertTitle>Software catalog temporarily unavailable</AlertTitle>
-            <AlertDescription>
-              Product pricing could not be loaded right now. Please retry shortly.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {products.map((product) => (
-              <article key={product.slug} className="marketing-panel rounded-[1.6rem] px-5 py-6 md:px-6">
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="font-display text-[1.8rem] font-semibold leading-[1.05] text-card-foreground">
-                      {product.name}
-                    </h3>
-                    <Badge variant="secondary" className="normal-case tracking-normal">
-                      {accessLabels[product.accessModel]}
-                    </Badge>
+        <div className="plane-dark rounded-[2.2rem] border border-white/8 px-6 py-6 md:px-7 md:py-7">
+          <div className="space-y-4">
+            <p className="enterprise-kicker text-white/72">{PRICING_PAGE_CONTENT.softwareTitle}</p>
+            <div className="grid gap-3">
+              <div className="border-t border-white/12 pt-3 text-sm leading-7 text-white/78">
+                Free tools stay public when possible.
+              </div>
+              <div className="border-t border-white/12 pt-3 text-sm leading-7 text-white/78">
+                Subscription packaging stays private until the billing posture is approved.
+              </div>
+              <div className="border-t border-white/12 pt-3 text-sm leading-7 text-white/78">
+                Product pages still explain the outcome before a buyer ever signs in.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {catalogUnavailable ? (
+        <Alert tone="warning" className="rounded-2xl border-amber-200 bg-amber-50/70">
+          <AlertTitle>Software catalog temporarily unavailable</AlertTitle>
+          <AlertDescription>
+            Product pricing could not be loaded right now. Please retry shortly.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <div className="section-band px-5 py-5 md:px-6">
+          {products.map((product, index) => (
+            <article
+              key={product.slug}
+              className="grid gap-6 border-t border-border/80 py-6 first:border-t-0 first:pt-0 lg:grid-cols-[auto_minmax(0,0.54fr)_minmax(0,1fr)_auto] lg:items-start"
+            >
+              <div className="hidden lg:block lg:pt-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label">{`0${index + 1}`}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="enterprise-kicker">Software product</p>
+                <h3 className="font-display max-w-[12ch] text-[1.9rem] font-semibold leading-[1.02] text-card-foreground">
+                  {product.name}
+                </h3>
+                <p className="max-w-[34ch] text-sm leading-7 text-muted-foreground">{product.description}</p>
+              </div>
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,0.78fr)]">
+                <div className="grid gap-3">
+                  <div className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
+                    <span className="font-semibold">Access:</span> {accessLabels[product.accessModel]}
                   </div>
-
-                  <p className="text-sm leading-7 text-muted-foreground">{product.description}</p>
-
-                  <div className="marketing-panel-muted rounded-[1.35rem] px-4 py-4">
+                  <div className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
                     {shouldHidePublicProductPricing(product.accessModel) ? (
-                      <div className="space-y-2">
-                        <p className="text-sm font-semibold text-card-foreground">Public subscription pricing is still gated</p>
-                        <p className="text-sm leading-6 text-muted-foreground">
-                          The product is public, but subscription packaging stays private until the billing posture is approved.
-                        </p>
-                      </div>
+                      <>
+                        <span className="font-semibold">Pricing:</span> Public subscription pricing is still gated
+                      </>
                     ) : product.prices.length > 0 ? (
-                      <ul className="space-y-2.5 text-sm text-muted-foreground">
-                        {product.prices.map((price) => (
-                          <li key={price.id} className="flex items-center justify-between gap-4 border-t border-border/70 pt-2.5 first:border-t-0 first:pt-0">
-                            <span>{price.kind.replaceAll("_", " ")}</span>
-                            <span className="font-semibold text-card-foreground">{formatAmount(price.amount, price.currency)}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <>
+                        <span className="font-semibold">Pricing:</span>{" "}
+                        {product.prices.map((price) => formatAmount(price.amount, price.currency)).join(" / ")}
+                      </>
                     ) : (
-                      <p className="text-sm leading-6 text-muted-foreground">
+                      <>
+                        <span className="font-semibold">Pricing:</span>{" "}
                         {product.accessModel === AccessModel.FREE
                           ? "No purchase required. Create an account only if you want app-linked history."
                           : "Pricing becomes visible when billing is active for this product."}
-                      </p>
+                      </>
                     )}
                   </div>
-
+                </div>
+                <div className="space-y-3 rounded-[1.35rem] border border-border/80 bg-white/55 px-4 py-4 backdrop-blur-sm">
+                  <Badge variant="secondary" className="w-fit normal-case tracking-normal">
+                    {accessLabels[product.accessModel]}
+                  </Badge>
                   <Link href={`/software/${product.slug}`} className={buttonVariants({ variant: "secondary" })}>
                     Open product
                   </Link>
                 </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+              </div>
+              <div className="flex items-start lg:justify-end">
+                <span className="metric-chip">
+                  {shouldHidePublicProductPricing(product.accessModel)
+                    ? "Pricing gated"
+                    : product.prices.length > 0
+                      ? formatAmount(product.prices[0].amount, product.prices[0].currency)
+                      : "Public page first"}
+                </span>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

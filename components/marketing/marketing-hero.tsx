@@ -14,7 +14,7 @@ type MarketingAction = {
 };
 
 type MarketingHeroProps = {
-  mode?: "panel" | "inverted";
+  mode?: "panel" | "inverted" | "poster";
   eyebrow: string;
   title: string;
   lede: string;
@@ -74,31 +74,44 @@ export function MarketingHero({
   railClassName,
 }: MarketingHeroProps) {
   const isPanel = mode === "panel";
+  const isPoster = mode === "poster";
+  const sectionClassName = isPoster
+    ? "hero-bleed hero-poster py-10 md:py-12 lg:py-16"
+    : "hero-surface marketing-grid-lines px-5 py-6 md:px-8 md:py-10 lg:px-10 lg:py-12";
+  const wrapperClassName = isPoster ? "marketing-container px-4 md:px-6 xl:px-8" : "";
 
   return (
-    <section className={cn("hero-surface marketing-grid-lines px-5 py-6 md:px-8 md:py-10 lg:px-10 lg:py-12", className)}>
-      <div className="marketing-orbit" data-orbit="one" />
-      <div className="marketing-orbit" data-orbit="two" />
-      <div
-        data-hero-layout={rail ? "split" : "single"}
-        className={cn("relative z-10 grid gap-8 lg:grid-cols-12 lg:items-start", rail ? "lg:gap-8" : "")}
-      >
+    <section className={cn(sectionClassName, className)}>
+      {!isPoster ? <div className="marketing-orbit" data-orbit="one" /> : null}
+      {!isPoster ? <div className="marketing-orbit" data-orbit="two" /> : null}
+      <div className={wrapperClassName}>
         <div
-          data-surface="hero-copy"
-          data-hero-body
+          data-hero-layout={rail ? "split" : "single"}
           className={cn(
-            "lg:col-span-7",
-            isPanel
-              ? "glass-surface rounded-[2rem] p-6 text-card-foreground md:p-8 lg:p-10"
-              : "text-white",
-            bodyClassName,
+            "relative z-10 grid gap-8 lg:grid-cols-12 lg:items-start",
+            rail ? "lg:gap-8" : "",
+            isPoster ? "lg:min-h-[calc(100svh-8rem)] lg:items-center" : "",
           )}
         >
+          <div
+            data-surface="hero-copy"
+            data-hero-body
+            style={isPoster ? { backgroundColor: "rgba(250, 252, 255, 0.96)" } : undefined}
+            className={cn(
+              "lg:col-span-7",
+              isPoster
+                ? "py-2 text-card-foreground shadow-none lg:pr-10"
+                : isPanel
+                  ? "glass-surface rounded-[2rem] p-6 text-card-foreground md:p-8 lg:p-10"
+                  : "text-white",
+              bodyClassName,
+            )}
+          >
           <Badge
-            variant={isPanel ? "secondary" : "outline"}
+            variant={isPoster || isPanel ? "secondary" : "outline"}
             className={cn(
               "w-fit rounded-full px-3.5 py-1.5 normal-case tracking-[0.18em]",
-              isPanel
+              isPoster || isPanel
                 ? "bg-white/80 text-muted-foreground"
                 : "border-white/20 bg-white/10 text-white",
             )}
@@ -108,8 +121,10 @@ export function MarketingHero({
 
           <h1
             className={cn(
-              "font-display mt-6 max-w-[11.5ch] text-balance text-[2.85rem] font-semibold leading-[0.98] tracking-[-0.045em] md:text-[4.5rem] lg:text-[5.35rem]",
-              isPanel ? "text-card-foreground" : "text-white",
+              isPoster
+                ? "font-display mt-6 max-w-[10.5ch] text-balance text-[3.35rem] font-semibold leading-[0.92] tracking-[-0.055em] md:text-[5.45rem] lg:text-[6.8rem]"
+                : "font-display mt-6 max-w-[11.5ch] text-balance text-[2.85rem] font-semibold leading-[0.98] tracking-[-0.045em] md:text-[4.5rem] lg:text-[5.35rem]",
+              isPoster || isPanel ? "text-card-foreground" : "text-white",
             )}
           >
             {title}
@@ -118,21 +133,23 @@ export function MarketingHero({
           <p
             data-measure="lede"
             className={cn(
-              "measure-copy mt-6 max-w-[58ch] text-base leading-7 md:text-[1.1rem] md:leading-8",
-              isPanel ? "text-muted-foreground" : "text-white/88",
+              isPoster
+                ? "measure-copy mt-6 max-w-[52ch] text-base leading-7 text-muted-foreground md:text-[1.18rem] md:leading-8"
+                : "measure-copy mt-6 max-w-[58ch] text-base leading-7 md:text-[1.1rem] md:leading-8",
+              isPoster || isPanel ? "text-muted-foreground" : "text-white/88",
             )}
           >
             {lede}
           </p>
 
           {supportingBullets.length > 0 ? (
-            <ul className="mt-8 grid gap-x-8 gap-y-3.5 sm:grid-cols-2">
+            <ul className={cn("mt-8 grid gap-x-8 gap-y-3.5 sm:grid-cols-2", isPoster ? "max-w-[56rem]" : "")}>
               {supportingBullets.map((bullet) => (
                 <li
                   key={bullet}
                   className={cn(
                     "relative pl-5 text-sm font-medium leading-6",
-                    isPanel
+                    isPoster || isPanel
                       ? "text-card-foreground"
                       : "text-white",
                   )}
@@ -141,7 +158,7 @@ export function MarketingHero({
                     aria-hidden="true"
                     className={cn(
                       "absolute left-0 top-2 size-2 rounded-full",
-                      isPanel ? "bg-brand shadow-[0_0_0_6px_rgb(var(--z-accent)/0.12)]" : "bg-white shadow-[0_0_0_6px_rgba(255,255,255,0.14)]",
+                      isPoster || isPanel ? "bg-brand shadow-[0_0_0_6px_rgb(var(--z-accent)/0.12)]" : "bg-white shadow-[0_0_0_6px_rgba(255,255,255,0.14)]",
                     )}
                   />
                   {bullet}
@@ -163,7 +180,7 @@ export function MarketingHero({
                   key={chip}
                   className={cn(
                     "inline-flex items-center rounded-full border px-3.5 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.13em]",
-                    isPanel
+                    isPoster || isPanel
                       ? "border-border bg-white/84 text-muted-foreground"
                       : "border-white/16 bg-white/10 text-white/84",
                   )}
@@ -175,11 +192,19 @@ export function MarketingHero({
           ) : null}
         </div>
 
-        {rail ? (
-          <div data-hero-rail className={cn("space-y-4 lg:col-span-5 lg:pt-2", railClassName)}>
-            {rail}
-          </div>
-        ) : null}
+          {rail ? (
+            <div
+              data-hero-rail
+              className={cn(
+                "space-y-4 lg:col-span-5 lg:pt-2",
+                isPoster ? "lg:pt-0" : "",
+                railClassName,
+              )}
+            >
+              {rail}
+            </div>
+          ) : null}
+        </div>
       </div>
     </section>
   );

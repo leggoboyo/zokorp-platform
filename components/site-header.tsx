@@ -37,7 +37,7 @@ export function SiteHeader() {
       </div>
 
       <div className="marketing-container px-4 py-4 md:px-6 xl:px-8">
-        <div className="relative z-10 flex items-center justify-between gap-4 rounded-[1.9rem] border border-border bg-[rgba(255,255,255,0.74)] px-3 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl md:px-4">
+        <div className="relative z-10 flex items-center justify-between gap-4 border-b border-border/70 py-3">
           <Link href="/" className="font-display inline-flex min-w-0 items-center gap-3 text-[rgb(var(--z-ink))]">
             <span className="flex items-center">
               <Image

@@ -1,10 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { LearnMore } from "@/components/marketing/learn-more";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { MarketingSectionHeading } from "@/components/marketing/section-heading";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ABOUT_PAGE_CONTENT, MARKETING_TRUST_CHIPS } from "@/lib/marketing-content";
 import {
@@ -31,6 +29,7 @@ export default function AboutPage() {
   return (
     <div className="marketing-stack">
       <MarketingHero
+        mode="poster"
         eyebrow={ABOUT_PAGE_CONTENT.hero.eyebrow}
         title={ABOUT_PAGE_CONTENT.hero.title}
         lede={ABOUT_PAGE_CONTENT.hero.lede}
@@ -40,56 +39,58 @@ export default function AboutPage() {
         secondaryAction={{ href: "/services", label: "View services", variant: "secondary" }}
         tertiaryAction={{ href: PUBLIC_LAUNCH_CONTACT.linkedInUrl, label: "LinkedIn", variant: "ghost", external: true }}
         rail={
-          <section className="marketing-panel overflow-hidden rounded-[2rem]">
-            <div className="grid gap-5 p-5 md:grid-cols-[minmax(220px,280px)_1fr] md:p-6">
-              <div className="portrait-frame relative min-h-[320px] md:min-h-[390px]">
-                <Image
-                  src={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
-                  alt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
-                  fill
-                  className="object-cover object-[center_12%]"
-                  sizes="(max-width: 768px) 100vw, 280px"
-                  priority
-                />
-              </div>
+          <div className="grid gap-5">
+            <section className="plane-dark rounded-[2.4rem] border border-white/8 p-4 shadow-[0_30px_70px_rgba(10,18,34,0.18)] md:p-5">
+              <div className="grid gap-5 md:grid-cols-[minmax(220px,260px)_1fr] md:items-end">
+                <div className="portrait-frame relative min-h-[320px] overflow-hidden rounded-[2rem] md:min-h-[390px]">
+                  <Image
+                    src={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
+                    alt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+                    fill
+                    className="object-cover object-[center_12%]"
+                    sizes="(max-width: 768px) 100vw, 280px"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#07111f]/18 via-transparent to-transparent" />
+                </div>
+                <div className="flex flex-col justify-between gap-5">
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <p className="enterprise-kicker text-white/72">Founder</p>
+                      <h2 className="font-display text-[2.2rem] font-semibold leading-[0.98] text-white">
+                        {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+                      </h2>
+                      <p className="text-sm font-medium text-white/66">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
+                    </div>
 
-              <div className="flex flex-col justify-between gap-5">
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <p className="enterprise-kicker">Founder</p>
-                    <h2 className="font-display text-[2rem] font-semibold leading-[1.02] text-card-foreground">
-                      {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
-                    </h2>
-                    <p className="text-sm font-medium text-muted-foreground">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
+                    <p className="text-sm leading-7 text-white/80">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
                   </div>
 
-                  <p className="text-sm leading-7 text-muted-foreground">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary" className="normal-case tracking-normal">
+                  <div className="grid gap-2">
+                    <div className="border-t border-white/12 pt-2 text-xs uppercase tracking-[0.14em] text-white/68">
                       {PUBLIC_LAUNCH_FOUNDER_PROFILE.formerRoleLabel}
-                    </Badge>
-                    <Badge variant="secondary" className="normal-case tracking-normal">
+                    </div>
+                    <div className="border-t border-white/12 pt-2 text-xs uppercase tracking-[0.14em] text-white/68">
                       {PUBLIC_LAUNCH_FOUNDER_PROFILE.currentRoleLabel}
-                    </Badge>
-                    <Badge variant="secondary" className="normal-case tracking-normal">
+                    </div>
+                    <div className="border-t border-white/12 pt-2 text-xs uppercase tracking-[0.14em] text-white/68">
                       {PUBLIC_LAUNCH_CONTACT.location}
-                    </Badge>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials.map((credential) => (
-                      <span key={credential} className="metric-chip">
-                        {credential}
-                      </span>
-                    ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+
+            <section className="section-band px-5 py-5 md:px-6">
+              <div className="grid gap-3 sm:grid-cols-3">
+                {PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials.map((credential) => (
+                  <div key={credential} className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
+                    {credential}
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
         }
       />
 
@@ -100,16 +101,22 @@ export default function AboutPage() {
           description="The public proof stays intentionally narrow: named founder, named background, visible certifications, a real location, and a direct human path."
         />
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          {ABOUT_PAGE_CONTENT.credibilityCards.map((item) => (
-            <article key={item.title} className="marketing-panel h-full px-5 py-6 md:px-6">
-              <div className="space-y-4">
+        <div className="section-band px-5 py-5 md:px-6">
+          {ABOUT_PAGE_CONTENT.credibilityCards.map((item, index) => (
+            <article
+              key={item.title}
+              className="grid gap-5 border-t border-border/80 py-5 first:border-t-0 first:pt-0 lg:grid-cols-[auto_minmax(0,0.58fr)_minmax(0,1fr)] lg:items-start"
+            >
+              <div className="hidden lg:block lg:pt-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label">{`0${index + 1}`}</p>
+              </div>
+              <div className="space-y-2">
                 <p className="enterprise-kicker">Verified signal</p>
-                <h3 className="font-display max-w-[12ch] text-[1.9rem] font-semibold leading-[1.04] text-card-foreground">
+                <h3 className="font-display max-w-[12ch] text-[2rem] font-semibold leading-[1.02] text-card-foreground">
                   {item.title}
                 </h3>
-                <p className="text-sm leading-7 text-muted-foreground">{item.detail}</p>
               </div>
+              <p className="max-w-[40ch] text-sm leading-7 text-muted-foreground">{item.detail}</p>
             </article>
           ))}
         </div>
@@ -120,14 +127,14 @@ export default function AboutPage() {
           <div className="space-y-5">
             <div className="space-y-3">
               <p className="enterprise-kicker">Background</p>
-              <h2 className="font-display max-w-[14ch] text-3xl font-semibold text-foreground md:text-4xl">
+              <h2 className="font-display max-w-[12ch] text-[2.5rem] font-semibold leading-[0.98] text-foreground md:text-[3.4rem]">
                 Named employers, visible certifications, and a small operating model.
               </h2>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               {PUBLIC_LAUNCH_FOUNDER_PROFILE.backgroundCompanies.map((company) => (
-                <div key={company} className="marketing-panel rounded-[1.35rem] px-4 py-4 text-sm font-semibold text-card-foreground">
+                <div key={company} className="border-t border-border/80 pt-3 text-sm font-semibold text-card-foreground">
                   {company}
                 </div>
               ))}
@@ -139,11 +146,11 @@ export default function AboutPage() {
           </div>
         </article>
 
-        <article className="marketing-panel-dark rounded-[1.9rem] px-6 py-6 md:px-7">
+        <article className="plane-dark rounded-[2.1rem] border border-white/8 px-6 py-6 md:px-7">
           <div className="space-y-5">
             <div className="space-y-2">
-              <p className="enterprise-kicker">Response posture</p>
-              <h2 className="font-display max-w-[12ch] text-3xl font-semibold leading-[1.04]">
+              <p className="enterprise-kicker text-white/72">Response posture</p>
+              <h2 className="font-display max-w-[10ch] text-[2.35rem] font-semibold leading-[0.98] text-white">
                 Direct contact stays part of the trust model.
               </h2>
             </div>
@@ -163,40 +170,44 @@ export default function AboutPage() {
         </article>
       </section>
 
-      <LearnMore
-        title={PUBLIC_LAUNCH_PROOF_ASSET.title}
-        summary="Secondary detail belongs behind disclosure, not in the first scan of the page."
-      >
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <div className="marketing-panel rounded-[1.5rem] px-5 py-5">
-            <p className="text-sm leading-7 text-card-foreground">{PUBLIC_LAUNCH_PROOF_ASSET.summary}</p>
+      <section className="plane-dark rounded-[2.3rem] border border-white/8 px-6 py-7 md:px-8">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <div className="space-y-3">
+            <p className="enterprise-kicker text-white/72">{PUBLIC_LAUNCH_PROOF_ASSET.title}</p>
+            <h2 className="font-display max-w-[11ch] text-[2.3rem] font-semibold leading-[0.98] text-white md:text-[3rem]">
+              The trust model stays intentionally narrow and directly stated.
+            </h2>
+            <p className="max-w-[36ch] text-sm leading-7 text-white/80">{PUBLIC_LAUNCH_PROOF_ASSET.summary}</p>
           </div>
+
           <div className="grid gap-3">
             {PUBLIC_LAUNCH_PROOF_ASSET.highlights.map((item) => (
-              <div key={item} className="marketing-panel rounded-[1.35rem] px-4 py-4 text-sm text-card-foreground">
+              <div key={item} className="border-t border-white/12 pt-3 text-sm leading-7 text-white/78">
                 {item}
               </div>
             ))}
           </div>
         </div>
-      </LearnMore>
+      </section>
 
-      <section className="marketing-panel-dark rounded-[2rem] px-6 py-7 md:px-8">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-end">
-          <div className="space-y-3">
-            <p className="enterprise-kicker">Next step</p>
-            <h2 className="font-display max-w-[13ch] text-[2.2rem] font-semibold leading-[1.02] md:text-[2.8rem]">
-              If the operating model fits, move to the service catalog or book the first call.
-            </h2>
-          </div>
+      <section className="hero-bleed plane-dark border-t border-white/8 py-12 md:py-14">
+        <div className="marketing-container px-4 md:px-6 xl:px-8">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-end">
+            <div className="space-y-3">
+              <p className="enterprise-kicker text-white/72">Next step</p>
+              <h2 className="font-display max-w-[13ch] text-[2.4rem] font-semibold leading-[0.98] text-white md:text-[3.4rem]">
+                If the operating model fits, move to the service catalog or book the first call.
+              </h2>
+            </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link href="/services" className={buttonVariants()}>
-              View services
-            </Link>
-            <Link href="/contact" className={buttonVariants({ variant: "inverse" })}>
-              Contact ZoKorp
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/services" className={buttonVariants()}>
+                View services
+              </Link>
+              <Link href="/contact" className={buttonVariants({ variant: "inverse" })}>
+                Contact ZoKorp
+              </Link>
+            </div>
           </div>
         </div>
       </section>

@@ -24,7 +24,7 @@ type SiteHeaderShellProps = {
 
 const desktopNavLinkClass = cn(
   buttonVariants({ variant: "ghost", size: "sm" }),
-  "rounded-full px-3.5 text-muted-foreground hover:bg-white/88 hover:text-foreground",
+  "rounded-full px-3.5 text-muted-foreground hover:text-foreground",
 );
 
 const focusableSelector =
@@ -220,7 +220,7 @@ export function SiteHeaderShell({
 
   return (
     <div className="flex flex-1 items-center justify-end gap-3">
-      <nav className="hidden items-center gap-1.5 rounded-full border border-border bg-white/68 px-2 py-1.5 text-sm shadow-[0_1px_0_rgba(255,255,255,0.84)_inset] backdrop-blur md:flex">
+      <nav className="hidden items-center gap-1.5 px-1 text-sm md:flex">
         {primaryLinks.map((link) => (
           <Link key={link.href} href={link.href} className={desktopNavLinkClass}>
             {link.label}

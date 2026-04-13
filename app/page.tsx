@@ -4,9 +4,8 @@ import Link from "next/link";
 
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { MarketingSectionHeading } from "@/components/marketing/section-heading";
-import { Badge } from "@/components/ui/badge";
+import { ServiceOfferRow } from "@/components/marketing/service-offer-row";
 import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { buildCalendlyBookingUrl } from "@/lib/calendly";
 import {
   DELIVERY_PROCESS_STEPS,
@@ -28,19 +27,6 @@ export const metadata: Metadata = buildMarketingPageMetadata({
     "Founder-led AWS architecture reviews, cost audits, landing-zone work, and advisory for SMB teams that need a clear next step.",
   path: "/",
 });
-
-const offerSpanMap: Record<string, string> = {
-  "architecture-review": "lg:col-span-7",
-  "cloud-cost-optimization-audit": "lg:col-span-5",
-  "landing-zone-setup": "lg:col-span-5",
-  "advisory-retainer": "lg:col-span-7",
-};
-
-const founderSignals = [
-  PUBLIC_LAUNCH_FOUNDER_PROFILE.formerRoleLabel,
-  PUBLIC_LAUNCH_FOUNDER_PROFILE.currentRoleLabel,
-  PUBLIC_LAUNCH_CONTACT.responseWindowLabel,
-] as const;
 
 export default function HomePage() {
   const marketingSiteUrl = getMarketingSiteUrl();
@@ -82,6 +68,7 @@ export default function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
       <MarketingHero
+        mode="poster"
         eyebrow={HOME_PAGE_CONTENT.hero.eyebrow}
         title={HOME_PAGE_CONTENT.hero.title}
         lede={HOME_PAGE_CONTENT.hero.lede}
@@ -91,68 +78,58 @@ export default function HomePage() {
         secondaryAction={{ href: "/services", label: "View services", variant: "secondary" }}
         tertiaryAction={{ href: "/pricing", label: "See pricing", variant: "ghost" }}
         rail={
-          <div className="grid gap-4">
-            <section className="marketing-panel overflow-hidden rounded-[2rem]">
-              <div className="grid gap-5 p-5 md:grid-cols-[minmax(220px,260px)_1fr] md:p-6">
-                <div className="portrait-frame relative min-h-[320px] md:min-h-[360px]">
-                  <Image
-                    src={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
-                    alt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
-                    fill
-                    className="object-cover object-[center_12%]"
-                    sizes="(max-width: 768px) 100vw, 260px"
-                    priority
-                  />
+          <div className="grid gap-5 lg:gap-6">
+            <section className="plane-dark rounded-[2.4rem] border border-white/8 p-4 shadow-[0_30px_70px_rgba(10,18,34,0.18)] md:p-5">
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(14rem,16rem)] md:items-end">
+                <div className="order-2 space-y-3 md:order-1">
+                  <p className="enterprise-kicker text-white/72">Founder</p>
+                  <div className="space-y-1">
+                    <h2 className="font-display max-w-[8ch] text-[2.2rem] font-semibold leading-[0.96] text-white">
+                      {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+                    </h2>
+                    <p className="text-sm text-white/68">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
+                  </div>
+                  <p className="max-w-[26ch] text-sm leading-7 text-white/78">
+                    {PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}
+                  </p>
+                  <div className="grid gap-2">
+                    <div className="border-t border-white/12 pt-2 text-xs uppercase tracking-[0.14em] text-white/66">
+                      {PUBLIC_LAUNCH_FOUNDER_PROFILE.formerRoleLabel}
+                    </div>
+                    <div className="border-t border-white/12 pt-2 text-xs uppercase tracking-[0.14em] text-white/66">
+                      {PUBLIC_LAUNCH_FOUNDER_PROFILE.currentRoleLabel}
+                    </div>
+                    <div className="border-t border-white/12 pt-2 text-xs uppercase tracking-[0.14em] text-white/66">
+                      {PUBLIC_LAUNCH_CONTACT.responseWindowLabel}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex flex-col justify-between gap-5">
-                  <div className="space-y-3">
-                    <p className="enterprise-kicker">Founder</p>
-                    <div className="space-y-1.5">
-                      <h2 className="font-display text-[2rem] font-semibold leading-[1.02] text-card-foreground">
-                        {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
-                      </h2>
-                      <p className="text-sm font-medium text-muted-foreground">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
-                    </div>
-                    <p className="text-sm leading-7 text-muted-foreground">{PUBLIC_LAUNCH_FOUNDER_PROFILE.summary}</p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      {founderSignals.map((signal) => (
-                        <Badge key={signal} variant="secondary" className="normal-case tracking-normal">
-                          {signal}
-                        </Badge>
-                      ))}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials.map((credential) => (
-                        <span key={credential} className="metric-chip">
-                          {credential}
-                        </span>
-                      ))}
-                    </div>
+                <div className="order-1 md:order-2">
+                  <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]">
+                    <Image
+                      src={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
+                      alt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+                      fill
+                      className="object-cover object-[center_12%]"
+                      sizes="(max-width: 1024px) 70vw, 260px"
+                      priority
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#07111f]/20 via-transparent to-transparent" />
                   </div>
                 </div>
               </div>
             </section>
 
-            <section className="marketing-panel-dark rounded-[1.8rem] px-5 py-5">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="enterprise-kicker">Trust posture</p>
-                  <h2 className="font-display text-2xl font-semibold">{PUBLIC_LAUNCH_PROOF_ASSET.title}</h2>
+            <section className="grid gap-3 sm:grid-cols-3">
+              {PUBLIC_LAUNCH_PROOF_ASSET.highlights.map((item) => (
+                <div
+                  key={item}
+                  className="border-t border-border/70 pt-3 text-sm leading-7 text-card-foreground"
+                >
+                  {item}
                 </div>
-                <p className="text-sm leading-7 text-white/80">{PUBLIC_LAUNCH_PROOF_ASSET.summary}</p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {PUBLIC_LAUNCH_PROOF_ASSET.highlights.map((item) => (
-                    <div key={item} className="rounded-[1.3rem] border border-white/10 bg-white/[0.06] px-4 py-4 text-sm text-white/88">
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              ))}
             </section>
           </div>
         }
@@ -171,99 +148,62 @@ export default function HomePage() {
           }
         />
 
-        <div className="grid gap-4 lg:grid-cols-12">
+        <div className="section-band px-5 py-6 md:px-6 md:py-7">
           {PRIMARY_CONSULTING_OFFERS.map((offer, index) => (
-            <article
+            <ServiceOfferRow
               key={offer.slug}
-              className={cn(
-                "marketing-panel flex h-full flex-col gap-6 px-5 py-6 md:px-6 md:py-7",
-                offerSpanMap[offer.slug],
-              )}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-2">
-                  <p className="enterprise-kicker">{offer.eyebrow}</p>
-                  <h3 className="font-display max-w-[13ch] text-[2rem] font-semibold leading-[1.02] text-card-foreground">
-                    {offer.title}
-                  </h3>
-                </div>
-
-                <div className="space-y-2 text-right">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-foreground-label">{`0${index + 1}`}</p>
-                  <Badge variant="secondary" className="normal-case tracking-normal">
-                    {offer.priceAnchor}
-                  </Badge>
-                </div>
-              </div>
-
-              <p className="measure-copy text-sm leading-7 text-muted-foreground">{offer.summary}</p>
-
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,0.72fr)]">
-                <ul className="marketing-list">
-                  {offer.bullets.map((bullet) => (
-                    <li key={bullet}>{bullet}</li>
-                  ))}
-                </ul>
-
-                <div className="marketing-panel-muted rounded-[1.4rem] px-4 py-4">
-                  <p className="enterprise-kicker">What you get</p>
-                  <div className="mt-3 grid gap-2">
-                    {offer.included.map((item) => (
-                      <div key={item} className="text-sm font-medium text-card-foreground">
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </article>
+              eyebrow={offer.eyebrow}
+              title={offer.title}
+              priceAnchor={offer.priceAnchor}
+              summary={offer.summary}
+              bullets={offer.bullets}
+              included={offer.included}
+              index={index + 1}
+            />
           ))}
         </div>
       </section>
 
-      <section className="section-band px-5 py-6 md:px-6 md:py-7">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)] lg:items-end">
-          <div className="space-y-3">
-            <p className="enterprise-kicker">How work starts</p>
-            <h2 className="font-display max-w-[14ch] text-3xl font-semibold text-foreground md:text-4xl">
-              Structured on purpose, not dressed up as infinite consulting.
-            </h2>
-          </div>
+      <section className="grid gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start">
+        <div className="space-y-5">
+          <p className="enterprise-kicker">How work starts</p>
+          <h2 className="font-display max-w-[12ch] text-[2.6rem] font-semibold leading-[0.98] text-foreground md:text-[3.5rem]">
+            Reviews first. Clearer scope second. Follow-through only when it is earned.
+          </h2>
           <p className="marketing-section-copy text-base leading-7 text-muted-foreground">
-            Reviews come first. Scope gets clearer. Only then does ZoKorp move into validation, remediation, or implementation.
+            The site should make the buying path obvious in seconds: diagnose, narrow, then decide whether implementation is worth buying.
           </p>
         </div>
 
-        <div className="band-divider mt-6" />
-
-        <div className="mt-6 grid gap-4 lg:grid-cols-4">
-          {DELIVERY_PROCESS_STEPS.map((step, index) => (
-            <article key={step.title} className="space-y-3">
-              <p className="enterprise-kicker">{`0${index + 1}`}</p>
-              <h3 className="font-display text-2xl font-semibold text-card-foreground">{step.title}</h3>
-              <p className="text-sm leading-7 text-muted-foreground">{step.detail}</p>
-            </article>
-          ))}
+        <div className="plane-dark rounded-[2.2rem] border border-white/8 px-6 py-6 md:px-7 md:py-7">
+          <div className="grid gap-5 md:grid-cols-2">
+            {DELIVERY_PROCESS_STEPS.map((step, index) => (
+              <article key={step.title} className="border-t border-white/12 pt-4 first:border-t-0 first:pt-0">
+                <p className="enterprise-kicker text-white/66">{`0${index + 1}`}</p>
+                <h3 className="font-display mt-2 text-2xl font-semibold text-white">{step.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-white/76">{step.detail}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
-        <div className="space-y-5">
-          <MarketingSectionHeading
-            eyebrow="Software"
-            title={HOME_PAGE_CONTENT.softwareTitle}
-            description={HOME_PAGE_CONTENT.softwareIntro}
-            className="block"
-          />
+      <section className="space-y-6">
+        <MarketingSectionHeading
+          eyebrow="Software"
+          title={HOME_PAGE_CONTENT.softwareTitle}
+          description={HOME_PAGE_CONTENT.softwareIntro}
+        />
 
-          <div className="marketing-panel-dark rounded-[1.9rem] px-6 py-6 md:px-7 md:py-7">
-            <div className="space-y-4">
-              <p className="enterprise-kicker">Why it exists</p>
-              <h3 className="font-display max-w-[14ch] text-3xl font-semibold leading-[1.04]">
-                The product side should remove ambiguity, not add another sales layer.
-              </h3>
-              <p className="text-sm leading-7 text-white/82">
-                ZoKorp software is designed to show the outcome, the buyer fit, and the next action in seconds. That keeps the public site honest and keeps signup out of the first step.
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <section className="plane-dark rounded-[2.4rem] border border-white/8 px-6 py-7 md:px-8">
+            <div className="space-y-5">
+              <p className="enterprise-kicker text-white/72">Public tools</p>
+              <h2 className="font-display max-w-[10ch] text-[2.7rem] font-semibold leading-[0.96] text-white md:text-[3.7rem]">
+                Product pages should explain the outcome before signup.
+              </h2>
+              <p className="max-w-[34ch] text-base leading-7 text-white/80">
+                The software layer exists to reduce ambiguity, not to hide the service model. Buyers should understand the tool, the fit, and the next step before they ever create an account.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link href="/software" className={buttonVariants()}>
@@ -274,60 +214,59 @@ export default function HomePage() {
                 </Link>
               </div>
             </div>
-          </div>
-        </div>
+          </section>
 
-        <div className="marketing-card-stack">
-          {SOFTWARE_HIGHLIGHTS.map((item) => (
-            <article key={item.href} className="marketing-panel grid gap-4 px-5 py-5 md:grid-cols-[minmax(0,1fr)_minmax(14rem,0.7fr)] md:px-6">
-              <div className="space-y-3">
-                <p className="enterprise-kicker">Public product</p>
-                <h3 className="font-display text-[1.85rem] font-semibold leading-[1.05] text-card-foreground">{item.title}</h3>
-                <p className="text-sm leading-7 text-muted-foreground">{item.summary}</p>
-              </div>
-              <div className="space-y-3">
-                <div className="marketing-panel-muted rounded-[1.35rem] px-4 py-4">
-                  <p className="enterprise-kicker">Who it is for</p>
-                  <p className="mt-2 text-sm leading-6 text-card-foreground">{item.audience}</p>
+          <div className="section-band px-5 py-4 md:px-6">
+            {SOFTWARE_HIGHLIGHTS.map((item) => (
+              <article
+                key={item.href}
+                className="grid gap-4 border-t border-border/80 py-5 first:border-t-0 first:pt-0 lg:grid-cols-[minmax(0,0.82fr)_minmax(15rem,0.78fr)] lg:items-start"
+              >
+                <div className="space-y-2.5">
+                  <p className="enterprise-kicker">Public product</p>
+                  <h3 className="font-display text-[2rem] font-semibold leading-[1.02] text-card-foreground">{item.title}</h3>
+                  <p className="max-w-[30ch] text-sm leading-7 text-muted-foreground">{item.summary}</p>
                 </div>
-                <div className="marketing-panel-muted rounded-[1.35rem] px-4 py-4">
-                  <p className="enterprise-kicker">What you get</p>
-                  <p className="mt-2 text-sm leading-6 text-card-foreground">{item.outcome}</p>
+
+                <div className="space-y-3">
+                  <div className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
+                    <span className="font-semibold">Who it is for:</span> {item.audience}
+                  </div>
+                  <div className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
+                    <span className="font-semibold">What you get:</span> {item.outcome}
+                  </div>
+                  <Link href={item.href} className={buttonVariants({ variant: "secondary" })}>
+                    {item.cta}
+                  </Link>
                 </div>
-                <Link href={item.href} className={buttonVariants({ variant: "secondary" })}>
-                  {item.cta}
-                </Link>
-              </div>
-            </article>
-          ))}
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="marketing-panel-dark rounded-[2rem] px-6 py-7 md:px-8 md:py-8">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-end">
-          <div className="space-y-3">
-            <p className="enterprise-kicker">Next step</p>
-            <h2 className="font-display max-w-[13ch] text-[2.35rem] font-semibold leading-[1] md:text-[3rem]">
-              {HOME_PAGE_CONTENT.finalCtaTitle}
-            </h2>
-          </div>
+      <section className="hero-bleed plane-dark border-t border-white/8 py-12 md:py-14">
+        <div className="marketing-container px-4 md:px-6 xl:px-8">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
+            <div className="space-y-3">
+              <p className="enterprise-kicker text-white/72">Next step</p>
+              <h2 className="font-display max-w-[11ch] text-[2.6rem] font-semibold leading-[0.96] text-white md:text-[3.6rem]">
+                Move to a call when the situation is easier to explain live.
+              </h2>
+            </div>
 
-          <div className="space-y-5">
-            <ul className="marketing-list text-white">
-              {HOME_PAGE_CONTENT.finalCtaBullets.map((bullet) => (
-                <li key={bullet} className="text-white/82">
-                  {bullet}
-                </li>
-              ))}
-            </ul>
-
-            <div className="flex flex-wrap gap-3">
-              <a href={bookingUrl} className={buttonVariants()}>
-                Book a call
-              </a>
-              <Link href="/services" className={buttonVariants({ variant: "inverse" })}>
-                View services
-              </Link>
+            <div className="space-y-5">
+              <p className="max-w-[38ch] text-base leading-7 text-white/80">
+                ZoKorp keeps the promise narrow on purpose: direct technical judgment, approved public proof, and clearer scope before work starts.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <a href={bookingUrl} className={buttonVariants()}>
+                  Book a call
+                </a>
+                <Link href="/services" className={buttonVariants({ variant: "inverse" })}>
+                  View services
+                </Link>
+              </div>
             </div>
           </div>
         </div>

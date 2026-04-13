@@ -6,7 +6,6 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { MarketingSectionHeading } from "@/components/marketing/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getToolDefinition } from "@/lib/tool-registry";
 import { cn } from "@/lib/utils";
@@ -167,96 +166,102 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
       </div>
 
       {filteredProducts.length > 0 ? (
-        <div className="grid gap-4">
-          {filteredProducts.map((product) => (
+        <div className="section-band px-5 py-5 md:px-6">
+          {filteredProducts.map((product, index) => (
             <article
               key={product.id}
-              className="marketing-panel lift-card grid gap-6 px-5 py-6 md:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(16rem,0.72fr)] lg:items-start"
+              className="grid gap-6 border-t border-border/80 py-6 first:border-t-0 first:pt-0 lg:grid-cols-[auto_minmax(0,0.52fr)_minmax(0,1fr)_auto] lg:items-start"
             >
+              <div className="hidden lg:block lg:pt-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label">{`0${index + 1}`}</p>
+              </div>
               <div className="space-y-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-2.5">
-                    <p className="enterprise-kicker">Software product</p>
-                    <h3 className="font-display text-[2rem] font-semibold leading-[1.05] text-card-foreground">
-                      {getCatalogPresentation(product).name}
-                    </h3>
-                    <p className="measure-copy text-sm leading-7 text-muted-foreground">
-                      {getCatalogPresentation(product).description}
-                    </p>
-                  </div>
-                  <Badge variant={accessBadgeVariant[product.accessModel]}>{accessLabel[product.accessModel]}</Badge>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="marketing-panel-muted rounded-[1.4rem] px-4 py-4">
-                    <p className="enterprise-kicker">Access</p>
-                    <p className="mt-2 text-sm font-semibold text-card-foreground">{accessLabel[product.accessModel]}</p>
-                  </div>
-                  <div className="marketing-panel-muted rounded-[1.4rem] px-4 py-4">
-                    <p className="enterprise-kicker">Pricing</p>
-                    <p className="mt-2 text-sm font-semibold text-card-foreground">{getPriceSummary(product)}</p>
-                  </div>
-                  <div className="marketing-panel-muted rounded-[1.4rem] px-4 py-4">
-                    <p className="enterprise-kicker">Path</p>
-                    <p className="mt-2 text-sm font-semibold text-card-foreground">Public page first</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Link href={`/software/${product.slug}`} className={buttonVariants()}>
-                    Open product
-                  </Link>
-                  <Link href="/account" className={buttonVariants({ variant: "secondary" })}>
-                    View account access
-                  </Link>
+                <div className="space-y-2.5">
+                  <p className="enterprise-kicker">Software product</p>
+                  <h3 className="font-display text-[2rem] font-semibold leading-[1.02] text-card-foreground">
+                    {getCatalogPresentation(product).name}
+                  </h3>
+                  <p className="measure-copy max-w-[34ch] text-sm leading-7 text-muted-foreground">
+                    {getCatalogPresentation(product).description}
+                  </p>
                 </div>
               </div>
 
-              <div className="marketing-panel-muted rounded-[1.5rem] px-5 py-5">
-                <p className="enterprise-kicker">Pricing snapshot</p>
-                <p className="font-display mt-3 text-[2.35rem] font-semibold leading-none tracking-[-0.05em] text-card-foreground">
-                  {getPriceSummary(product)}
-                </p>
-                {product.prices.length > 0 ? (
-                  <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-                    {product.prices.slice(0, 3).map((price) => (
-                      <li key={price.id} className="flex items-center justify-between gap-4 border-t border-border/70 pt-2.5 first:border-t-0 first:pt-0">
-                        <span>{price.kind.replaceAll("_", " ")}</span>
-                        <span className="font-semibold text-card-foreground">{formatAmount(price.amount, price.currency)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                    {product.accessModel === "FREE"
-                      ? "Launch the tool directly. Account sign-in adds usage history where supported."
-                      : "Pricing is configured per product in the admin dashboard."}
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,0.84fr)]">
+                <div className="grid gap-3">
+                  <div className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
+                    <span className="font-semibold">Access:</span> {accessLabel[product.accessModel]}
+                  </div>
+                  <div className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
+                    <span className="font-semibold">Pricing:</span> {getPriceSummary(product)}
+                  </div>
+                  <div className="border-t border-border/80 pt-3 text-sm leading-6 text-card-foreground">
+                    <span className="font-semibold">Path:</span> Public page first
+                  </div>
+                  {product.prices.length > 0 ? (
+                    <div className="border-t border-border/80 pt-3">
+                      <ul className="space-y-2.5 text-sm text-muted-foreground">
+                        {product.prices.slice(0, 3).map((price) => (
+                          <li key={price.id} className="flex items-center justify-between gap-4">
+                            <span>{price.kind.replaceAll("_", " ")}</span>
+                            <span className="font-semibold text-card-foreground">{formatAmount(price.amount, price.currency)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="border-t border-border/80 pt-3 text-sm leading-6 text-muted-foreground">
+                      {product.accessModel === "FREE"
+                        ? "Launch the tool directly. Account sign-in adds usage history where supported."
+                        : "Pricing is configured per product in the admin dashboard."}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3 rounded-[1.35rem] border border-border/80 bg-white/55 px-4 py-4 backdrop-blur-sm">
+                  <Badge variant={accessBadgeVariant[product.accessModel]} className="w-fit">
+                    {accessLabel[product.accessModel]}
+                  </Badge>
+                  <p className="font-display text-[2.2rem] font-semibold leading-none tracking-[-0.05em] text-card-foreground">
+                    {getPriceSummary(product)}
                   </p>
-                )}
+                  <div className="flex flex-col gap-2">
+                    <Link href={`/software/${product.slug}`} className={buttonVariants()}>
+                      Open product
+                    </Link>
+                    <Link href="/account" className={buttonVariants({ variant: "secondary" })}>
+                      View account access
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start lg:justify-end">
+                <span className="metric-chip">{accessLabel[product.accessModel]}</span>
               </div>
             </article>
           ))}
         </div>
       ) : (
-        <Card tone="muted" className="rounded-[1.7rem] border border-border p-6">
-          <CardHeader>
+        <div className="section-band px-6 py-6">
+          <div className="space-y-4">
             <p className="enterprise-kicker">No matches</p>
             <h3 className="font-display text-2xl font-semibold text-card-foreground">No software fits the current filters</h3>
-          </CardHeader>
-          <CardContent>
             <p className="text-sm leading-7 text-muted-foreground">
               Clear the search term or switch back to all access models to see the full catalog.
             </p>
-          </CardContent>
-          <CardFooter>
-            <button type="button" onClick={() => {
-              setQuery("");
-              setAccessFilter("ALL");
-            }} className={buttonVariants({ variant: "secondary" })}>
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setAccessFilter("ALL");
+              }}
+              className={buttonVariants({ variant: "secondary" })}
+            >
               Clear filters
             </button>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       )}
     </section>
   );
