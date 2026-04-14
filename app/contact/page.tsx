@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 
+import { FounderProofBlock } from "@/components/marketing/founder-proof-block";
 import { MarketingSectionHeading } from "@/components/marketing/section-heading";
 import { ServiceRequestPanel } from "@/components/service-request-panel";
 import { auth } from "@/lib/auth";
 import { CONTACT_PAGE_CONTENT } from "@/lib/marketing-content";
+import { FOUNDER_PROOF_PAGE_CONTENT } from "@/lib/marketing-proof";
 import { buildMarketingPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = buildMarketingPageMetadata({
@@ -25,6 +27,11 @@ export default async function ContactPage() {
           title={CONTACT_PAGE_CONTENT.title}
           description={CONTACT_PAGE_CONTENT.lede}
           titleAs="h1"
+        />
+
+        <FounderProofBlock
+          mode="micro"
+          statement={FOUNDER_PROOF_PAGE_CONTENT.contact.statement}
         />
 
         <ServiceRequestPanel

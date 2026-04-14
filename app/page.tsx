@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { FounderProfileCard } from "@/components/marketing/founder-profile-card";
+import { FounderProofBlock } from "@/components/marketing/founder-proof-block";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { MarketingSectionHeading } from "@/components/marketing/section-heading";
 import { ServiceOfferRow } from "@/components/marketing/service-offer-row";
@@ -13,6 +14,7 @@ import {
   PRIMARY_CONSULTING_OFFERS,
   SOFTWARE_HIGHLIGHTS,
 } from "@/lib/marketing-content";
+import { FOUNDER_PROOF_PAGE_CONTENT } from "@/lib/marketing-proof";
 import { getConsultationCta } from "@/lib/marketing-cta";
 import {
   PUBLIC_LAUNCH_CONTACT,
@@ -114,6 +116,14 @@ export default async function HomePage() {
             ]}
           />
         }
+      />
+
+      <FounderProofBlock
+        mode="strip"
+        eyebrow={FOUNDER_PROOF_PAGE_CONTENT.home.eyebrow}
+        statement={FOUNDER_PROOF_PAGE_CONTENT.home.statement}
+        support={FOUNDER_PROOF_PAGE_CONTENT.home.support}
+        sectorLine={FOUNDER_PROOF_PAGE_CONTENT.home.sectorLine}
       />
 
       <section className="space-y-6">

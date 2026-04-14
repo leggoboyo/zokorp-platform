@@ -39,6 +39,10 @@ test.describe("marketing surfaces", () => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.locator('[data-surface="hero-copy"]').getByRole("link", { name: "Request a call" })).toBeVisible();
     await expect(page.locator('[data-surface="hero-copy"]').getByRole("link", { name: "View services" })).toBeVisible();
+    await expect(page.locator('[data-proof-mode="strip"]')).toContainText("Selected background");
+    await expect(page.locator('[data-proof-mode="strip"]')).toContainText(
+      "Experience includes work involving organizations such as D.R. Horton, SiriusXM, Warner Bros., JE Dunn, Cohere, Glean, Anthropic, and the National Hockey League.",
+    );
     await expect(page.url()).not.toContain("/login");
     await expectCanonical(page, buildCanonicalUrl(expectedMarketingCanonicalBaseUrl, "/"));
 
@@ -111,6 +115,30 @@ test.describe("marketing surfaces", () => {
     await expect(page.url()).not.toContain("/login");
 
     expectNoUnexpectedPageFailures(diagnostics, "navigation contract");
+  });
+
+  test("founder proof sections stay present and restrained on trust routes", async ({ page }) => {
+    const diagnostics = attachPageDiagnostics(page);
+
+    await page.goto(buildUrl(marketingBaseUrl, "/about"), { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Selected background", { exact: true })).toBeVisible();
+    await expect(page.getByText("Organization names are included as background context and do not imply endorsement.")).toBeVisible();
+
+    await page.goto(buildUrl(marketingBaseUrl, "/services"), { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Why trust this work?", { exact: true })).toBeVisible();
+    await expect(page.getByText("Larger-environment standards, applied to smaller scoped engagements.")).toBeVisible();
+
+    await page.goto(buildUrl(marketingBaseUrl, "/contact"), { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+    await expect(
+      page.getByText(
+        "Small practice. Founder-led. Background includes work involving organizations across homebuilding, construction, media, enterprise software, frontier AI, and sports.",
+      ),
+    ).toBeVisible();
+
+    expectNoUnexpectedPageFailures(diagnostics, "trust route proof contract");
   });
 
   test("mobile menu closes on escape, click-away, and route change while keeping focus predictable", async ({ page }, testInfo) => {
@@ -204,7 +232,7 @@ test.describe("marketing surfaces", () => {
       .poll(async () => page.getByLabel("Your name").evaluate((element) => (element as HTMLInputElement).validationMessage.length > 0))
       .toBe(true);
 
-    await page.getByLabel("Work email").fill("tester@zokorp-example.com");
+    await page.getByLabel("Email").fill("tester@zokorp-example.com");
     await page.getByLabel("Your name").fill("ZoKorp Test");
     await page.getByLabel("What do you need?").fill(
       "We need help narrowing the next cloud architecture step and want a short scoped response.",

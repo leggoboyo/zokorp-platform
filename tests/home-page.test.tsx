@@ -30,6 +30,14 @@ describe("HomePage", () => {
 
     expect(html).toContain("Clear cloud help for SMB teams.");
     expect(html).toContain("Small practice. Clear scope. Direct follow-through.");
+    expect(html).toContain("Selected background");
+    expect(html).toContain(
+      "Experience includes work involving organizations such as D.R. Horton, SiriusXM, Warner Bros., JE Dunn, Cohere, Glean, Anthropic, and the National Hockey League.",
+    );
+    expect(html).toContain(
+      "That background shows up here as tighter scope, clearer reviews, cleaner follow-through, and less generic advice.",
+    );
+    expect(html).toContain("Across homebuilding, construction, media, enterprise software, frontier AI, and sports.");
     expect(html).toContain("Initial response within one business day");
     expect(html).toContain("Architecture Review");
     expect(html).toContain("Cloud Cost Optimization Audit");

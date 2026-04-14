@@ -59,6 +59,18 @@ describe("ServicesPage", () => {
     expect(html).toContain("from $2,500");
     expect(html).toContain("Advisory Retainer");
     expect(html).toContain("from $1,500/month");
+    expect(html).toContain("Why trust this work?");
+    expect(html).toContain("Larger-environment standards, applied to smaller scoped engagements.");
+    expect(html).toContain(
+      "The same founder handling your review has operated in larger technical environments with stricter standards, more stakeholders, and less room for vague recommendations.",
+    );
+    expect(html).toContain(
+      "Experience includes work involving organizations such as D.R. Horton, SiriusXM, Warner Bros., JE Dunn, Cohere, Glean, Anthropic, and the National Hockey League.",
+    );
+    expect(html).toContain("Founder-led judgment shaped by higher-stakes architecture decisions and clearer tradeoff calls.");
+    expect(html).toContain("Stronger evidence discipline and less vague pass/fail language");
+    expect(html).toContain("Practical prioritization instead of generic savings lists");
+    expect(html).toContain("Cleaner baselines and fewer naive recommendations before the environment gets harder to unwind.");
     expect(html).toContain("Additional scoped work");
     expect(html).toContain("Readiness / Validation Review");
     expect(html).toContain("Scoped Implementation");

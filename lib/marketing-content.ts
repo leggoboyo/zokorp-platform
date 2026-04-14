@@ -212,20 +212,6 @@ export const ABOUT_PAGE_CONTENT = {
       "Small operating model",
     ],
   },
-  proofRows: [
-    {
-      title: "Background",
-      detail: "Former AWS Partner Solutions Architect. Microsoft.",
-    },
-    {
-      title: "Certifications",
-      detail: "AWS Solutions Architect Professional, Machine Learning Specialty, and Security Specialty.",
-    },
-    {
-      title: "Operating model",
-      detail: "Small by design so the public site, product pages, and service work all say the same thing.",
-    },
-  ],
 } as const;
 
 export const PRICING_PAGE_CONTENT = {
