@@ -148,7 +148,7 @@ export function ServiceRequestPanel({
       </div>
 
       <p className="enterprise-copy mt-3 max-w-3xl text-sm">
-        Share your name, work email, and what you need. Optional details help route the request faster.
+        Share your name, email, and what you need. Optional details help route the request faster.
       </p>
 
       {isSignedIn ? (
@@ -160,7 +160,7 @@ export function ServiceRequestPanel({
         </Alert>
       ) : (
         <Alert tone="info" className="mt-5">
-          <p>No account is required for the first contact. Use your business email and ZoKorp will reply there.</p>
+          <p>No account is required for the first contact. Use the email address you want ZoKorp to reply to.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link href={loginHref} className={buttonVariants({ size: "sm" })}>
               Sign in instead
@@ -239,9 +239,9 @@ export function ServiceRequestPanel({
               </label>
 
               <label className="space-y-1">
-                <span className={fieldLabelClassName}>Work email</span>
-                <Input type="email" name="requesterEmail" required placeholder="you@company.com" />
-                <span className={fieldHelpClassName}>Business email only.</span>
+                <span className={fieldLabelClassName}>Email</span>
+                <Input type="email" name="requesterEmail" required placeholder="you@example.com" />
+                <span className={fieldHelpClassName}>ZoKorp will reply here.</span>
               </label>
             </>
           )}
@@ -260,13 +260,14 @@ export function ServiceRequestPanel({
           {!isSignedIn ? (
             <>
               <label className="space-y-1">
-                <span className={fieldLabelClassName}>Company</span>
+                <span className={fieldLabelClassName}>Company (Optional)</span>
                 <Input name="requesterCompanyName" maxLength={120} placeholder="Company or team" />
               </label>
 
               <label className="space-y-1">
-                <span className={fieldLabelClassName}>Budget range</span>
-                <Select name="budgetRange" defaultValue="Undecided">
+                <span className={fieldLabelClassName}>Budget range (Optional)</span>
+                <Select name="budgetRange" defaultValue="">
+                  <option value="">Optional</option>
                   {budgetOptions.map((option) => (
                     <option key={option} value={option}>
                       {option}
@@ -277,8 +278,9 @@ export function ServiceRequestPanel({
             </>
           ) : (
             <label className="space-y-1">
-              <span className={fieldLabelClassName}>Budget range</span>
-              <Select name="budgetRange" defaultValue="Undecided">
+              <span className={fieldLabelClassName}>Budget range (Optional)</span>
+              <Select name="budgetRange" defaultValue="">
+                <option value="">Optional</option>
                 {budgetOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}

@@ -197,8 +197,8 @@ export const SERVICES_PAGE_CONTENT = {
   primaryIntro: "Pick the first move, not a generic package.",
   secondaryTitle: "Additional scoped work",
   secondarySummary: "Validation and implementation stay available, but not as the first buy.",
-  requestTitle: "Need follow-up?",
-  requestIntro: "Use the public contact form when you want a scoped response.",
+  requestTitle: "Follow-up",
+  requestIntro: "Request a scoped response.",
 } as const;
 
 export const ABOUT_PAGE_CONTENT = {

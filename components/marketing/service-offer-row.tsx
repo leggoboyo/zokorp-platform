@@ -54,7 +54,7 @@ export function ServiceOfferRow({
       </div>
 
       <div className="space-y-3">
-        <p className="table-kicker">Best for</p>
+        <p className="table-cell-label">Best for</p>
         <ul className="table-list">
           {bullets.map((bullet) => (
             <li key={bullet}>{bullet}</li>
@@ -62,8 +62,8 @@ export function ServiceOfferRow({
         </ul>
       </div>
 
-      <div className="space-y-3 rounded-[1.2rem] border border-border/80 bg-white/78 px-4 py-4">
-        <p className="table-kicker">What you get</p>
+      <div className="table-cell-panel space-y-3">
+        <p className="table-cell-label">What you get</p>
         <div className="grid gap-2.5">
           {included.map((item) => (
             <div key={item} className="text-sm text-card-foreground">
@@ -73,7 +73,7 @@ export function ServiceOfferRow({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-start gap-3 lg:flex-col lg:items-end">
+      <div className="flex flex-wrap items-start gap-3 lg:justify-end">
         <Badge variant="secondary" className="normal-case tracking-normal">
           {priceAnchor}
         </Badge>

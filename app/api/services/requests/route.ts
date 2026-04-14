@@ -9,7 +9,6 @@ import { recordOperationalIssue } from "@/lib/operational-issues";
 import { ensureLeadInteraction, upsertLead } from "@/lib/privacy-leads";
 import { requireSameOrigin } from "@/lib/request-origin";
 import { consumeRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
-import { BUSINESS_EMAIL_REQUIRED_MESSAGE, isBusinessEmail } from "@/lib/security";
 import { sendServiceRequestOperatorNotification } from "@/lib/service-request-email";
 import { createServiceRequest } from "@/lib/service-requests";
 
@@ -92,13 +91,6 @@ export async function POST(request: Request) {
     if (!requesterEmail) {
       return jsonNoStore(
         { error: "Email is required when submitting without an account." },
-        { status: 400 },
-      );
-    }
-
-    if (!isBusinessEmail(requesterEmail)) {
-      return jsonNoStore(
-        { error: BUSINESS_EMAIL_REQUIRED_MESSAGE },
         { status: 400 },
       );
     }

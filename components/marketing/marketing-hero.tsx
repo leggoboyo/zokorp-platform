@@ -10,6 +10,7 @@ type MarketingAction = {
   variant?: ButtonVariant;
   size?: ButtonSize;
   external?: boolean;
+  openInNewTab?: boolean;
   rel?: string;
 };
 
@@ -26,7 +27,9 @@ type MarketingHeroProps = {
   rail?: React.ReactNode;
   className?: string;
   bodyClassName?: string;
+  bodyColumnClassName?: string;
   railClassName?: string;
+  railColumnClassName?: string;
 };
 
 function renderAction(action: MarketingAction | undefined, fallbackVariant: ButtonVariant) {
@@ -38,13 +41,15 @@ function renderAction(action: MarketingAction | undefined, fallbackVariant: Butt
   const size = action.size ?? "lg";
   const className = buttonVariants({ variant, size });
   const isExternal = action.external ?? /^(https?:|mailto:)/.test(action.href);
+  const target = action.openInNewTab ? "_blank" : undefined;
 
   if (isExternal) {
     return (
       <a
         href={action.href}
         className={className}
-        rel={action.rel ?? (action.href.startsWith("http") ? "noreferrer" : undefined)}
+        target={target}
+        rel={action.rel ?? (action.openInNewTab && action.href.startsWith("http") ? "noreferrer" : undefined)}
       >
         {action.label}
       </a>
@@ -71,7 +76,9 @@ export function MarketingHero({
   rail,
   className,
   bodyClassName,
+  bodyColumnClassName,
   railClassName,
+  railColumnClassName,
 }: MarketingHeroProps) {
   const isPanel = mode === "panel";
   const isPoster = mode === "poster";
@@ -99,6 +106,7 @@ export function MarketingHero({
             style={isPoster ? { backgroundColor: "rgba(250, 252, 255, 0.96)" } : undefined}
             className={cn(
               "lg:col-span-7",
+              bodyColumnClassName,
               isPoster
                 ? "py-2 text-card-foreground shadow-none lg:pr-10"
                 : isPanel
@@ -197,6 +205,7 @@ export function MarketingHero({
               data-hero-rail
               className={cn(
                 "space-y-4 lg:col-span-5 lg:pt-2",
+                railColumnClassName,
                 isPoster ? "lg:pt-0" : "",
                 railClassName,
               )}

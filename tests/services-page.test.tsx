@@ -69,7 +69,8 @@ describe("ServicesPage", () => {
     expect(html).toContain("Scope is confirmed before paid consulting, remediation, or implementation work is accepted.");
     expect(html).toContain("Initial response within one business day");
     expect(html).toContain("Request a call");
-    expect(html).toContain("Use the public contact form when you want a scoped response.");
+    expect(html).toContain("Request a scoped response.");
+    expect(html).toContain('target="_blank"');
     expect(html).not.toContain("Microsoft");
     expect(html).not.toContain("Former AWS");
     expect(html).not.toContain("Signed in as");

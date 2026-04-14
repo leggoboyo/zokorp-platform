@@ -110,7 +110,7 @@ describe("ServiceRequestPanel", () => {
 
     render(<ServiceRequestPanel signedIn={false} currentEmail={null} />);
 
-    fireEvent.change(screen.getByLabelText(/work email/i), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "founder@zokorp.com" },
     });
     fireEvent.change(screen.getByLabelText(/your name/i), {
@@ -122,13 +122,15 @@ describe("ServiceRequestPanel", () => {
     fireEvent.change(screen.getByLabelText(/what do you need/i), {
       target: { value: "Need a production-readiness consultation for an AWS delivery and tooling launch plan." },
     });
+    expect(screen.getByText(/company/i).textContent).toContain("Optional");
+    expect(screen.getByText(/budget range/i).textContent).toContain("Optional");
 
     fireEvent.click(screen.getByRole("button", { name: /submit service request/i }));
 
     await waitFor(() => expect(screen.getByText(/request recorded/i)).toBeTruthy());
     expect(screen.getByRole("link", { name: /create account later/i }).getAttribute("href")).toBe("/register");
     expect(screen.getByText(/no account is required for the first contact/i)).toBeTruthy();
-    expect(screen.getByText(/use your business email and zokorp will reply there/i)).toBeTruthy();
+    expect(screen.getByText(/use the email address you want zokorp to reply to/i)).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/services/requests",
       expect.objectContaining({

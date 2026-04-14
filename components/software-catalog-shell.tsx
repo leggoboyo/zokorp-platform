@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { useDeferredValue, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -168,8 +169,11 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
       </div>
 
       {filteredProducts.length > 0 ? (
-        <div className="overflow-hidden rounded-[2.1rem] border border-border/80 bg-white/72 shadow-[0_20px_80px_rgba(36,71,126,0.06)] backdrop-blur-sm">
-          <div className="hidden border-b border-border/70 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label md:grid md:grid-cols-[minmax(0,1.55fr)_minmax(9rem,0.75fr)_minmax(10rem,0.82fr)_auto]">
+        <div
+          className="table-band px-5 py-2 md:px-6"
+          style={{ ["--table-columns" as const]: "minmax(0,1.48fr) minmax(10rem,0.78fr) minmax(11rem,0.82fr) auto" } as CSSProperties}
+        >
+          <div className="table-head">
             <span>Product</span>
             <span>Access</span>
             <span>Price</span>
@@ -181,14 +185,12 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
             const priceSummary = getPriceSummary(product);
 
             return (
-              <article
-                key={product.id}
-                className="grid gap-4 border-b border-border/80 px-5 py-5 last:border-b-0 md:grid-cols-[3rem_minmax(0,1.55fr)_minmax(9rem,0.75fr)_minmax(10rem,0.82fr)_auto] md:items-start md:gap-5"
-              >
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label md:pt-2">{`0${index + 1}`}</div>
-
+              <article key={product.id} className="table-row">
                 <div className="space-y-2">
-                  <p className="enterprise-kicker">Software product</p>
+                  <div className="flex items-center gap-3">
+                    <p className="table-kicker">{`0${index + 1}`}</p>
+                    <p className="enterprise-kicker">Software product</p>
+                  </div>
                   <h3 className="font-display max-w-[14ch] text-[1.45rem] font-semibold leading-[1.02] text-card-foreground md:text-[1.75rem]">
                     {presentation.name}
                   </h3>
@@ -196,15 +198,17 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label">Access</p>
+                  <p className="table-cell-label">Access</p>
                   <Badge variant={accessBadgeVariant[product.accessModel]} className="w-fit">
                     {accessLabel[product.accessModel]}
                   </Badge>
-                  <p className="text-sm leading-6 text-muted-foreground">Public page first.</p>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {product.accessModel === "FREE" ? "Open access" : "Visible public pricing"}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-label">Price</p>
+                  <p className="table-cell-label">Price</p>
                   <p className="font-display text-[1.65rem] font-semibold leading-none tracking-[-0.04em] text-card-foreground">
                     {priceSummary}
                   </p>
@@ -217,11 +221,10 @@ export function SoftwareCatalogShell({ products }: SoftwareCatalogShellProps) {
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-2 md:items-end">
+                <div className="flex items-start lg:justify-end">
                   <Link href={`/software/${product.slug}`} className={buttonVariants({ variant: "secondary" })}>
                     Open product
                   </Link>
-                  <span className="text-xs uppercase tracking-[0.18em] text-foreground-label">Direct page</span>
                 </div>
               </article>
             );

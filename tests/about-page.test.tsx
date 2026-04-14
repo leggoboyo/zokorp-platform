@@ -30,12 +30,12 @@ describe("AboutPage", () => {
 
     expect(html).toContain("Signals you can verify fast.");
     expect(html).toContain("Signals you can verify fast");
-    expect(html).toContain("Proof");
     expect(html).toContain("Zohaib Khawaja");
     expect(html).toContain("Former AWS Partner Solutions Architect");
     expect(html).toContain("Microsoft");
     expect(html).toContain("AWS Solutions Architect Professional");
     expect(html).toContain("Initial response within one business day");
+    expect(html).toContain('target="_blank"');
     expect(html.match(/Microsoft/g)?.length ?? 0).toBe(1);
     expect(html).not.toContain("AI/ML advisory");
   });

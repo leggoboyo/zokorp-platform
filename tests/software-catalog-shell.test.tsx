@@ -103,5 +103,6 @@ describe("SoftwareCatalogShell", () => {
     expect(screen.getAllByText("Access").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Price").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Action").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Public page first/i)).toBeNull();
   });
 });

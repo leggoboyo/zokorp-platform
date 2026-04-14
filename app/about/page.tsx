@@ -1,7 +1,8 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
+import { FounderProfileCard } from "@/components/marketing/founder-profile-card";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
@@ -25,6 +26,9 @@ export default async function AboutPage() {
     signedIn: Boolean(session?.user?.email),
     utmMedium: "about-page",
   });
+  const proofTableColumns = {
+    "--table-columns": "minmax(0,0.9fr) minmax(0,1.4fr)",
+  } as CSSProperties;
 
   return (
     <div className="marketing-stack">
@@ -41,50 +45,58 @@ export default async function AboutPage() {
         ]}
         primaryAction={primaryCta}
         secondaryAction={{ href: "/services", label: "View services", variant: "secondary" }}
-        tertiaryAction={{ href: PUBLIC_LAUNCH_CONTACT.linkedInUrl, label: "LinkedIn", variant: "ghost", external: true }}
+        tertiaryAction={{
+          href: PUBLIC_LAUNCH_CONTACT.linkedInUrl,
+          label: "LinkedIn",
+          variant: "ghost",
+          external: true,
+          openInNewTab: true,
+        }}
+        bodyColumnClassName="lg:col-span-6"
+        railColumnClassName="lg:col-span-6"
         rail={
-          <section className="table-band rounded-[2rem] p-4 md:p-5">
-            <div className="grid gap-4 md:grid-cols-[7rem_minmax(0,1fr)] md:items-center">
-              <div className="relative aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-[linear-gradient(180deg,rgb(230_237_247),rgb(204_216_232))]">
-                <Image
-                  src={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
-                  alt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
-                  fill
-                  className="object-cover object-[center_12%]"
-                  sizes="(max-width: 768px) 120px, 112px"
-                  priority
-                />
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <p className="enterprise-kicker">Founder</p>
-                  <h2 className="font-display text-[2rem] font-semibold leading-[0.98] text-card-foreground">
-                    {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">{PUBLIC_LAUNCH_FOUNDER_PROFILE.role}</p>
-                </div>
-
-                <div className="grid gap-2 border-t border-border/70 pt-3 text-sm text-card-foreground sm:grid-cols-2">
-                  <div>{PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials[0]}</div>
-                  <div>{PUBLIC_LAUNCH_CONTACT.location.replace("Texas", "TX")}</div>
-                </div>
-              </div>
-            </div>
-          </section>
+          <FounderProfileCard
+            eyebrow="Founder"
+            name={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+            role={PUBLIC_LAUNCH_FOUNDER_PROFILE.role}
+            imageSrc={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
+            imageAlt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+            details={[
+              {
+                label: "Former role",
+                value: PUBLIC_LAUNCH_FOUNDER_PROFILE.formerRoleLabel,
+                fullWidth: true,
+              },
+              {
+                label: "Credential",
+                value: PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials[0],
+                fullWidth: true,
+              },
+              {
+                label: "Location",
+                value: PUBLIC_LAUNCH_CONTACT.location.replace("Texas", "TX"),
+              },
+            ]}
+          />
         }
       />
 
-      <section className="table-band px-5 py-5 md:px-6">
+      <section
+        className="table-band px-5 py-5 md:px-6"
+        style={proofTableColumns}
+      >
+        <div className="table-head">
+          <span>Signal</span>
+          <span>Details</span>
+        </div>
         {ABOUT_PAGE_CONTENT.proofRows.map((row) => (
           <article key={row.title} className="table-row">
             <div className="space-y-2">
-              <p className="enterprise-kicker">Proof</p>
               <h3 className="font-display max-w-[11ch] text-[1.9rem] font-semibold leading-[1.02] text-card-foreground">
                 {row.title}
               </h3>
             </div>
-            <p className="max-w-[40ch] text-sm leading-7 text-muted-foreground">{row.detail}</p>
+            <p className="max-w-[44ch] text-base leading-8 text-card-foreground/86 md:text-[1.08rem]">{row.detail}</p>
           </article>
         ))}
       </section>

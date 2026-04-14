@@ -1,7 +1,8 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
+import { FounderProfileCard } from "@/components/marketing/founder-profile-card";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { MarketingSectionHeading } from "@/components/marketing/section-heading";
 import { ServiceOfferRow } from "@/components/marketing/service-offer-row";
@@ -63,6 +64,9 @@ export default async function HomePage() {
       sameAs: [PUBLIC_LAUNCH_CONTACT.linkedInUrl],
     },
   ];
+  const softwareTableColumns = {
+    "--table-columns": "minmax(0,1.28fr) minmax(0,0.95fr) minmax(15rem,0.9fr) auto",
+  } as CSSProperties;
 
   return (
     <div className="marketing-stack">
@@ -76,40 +80,39 @@ export default async function HomePage() {
         supportingBullets={HOME_PAGE_CONTENT.hero.supportingBullets}
         primaryAction={primaryCta}
         secondaryAction={{ href: "/services", label: "View services", variant: "secondary" }}
+        bodyColumnClassName="lg:col-span-6"
+        railColumnClassName="lg:col-span-6"
         rail={
-          <section className="table-band rounded-[2rem] p-4 md:p-5">
-            <div className="grid gap-4 md:grid-cols-[7rem_minmax(0,1fr)] md:items-center">
-              <div className="relative aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-[linear-gradient(180deg,rgb(230_237_247),rgb(204_216_232))]">
-                <Image
-                  src={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
-                  alt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
-                  fill
-                  className="object-cover object-[center_12%]"
-                  sizes="(max-width: 768px) 120px, 112px"
-                  priority
-                />
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <p className="enterprise-kicker">{HOME_PAGE_CONTENT.founderTitle}</p>
-                  <h2 className="font-display text-[2rem] font-semibold leading-[0.98] text-card-foreground">
-                    {PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">{HOME_PAGE_CONTENT.founderSummary}</p>
-                </div>
-
-                <div className="grid gap-2 border-t border-border/70 pt-3 text-sm text-card-foreground sm:grid-cols-2">
-                  <div>Houston, TX</div>
-                  <div>{PUBLIC_LAUNCH_CONTACT.responseWindowLabel}</div>
-                  <div>{PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials[0]}</div>
-                  <a href={PUBLIC_LAUNCH_CONTACT.linkedInUrl} className="marketing-inline-link">
-                    LinkedIn
+          <FounderProfileCard
+            eyebrow="Founder"
+            name={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+            role={PUBLIC_LAUNCH_FOUNDER_PROFILE.role}
+            summary={HOME_PAGE_CONTENT.founderSummary}
+            imageSrc={PUBLIC_LAUNCH_FOUNDER_PROFILE.headshotPath}
+            imageAlt={PUBLIC_LAUNCH_FOUNDER_PROFILE.name}
+            details={[
+              { label: "Location", value: "Houston, TX" },
+              { label: "Response", value: PUBLIC_LAUNCH_CONTACT.responseWindowLabel },
+              {
+                label: "Credential",
+                value: PUBLIC_LAUNCH_FOUNDER_PROFILE.credentials[0],
+                fullWidth: true,
+              },
+              {
+                label: "LinkedIn",
+                value: (
+                  <a
+                    href={PUBLIC_LAUNCH_CONTACT.linkedInUrl}
+                    className="marketing-inline-link"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open profile
                   </a>
-                </div>
-              </div>
-            </div>
-          </section>
+                ),
+              },
+            ]}
+          />
         }
       />
 
@@ -121,6 +124,12 @@ export default async function HomePage() {
         />
 
         <div className="table-band px-5 py-5 md:px-6">
+          <div className="table-head">
+            <span>Offer</span>
+            <span>Best for</span>
+            <span>What you get</span>
+            <span className="text-right">Price</span>
+          </div>
           {PRIMARY_CONSULTING_OFFERS.map((offer, index) => (
             <ServiceOfferRow
               key={offer.slug}
@@ -143,7 +152,16 @@ export default async function HomePage() {
           description={HOME_PAGE_CONTENT.softwareIntro}
         />
 
-        <div className="table-band px-5 py-5 md:px-6">
+        <div
+          className="table-band px-5 py-5 md:px-6"
+          style={softwareTableColumns}
+        >
+          <div className="table-head">
+            <span>Product</span>
+            <span>Who it is for</span>
+            <span>What you get</span>
+            <span className="text-right">Action</span>
+          </div>
           {SOFTWARE_HIGHLIGHTS.map((item, index) => (
             <article key={item.href} className="table-row">
               <div className="space-y-3">
@@ -158,12 +176,12 @@ export default async function HomePage() {
               </div>
 
               <div className="space-y-3">
-                <p className="table-kicker">Who it is for</p>
+                <p className="table-cell-label">Who it is for</p>
                 <p className="text-sm leading-7 text-card-foreground">{item.audience}</p>
               </div>
 
-              <div className="space-y-3 rounded-[1.2rem] border border-border/80 bg-white/78 px-4 py-4">
-                <p className="table-kicker">What you get</p>
+              <div className="table-cell-panel space-y-3">
+                <p className="table-cell-label">What you get</p>
                 <p className="text-sm leading-7 text-card-foreground">{item.outcome}</p>
               </div>
 
