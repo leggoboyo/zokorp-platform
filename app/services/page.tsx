@@ -38,6 +38,9 @@ export default async function ServicesPage() {
   const followUpColumns = {
     "--table-columns": "minmax(0,0.82fr) minmax(0,1.08fr) auto",
   } as CSSProperties;
+  const serviceTableColumns = {
+    "--table-columns": "minmax(0,1.12fr) minmax(15rem,0.86fr) minmax(18rem,0.9fr) minmax(6.5rem,auto)",
+  } as CSSProperties;
 
   return (
     <div className="marketing-stack">
@@ -78,7 +81,7 @@ export default async function ServicesPage() {
           description={SERVICES_PAGE_CONTENT.primaryIntro}
         />
 
-        <div className="table-band px-5 py-5 md:px-6">
+        <div className="table-band px-5 py-5 md:px-6" style={serviceTableColumns}>
           <div className="table-head">
             <span>Offer</span>
             <span>Best for</span>
@@ -121,7 +124,7 @@ export default async function ServicesPage() {
         title={SERVICES_PAGE_CONTENT.secondaryTitle}
         summary={SERVICES_PAGE_CONTENT.secondarySummary}
       >
-        <div className="table-band px-5 py-5 md:px-6">
+        <div className="table-band px-5 py-5 md:px-6" style={serviceTableColumns}>
           <div className="table-head">
             <span>Offer</span>
             <span>Best for</span>

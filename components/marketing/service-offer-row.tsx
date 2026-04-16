@@ -45,7 +45,7 @@ export function ServiceOfferRow({
         <h3
           className={cn(
             "font-display max-w-[13ch] font-semibold leading-[1.02] text-card-foreground",
-            compact ? "text-[1.95rem]" : "text-[2.25rem]",
+            compact ? "text-[1.95rem]" : "text-[2.05rem]",
           )}
         >
           {title}
@@ -73,7 +73,7 @@ export function ServiceOfferRow({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-start gap-3 lg:justify-end">
+      <div className="flex min-w-[6.5rem] flex-wrap items-start gap-3 lg:justify-end">
         <Badge variant="secondary" className="normal-case tracking-normal">
           {priceAnchor}
         </Badge>

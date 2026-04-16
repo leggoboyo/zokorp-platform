@@ -69,6 +69,9 @@ export default async function HomePage() {
   const softwareTableColumns = {
     "--table-columns": "minmax(0,1.28fr) minmax(0,0.95fr) minmax(15rem,0.9fr) auto",
   } as CSSProperties;
+  const serviceTableColumns = {
+    "--table-columns": "minmax(0,1.12fr) minmax(15rem,0.86fr) minmax(18rem,0.9fr) minmax(6.5rem,auto)",
+  } as CSSProperties;
 
   return (
     <div className="marketing-stack">
@@ -133,7 +136,7 @@ export default async function HomePage() {
           description={HOME_PAGE_CONTENT.offersIntro}
         />
 
-        <div className="table-band px-5 py-5 md:px-6">
+        <div className="table-band px-5 py-5 md:px-6" style={serviceTableColumns}>
           <div className="table-head">
             <span>Offer</span>
             <span>Best for</span>
