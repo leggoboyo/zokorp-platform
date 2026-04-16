@@ -203,9 +203,10 @@ export const SERVICES_PAGE_CONTENT = {
 
 export const ABOUT_PAGE_CONTENT = {
   hero: {
-    eyebrow: "Founder",
-    title: "Signals you can verify fast.",
-    lede: "One founder. Named background. Visible certifications. Houston, TX.",
+    eyebrow: "About",
+    title: "Founder-led cloud work with public proof.",
+    lede:
+      "ZoKorp stays intentionally small. This page shows the rooms, workshops, panels, and recorded interview that shape the judgment behind it.",
     supportingBullets: [
       "AWS certifications",
       "Houston, TX",

@@ -248,7 +248,7 @@ test.describe("marketing surfaces", () => {
     expectNoUnexpectedPageFailures(diagnostics, "public contact form readonly validation");
   });
 
-  test("founder portrait stays visible and balanced on the about page", async ({ page }, testInfo) => {
+  test("founder hero proof image stays visible and balanced on the about page", async ({ page }, testInfo) => {
     const diagnostics = attachPageDiagnostics(page);
 
     await page.goto(buildUrl(marketingBaseUrl, "/about"), { waitUntil: "domcontentloaded" });
@@ -259,10 +259,10 @@ test.describe("marketing surfaces", () => {
 
     const box = await portrait.boundingBox();
     expect(box).not.toBeNull();
-    expect((box?.width ?? 0) >= (testInfo.project.name.includes("mobile") ? 300 : 100)).toBe(true);
-    expect((box?.height ?? 0) >= (testInfo.project.name.includes("mobile") ? 380 : 130)).toBe(true);
-    expect(((box?.height ?? 1) / (box?.width ?? 1)) < 1.6).toBe(true);
-    expect(((box?.height ?? 1) / (box?.width ?? 1)) > 1.05).toBe(true);
+    expect((box?.width ?? 0) >= (testInfo.project.name.includes("mobile") ? 300 : 320)).toBe(true);
+    expect((box?.height ?? 0) >= (testInfo.project.name.includes("mobile") ? 220 : 220)).toBe(true);
+    expect(((box?.height ?? 1) / (box?.width ?? 1)) < 1.1).toBe(true);
+    expect(((box?.height ?? 1) / (box?.width ?? 1)) > 0.52).toBe(true);
 
     const naturalSize = await portrait.evaluate((element) => ({
       width: (element as HTMLImageElement).naturalWidth,
@@ -273,7 +273,7 @@ test.describe("marketing surfaces", () => {
 
     await expect(portrait).toHaveScreenshot(`founder-portrait-${testInfo.project.name}.png`);
 
-    expectNoUnexpectedPageFailures(diagnostics, "about founder portrait");
+    expectNoUnexpectedPageFailures(diagnostics, "about founder hero image");
   });
 
   test("reduced motion mode disables non-essential entrance motion", async ({ page }) => {

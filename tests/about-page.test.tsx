@@ -23,27 +23,30 @@ vi.mock("@/lib/auth", () => ({
 import AboutPage from "@/app/about/page";
 
 describe("AboutPage", () => {
-  it("keeps the founder-led positioning and proof posture explicit", async () => {
+  it("keeps the founder-led positioning, portfolio proof, and interview embed explicit", async () => {
     authMock.mockResolvedValue(null);
 
     const html = renderToStaticMarkup(await AboutPage());
 
-    expect(html).toContain("Signals you can verify fast.");
-    expect(html).toContain("Signals you can verify fast");
+    expect(html).toContain("Founder-led cloud work with public proof.");
     expect(html).toContain("Zohaib Khawaja");
     expect(html).toContain("Former AWS Partner Solutions Architect");
     expect(html).toContain("Microsoft");
     expect(html).toContain("Larger-environment judgment, smaller-practice delivery.");
     expect(html).toContain("Selected background");
-    expect(html).toContain("Why this helps smaller teams.");
+    expect(html).toContain("What clients get from that background.");
     expect(html).toContain(
       "Experience includes work involving organizations such as D.R. Horton, SiriusXM, Warner Bros., JE Dunn, Cohere, Glean, Anthropic, and the National Hockey League.",
     );
     expect(html).toContain("Organization names are included as background context and do not imply endorsement.");
     expect(html).toContain("AWS Certified Solutions Architect - Professional");
     expect(html).toContain("Initial response within one business day");
+    expect(html).toContain("TV interview footage, embedded directly.");
+    expect(html).toContain("https://www.youtube-nocookie.com/embed/bQvrHYfJgl8?start=1320&amp;rel=0");
+    expect(html).toContain("talk-agent-stage.jpeg");
+    expect(html).toContain("panel-stage.jpeg");
+    expect(html).toContain("cloudathon-stage.jpeg");
     expect(html).toContain('target="_blank"');
-    expect(html.match(/Microsoft/g)?.length ?? 0).toBe(1);
     expect(html).not.toContain("AI/ML advisory");
   });
 });
