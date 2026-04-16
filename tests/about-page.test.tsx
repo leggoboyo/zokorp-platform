@@ -42,12 +42,10 @@ describe("AboutPage", () => {
     expect(html).toContain("AWS Certified Solutions Architect - Professional");
     expect(html).toContain("Initial response within one business day");
     expect(html).toContain("Interview footage from the AWS period, playable here.");
-    expect(html).toContain("/about/hcc-tv-interview.mp4");
-    expect(html).toContain('data-start-seconds="1320"');
+    expect(html).toContain("https://www.youtube-nocookie.com/embed/bQvrHYfJgl8?start=1320&amp;rel=0");
     expect(html).toContain("talk-agent-stage.jpeg");
     expect(html).toContain("panel-stage.jpeg");
     expect(html).toContain("cloudathon-stage.jpeg");
-    expect(html).toContain("hcc-tv-interview.mp4");
     expect(html).toContain('target="_blank"');
     expect(html).not.toContain("AI/ML advisory");
   });

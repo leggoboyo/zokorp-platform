@@ -38,7 +38,7 @@ export function buildContentSecurityPolicy(options: BuildContentSecurityPolicyOp
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https:",
-    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com",
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://www.youtube.com https://www.youtube-nocookie.com",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     reportUri ? `report-uri ${reportUri}` : "",

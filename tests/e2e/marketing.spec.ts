@@ -276,16 +276,15 @@ test.describe("marketing surfaces", () => {
     expectNoUnexpectedPageFailures(diagnostics, "about founder hero image");
   });
 
-  test("about interview player renders as native video without blocked embed copy", async ({ page }) => {
+  test("about interview embed renders without blocked-frame copy", async ({ page }) => {
     const diagnostics = attachPageDiagnostics(page);
 
     await page.goto(buildUrl(marketingBaseUrl, "/about"), { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle");
 
-    const video = page.locator("video").first();
+    const video = page.locator("iframe").first();
     await expect(video).toBeVisible();
-    await expect(video).toHaveAttribute("data-start-seconds", "1320");
-    await expect(page.locator("video source")).toHaveAttribute("src", /hcc-tv-interview\.mp4$/);
+    await expect(video).toHaveAttribute("src", /youtube-nocookie\.com\/embed\/bQvrHYfJgl8\?start=1320&rel=0/);
     await expect(page.getByText("This content is blocked")).toHaveCount(0);
 
     expectNoUnexpectedPageFailures(diagnostics, "about interview player");

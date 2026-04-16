@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
-import { AboutInterviewPlayer } from "@/components/marketing/about-interview-player";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { getConsultationCta } from "@/lib/marketing-cta";
@@ -23,9 +22,8 @@ export const dynamic = "force-dynamic";
 
 const ABOUT_VIDEO_WATCH_URL =
   "https://youtu.be/bQvrHYfJgl8?si=NyWuv4OgzW0-SQad&t=1320";
-const ABOUT_LOCAL_VIDEO_SOURCE = "/about/hcc-tv-interview.mp4";
-const ABOUT_LOCAL_VIDEO_POSTER = "/about/hcc-photo.jpeg";
-const ABOUT_LOCAL_VIDEO_START_SECONDS = 1320;
+const ABOUT_VIDEO_EMBED_URL =
+  "https://www.youtube-nocookie.com/embed/bQvrHYfJgl8?start=1320&rel=0";
 
 const ABOUT_PORTFOLIO_MEDIA = {
   hero: {
@@ -482,13 +480,17 @@ export default async function AboutPage() {
         </div>
 
         <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-slate-950 shadow-[var(--shadow-card)]">
-          <AboutInterviewPlayer
-            src={ABOUT_LOCAL_VIDEO_SOURCE}
-            poster={ABOUT_LOCAL_VIDEO_POSTER}
-            startTimeSeconds={ABOUT_LOCAL_VIDEO_START_SECONDS}
-            watchUrl={ABOUT_VIDEO_WATCH_URL}
-            className="aspect-video w-full"
-          />
+          <div className="aspect-video w-full bg-slate-950">
+            <iframe
+              title="Houston Community College TV interview with Zohaib Khawaja"
+              src={ABOUT_VIDEO_EMBED_URL}
+              className="h-full w-full"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 border-t border-border/70 pt-6 sm:flex-row sm:items-center sm:justify-between">
