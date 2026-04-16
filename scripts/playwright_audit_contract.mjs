@@ -2,37 +2,37 @@ export const MARKETING_ROUTE_EXPECTATIONS = [
   {
     path: "/",
     label: "Homepage",
-    marker: "AWS architecture help with clear scope and a direct next step.",
+    marker: "Clear cloud help for SMB teams.",
   },
   {
     path: "/services",
     label: "Services",
-    marker: "Four primary AWS services, plus follow-through when the problem is clear.",
+    marker: "Choose one starting point.",
   },
   {
     path: "/about",
     label: "About",
-    marker: "Former AWS. Currently at Microsoft. Built for SMB teams that need direct technical judgment.",
+    marker: "Founder-led cloud work, shown in public.",
   },
   {
     path: "/contact",
     label: "Contact",
-    marker: "Book a call or email ZoKorp.",
+    marker: "Use the form.",
   },
   {
     path: "/pricing",
     label: "Pricing",
-    marker: "Public price anchors, clear inclusions, no inflated consulting language.",
+    marker: "See the prices first.",
   },
   {
     path: "/software",
     label: "Software",
-    marker: "Public product pages that show the outcome before you create an account.",
+    marker: "Public products first.",
   },
   {
     path: "/media",
     label: "Insights",
-    marker: "Guides, notes, and operating perspectives",
+    marker: "Short notes. Real operating detail.",
   },
   {
     path: "/privacy",
@@ -57,7 +57,7 @@ export const MARKETING_ROUTE_EXPECTATIONS = [
   {
     path: "/support",
     label: "Support",
-    marker: "Support lives with the platform",
+    marker: "Platform support.",
   },
 ];
 
@@ -90,7 +90,7 @@ export const APP_ROUTE_EXPECTATIONS = [
   {
     path: "/software",
     label: "Software hub",
-    marker: "Public product pages that show the outcome before you create an account.",
+    marker: "Public products first.",
     expectedCanonicalHost: "marketing",
     expectedRobotsHeader: "noindex, follow",
   },
@@ -227,7 +227,7 @@ export const MARKETING_MORE_MENU_LABELS = ["Insights", "Support"];
 export const FOOTER_LEGAL_LINK_LABELS = ["Security", "Privacy", "Refunds", "Terms", "Support"];
 
 export const CONSULTING_PRICE_MARKERS = [
-  "$249 founder review or free browser review",
+  "$249",
   "from $750",
   "from $2,500",
   "from $1,500/month",
