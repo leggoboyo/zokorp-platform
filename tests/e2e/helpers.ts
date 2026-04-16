@@ -10,7 +10,7 @@ export const requiredMarketingRoutes = [
   { path: "/services", heading: "Choose one starting point." },
   { path: "/about", heading: "Signals you can verify fast." },
   { path: "/contact", heading: "Use the form." },
-  { path: "/pricing", heading: "Price anchors first." },
+  { path: "/pricing", heading: "See the prices first." },
   { path: "/software", heading: "Public products first." },
   { path: "/media", heading: "Short notes. Real operating detail." },
   { path: "/privacy", heading: "Privacy overview" },

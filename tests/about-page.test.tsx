@@ -33,7 +33,14 @@ describe("AboutPage", () => {
     expect(html).toContain("Zohaib Khawaja");
     expect(html).toContain("Former AWS Partner Solutions Architect");
     expect(html).toContain("Microsoft");
-    expect(html).toContain("AWS Solutions Architect Professional");
+    expect(html).toContain("Larger-environment judgment, smaller-practice delivery.");
+    expect(html).toContain("Selected background");
+    expect(html).toContain("Why this helps smaller teams.");
+    expect(html).toContain(
+      "Experience includes work involving organizations such as D.R. Horton, SiriusXM, Warner Bros., JE Dunn, Cohere, Glean, Anthropic, and the National Hockey League.",
+    );
+    expect(html).toContain("Organization names are included as background context and do not imply endorsement.");
+    expect(html).toContain("AWS Certified Solutions Architect - Professional");
     expect(html).toContain("Initial response within one business day");
     expect(html).toContain('target="_blank"');
     expect(html.match(/Microsoft/g)?.length ?? 0).toBe(1);

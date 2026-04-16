@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { FounderProfileCard } from "@/components/marketing/founder-profile-card";
+import { FounderProofBlock } from "@/components/marketing/founder-proof-block";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { MarketingSectionHeading } from "@/components/marketing/section-heading";
 import { ServiceOfferRow } from "@/components/marketing/service-offer-row";
@@ -13,6 +14,7 @@ import {
   PRIMARY_CONSULTING_OFFERS,
   SOFTWARE_HIGHLIGHTS,
 } from "@/lib/marketing-content";
+import { FOUNDER_PROOF_PAGE_CONTENT } from "@/lib/marketing-proof";
 import { getConsultationCta } from "@/lib/marketing-cta";
 import {
   PUBLIC_LAUNCH_CONTACT,
@@ -67,6 +69,9 @@ export default async function HomePage() {
   const softwareTableColumns = {
     "--table-columns": "minmax(0,1.28fr) minmax(0,0.95fr) minmax(15rem,0.9fr) auto",
   } as CSSProperties;
+  const serviceTableColumns = {
+    "--table-columns": "minmax(0,1.12fr) minmax(15rem,0.86fr) minmax(18rem,0.9fr) minmax(6.5rem,auto)",
+  } as CSSProperties;
 
   return (
     <div className="marketing-stack">
@@ -116,6 +121,14 @@ export default async function HomePage() {
         }
       />
 
+      <FounderProofBlock
+        mode="strip"
+        eyebrow={FOUNDER_PROOF_PAGE_CONTENT.home.eyebrow}
+        statement={FOUNDER_PROOF_PAGE_CONTENT.home.statement}
+        support={FOUNDER_PROOF_PAGE_CONTENT.home.support}
+        sectorLine={FOUNDER_PROOF_PAGE_CONTENT.home.sectorLine}
+      />
+
       <section className="space-y-6">
         <MarketingSectionHeading
           eyebrow="Services"
@@ -123,7 +136,7 @@ export default async function HomePage() {
           description={HOME_PAGE_CONTENT.offersIntro}
         />
 
-        <div className="table-band px-5 py-5 md:px-6">
+        <div className="table-band px-5 py-5 md:px-6" style={serviceTableColumns}>
           <div className="table-head">
             <span>Offer</span>
             <span>Best for</span>

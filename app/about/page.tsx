@@ -1,13 +1,14 @@
-import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { FounderProfileCard } from "@/components/marketing/founder-profile-card";
+import { FounderProofBlock } from "@/components/marketing/founder-proof-block";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { getConsultationCta } from "@/lib/marketing-cta";
 import { ABOUT_PAGE_CONTENT } from "@/lib/marketing-content";
+import { FOUNDER_PROOF_PAGE_CONTENT } from "@/lib/marketing-proof";
 import { PUBLIC_LAUNCH_CONTACT, PUBLIC_LAUNCH_FOUNDER_PROFILE } from "@/lib/public-launch-contract";
 import { buildMarketingPageMetadata } from "@/lib/site";
 
@@ -26,9 +27,6 @@ export default async function AboutPage() {
     signedIn: Boolean(session?.user?.email),
     utmMedium: "about-page",
   });
-  const proofTableColumns = {
-    "--table-columns": "minmax(0,0.9fr) minmax(0,1.4fr)",
-  } as CSSProperties;
 
   return (
     <div className="marketing-stack">
@@ -81,25 +79,41 @@ export default async function AboutPage() {
         }
       />
 
-      <section
-        className="table-band px-5 py-5 md:px-6"
-        style={proofTableColumns}
-      >
-        <div className="table-head">
-          <span>Signal</span>
-          <span>Details</span>
+      <section className="section-band px-5 py-5 md:px-6 md:py-6">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1.16fr)] lg:gap-8">
+          <div className="space-y-3">
+            <p className="enterprise-kicker">{FOUNDER_PROOF_PAGE_CONTENT.about.narrative.eyebrow}</p>
+            <h2 className="font-display max-w-[16ch] text-3xl font-semibold text-card-foreground md:text-[2.2rem] md:leading-[1.02]">
+              {FOUNDER_PROOF_PAGE_CONTENT.about.narrative.title}
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            {FOUNDER_PROOF_PAGE_CONTENT.about.narrative.paragraphs.map((paragraph) => (
+              <p key={paragraph} className="text-base leading-8 text-card-foreground">
+                {paragraph}
+              </p>
+            ))}
+          </div>
         </div>
-        {ABOUT_PAGE_CONTENT.proofRows.map((row) => (
-          <article key={row.title} className="table-row">
-            <div className="space-y-2">
-              <h3 className="font-display max-w-[11ch] text-[1.9rem] font-semibold leading-[1.02] text-card-foreground">
-                {row.title}
-              </h3>
-            </div>
-            <p className="max-w-[44ch] text-base leading-8 text-card-foreground/86 md:text-[1.08rem]">{row.detail}</p>
-          </article>
-        ))}
       </section>
+
+      <FounderProofBlock
+        mode="section"
+        eyebrow={FOUNDER_PROOF_PAGE_CONTENT.about.selectedBackground.eyebrow}
+        title={FOUNDER_PROOF_PAGE_CONTENT.about.selectedBackground.title}
+        statement={FOUNDER_PROOF_PAGE_CONTENT.about.selectedBackground.statement}
+        sectorLine={FOUNDER_PROOF_PAGE_CONTENT.about.selectedBackground.sectorLine}
+      />
+
+      <FounderProofBlock
+        mode="section"
+        eyebrow={FOUNDER_PROOF_PAGE_CONTENT.about.whyItMatters.eyebrow}
+        title={FOUNDER_PROOF_PAGE_CONTENT.about.whyItMatters.title}
+        support={FOUNDER_PROOF_PAGE_CONTENT.about.whyItMatters.support}
+        bullets={FOUNDER_PROOF_PAGE_CONTENT.about.whyItMatters.bullets}
+        disclaimer={FOUNDER_PROOF_PAGE_CONTENT.about.whyItMatters.disclaimer}
+      />
 
       <section className="section-band grid gap-6 px-5 py-6 md:px-6 md:py-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="space-y-2">
