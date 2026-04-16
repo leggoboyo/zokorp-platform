@@ -42,7 +42,9 @@ describe("AboutPage", () => {
     expect(html).toContain("AWS Certified Solutions Architect - Professional");
     expect(html).toContain("Initial response within one business day");
     expect(html).toContain("Interview footage from the AWS period, playable here.");
-    expect(html).toContain("https://www.youtube-nocookie.com/embed/bQvrHYfJgl8?start=1320&amp;rel=0");
+    expect(html).toContain(
+      "https://www.youtube-nocookie.com/embed/bQvrHYfJgl8?start=1320&amp;end=1581&amp;rel=0",
+    );
     expect(html).toContain("talk-agent-stage.jpeg");
     expect(html).toContain("panel-stage.jpeg");
     expect(html).toContain("cloudathon-stage.jpeg");

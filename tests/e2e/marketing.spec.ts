@@ -284,7 +284,9 @@ test.describe("marketing surfaces", () => {
 
     const video = page.locator("iframe").first();
     await expect(video).toBeVisible();
-    await expect(video).toHaveAttribute("src", /youtube-nocookie\.com\/embed\/bQvrHYfJgl8\?start=1320&rel=0/);
+    await expect(
+      video,
+    ).toHaveAttribute("src", /youtube-nocookie\.com\/embed\/bQvrHYfJgl8\?start=1320&end=1581&rel=0/);
     await expect(page.getByText("This content is blocked")).toHaveCount(0);
 
     expectNoUnexpectedPageFailures(diagnostics, "about interview player");

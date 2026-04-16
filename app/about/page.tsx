@@ -21,9 +21,9 @@ export const metadata: Metadata = buildMarketingPageMetadata({
 export const dynamic = "force-dynamic";
 
 const ABOUT_VIDEO_WATCH_URL =
-  "https://youtu.be/bQvrHYfJgl8?si=NyWuv4OgzW0-SQad&t=1320";
+  "https://youtu.be/bQvrHYfJgl8?si=NyWuv4OgzW0-SQad&t=1320&end=1581";
 const ABOUT_VIDEO_EMBED_URL =
-  "https://www.youtube-nocookie.com/embed/bQvrHYfJgl8?start=1320&rel=0";
+  "https://www.youtube-nocookie.com/embed/bQvrHYfJgl8?start=1320&end=1581&rel=0";
 
 const ABOUT_PORTFOLIO_MEDIA = {
   hero: {
