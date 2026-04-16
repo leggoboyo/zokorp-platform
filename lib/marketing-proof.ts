@@ -106,8 +106,8 @@ export const FOUNDER_PROOF_PAGE_CONTENT = {
       eyebrow: "Founder background",
       title: "Larger-environment judgment, smaller-practice delivery.",
       paragraphs: [
-        "ZoKorp is intentionally small, but it is not built from small-context experience. Before building a founder-led practice, Zohaib worked in larger technical environments where delivery standards were higher, stakeholder groups were broader, and weak recommendations had a shorter shelf life.",
-        "That includes prior work as a Former AWS Partner Solutions Architect and current work at Microsoft. The value to buyers is not prestige. It is better pattern recognition, clearer communication when tradeoffs are real, and tighter scope before work starts.",
+        "ZoKorp is intentionally small, but it is not built from small-context experience. Before building a founder-led practice, Zohaib worked in larger technical environments where standards were stricter, stakeholder groups were broader, and weak recommendations had a shorter shelf life.",
+        "That includes prior work as a Former AWS Partner Solutions Architect and current work at Microsoft. The value to buyers is not prestige. It is tighter scoping, clearer communication when tradeoffs are real, and cleaner follow-through.",
       ],
     },
     selectedBackground: {

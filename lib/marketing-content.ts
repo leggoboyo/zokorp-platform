@@ -204,9 +204,9 @@ export const SERVICES_PAGE_CONTENT = {
 export const ABOUT_PAGE_CONTENT = {
   hero: {
     eyebrow: "About",
-    title: "Founder-led cloud work with public proof.",
+    title: "Founder-led cloud work, shown in public.",
     lede:
-      "ZoKorp stays intentionally small. This page shows the rooms, workshops, panels, and recorded interview that shape the judgment behind it.",
+      "The panels, workshops, event rooms, and interview footage here show the communication style behind ZoKorp.",
     supportingBullets: [
       "AWS certifications",
       "Houston, TX",
