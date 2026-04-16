@@ -254,7 +254,7 @@ test.describe("marketing surfaces", () => {
     await page.goto(buildUrl(marketingBaseUrl, "/about"), { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle");
 
-    const portrait = page.getByRole("img", { name: /Zohaib Khawaja/i });
+    const portrait = page.locator("[data-about-media-card='hero-primary'] img");
     await expect(portrait).toBeVisible();
 
     const box = await portrait.boundingBox();
@@ -276,6 +276,62 @@ test.describe("marketing surfaces", () => {
     expectNoUnexpectedPageFailures(diagnostics, "about founder hero image");
   });
 
+  test("about editorial bands keep copy and media visually aligned", async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name.includes("mobile"),
+      "desktop-style band alignment only applies to larger breakpoints",
+    );
+
+    const diagnostics = attachPageDiagnostics(page);
+
+    await page.goto(buildUrl(marketingBaseUrl, "/about"), { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+
+    const sections = [
+      {
+        copy: page.locator("[data-about-hero-copy]"),
+        media: page.locator("[data-about-hero-media]"),
+        topTolerance: 20,
+        bottomTolerance: 170,
+      },
+      {
+        copy: page.locator("[data-about-proof-copy]"),
+        media: page.locator("[data-about-proof-media]"),
+        topTolerance: 36,
+        bottomTolerance: 230,
+      },
+      {
+        copy: page.locator("[data-about-benefits-copy]"),
+        media: page.locator("[data-about-benefits-media]"),
+        topTolerance: 36,
+        bottomTolerance: 230,
+      },
+    ] as const;
+
+    for (const section of sections) {
+      await expect(section.copy).toBeVisible();
+      await expect(section.media).toBeVisible();
+
+      const [copyBox, mediaBox] = await Promise.all([
+        section.copy.boundingBox(),
+        section.media.boundingBox(),
+      ]);
+
+      expect(copyBox).not.toBeNull();
+      expect(mediaBox).not.toBeNull();
+
+      const copyTop = copyBox?.y ?? 0;
+      const mediaTop = mediaBox?.y ?? 0;
+      const copyBottom = copyTop + (copyBox?.height ?? 0);
+      const mediaBottom = mediaTop + (mediaBox?.height ?? 0);
+
+      expect(Math.abs(copyTop - mediaTop)).toBeLessThanOrEqual(section.topTolerance);
+      expect(Math.abs(copyBottom - mediaBottom)).toBeLessThanOrEqual(section.bottomTolerance);
+    }
+
+    expectNoUnexpectedPageFailures(diagnostics, "about editorial band alignment");
+  });
+
   test("about interview embed renders without blocked-frame copy", async ({ page }) => {
     const diagnostics = attachPageDiagnostics(page);
 
@@ -290,6 +346,33 @@ test.describe("marketing surfaces", () => {
     await expect(page.getByText("This content is blocked")).toHaveCount(0);
 
     expectNoUnexpectedPageFailures(diagnostics, "about interview player");
+  });
+
+  test("about reveal surfaces respect reduced motion", async ({ page }) => {
+    const diagnostics = attachPageDiagnostics(page);
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(buildUrl(marketingBaseUrl, "/about"), { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+
+    const reveal = page.locator("[data-about-reveal]").first();
+    await reveal.scrollIntoViewIfNeeded();
+    await expect(reveal).toBeVisible();
+
+    const motion = await readLongestMotionDurations(reveal);
+    expect(motion.transitionDuration).toBeLessThanOrEqual(0.001);
+
+    const computed = await reveal.evaluate((node) => {
+      const styles = window.getComputedStyle(node);
+      return {
+        opacity: Number.parseFloat(styles.opacity),
+        transform: styles.transform,
+      };
+    });
+    expect(computed.opacity).toBeGreaterThanOrEqual(0.99);
+    expect(computed.transform === "none" || computed.transform.includes("matrix")).toBe(true);
+
+    expectNoUnexpectedPageFailures(diagnostics, "about reduced motion");
   });
 
   test("reduced motion mode disables non-essential entrance motion", async ({ page }) => {

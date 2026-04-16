@@ -23,7 +23,7 @@ vi.mock("@/lib/auth", () => ({
 import AboutPage from "@/app/about/page";
 
 describe("AboutPage", () => {
-  it("keeps the founder-led positioning, portfolio proof, and interview media explicit", async () => {
+  it("keeps the founder-led positioning, restrained proof, and interview media explicit", async () => {
     authMock.mockResolvedValue(null);
 
     const html = renderToStaticMarkup(await AboutPage());
@@ -32,19 +32,20 @@ describe("AboutPage", () => {
     expect(html).toContain("Zohaib Khawaja");
     expect(html).toContain("Former AWS Partner Solutions Architect");
     expect(html).toContain("Microsoft");
-    expect(html).toContain("Larger-environment judgment, smaller-practice delivery.");
+    expect(html).toContain("Larger-environment judgment. Smaller-practice delivery.");
     expect(html).toContain("Selected background");
-    expect(html).toContain("What clients get from that background.");
+    expect(html).toContain("What clients actually get.");
     expect(html).toContain(
       "Experience includes work involving organizations such as D.R. Horton, SiriusXM, Warner Bros., JE Dunn, Cohere, Glean, Anthropic, and the National Hockey League.",
     );
     expect(html).toContain("Organization names are included as background context and do not imply endorsement.");
     expect(html).toContain("AWS Certified Solutions Architect - Professional");
     expect(html).toContain("Initial response within one business day");
-    expect(html).toContain("Interview footage from the AWS period, playable here.");
+    expect(html).toContain("Interview footage, embedded here.");
     expect(html).toContain(
       "https://www.youtube-nocookie.com/embed/bQvrHYfJgl8?start=1320&amp;end=1581&amp;rel=0",
     );
+    expect(html).toContain("data-about-reveal");
     expect(html).toContain("talk-agent-stage.jpeg");
     expect(html).toContain("panel-stage.jpeg");
     expect(html).toContain("cloudathon-stage.jpeg");

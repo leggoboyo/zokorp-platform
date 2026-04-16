@@ -123,8 +123,8 @@ export const FOUNDER_PROOF_PAGE_CONTENT = {
         "The point of this background is simple: buyers get judgment shaped by bigger environments without getting pushed into bloated enterprise consulting.",
       bullets: [
         "Cleaner decision-making shaped by larger environments.",
-        "Clearer communication from work that involved more stakeholders.",
-        "Better scoping and risk judgment shaped by higher-stakes delivery.",
+        "Clearer communication when more stakeholders are involved.",
+        "Tighter scoping and sharper risk judgment.",
       ],
       disclaimer: FOUNDER_PROOF_DISCLAIMER,
     },
