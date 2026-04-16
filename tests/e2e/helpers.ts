@@ -8,7 +8,7 @@ export const mutationMode = (process.env.E2E_MUTATION_MODE ?? "readonly").toLowe
 export const requiredMarketingRoutes = [
   { path: "/", heading: "Clear cloud help for SMB teams." },
   { path: "/services", heading: "Choose one starting point." },
-  { path: "/about", heading: "Signals you can verify fast." },
+  { path: "/about", heading: "Founder-led cloud work with public proof." },
   { path: "/contact", heading: "Use the form." },
   { path: "/pricing", heading: "See the prices first." },
   { path: "/software", heading: "Public products first." },
