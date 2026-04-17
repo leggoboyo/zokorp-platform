@@ -46,6 +46,7 @@ next-env.d.ts
 .playwright-cli/
 tests/e2e/.auth/
 /output/
+.claude-screenshots/
 
 # downloaded validator reference files (can be regenerated from manifest links)
 data/validator/references/files/

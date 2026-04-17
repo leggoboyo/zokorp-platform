@@ -8,11 +8,14 @@ Production Next.js 16 App Router SaaS for ZoKorp: marketing site, free diagnosti
 
 Stack: Next.js 16 + React 19 + TypeScript 5 strict, Prisma 6 + Postgres, NextAuth 4 credentials (business-email verified), Stripe 20, Zoho CRM/Invoice/WorkDrive, Sentry, Tailwind 4.
 
-## Branching
+## Branching & merge workflow
 
-- Develop on `claude/*` branches (current: `claude/review-zokorp-codebase-uOQsy`).
-- Never push to `main`.
-- One feature per branch. Never skip hooks or force-push without explicit ask.
+- **Commit directly to `main`.** No PRs, no `claude/*` branches, no merge buttons.
+- **Local gates must pass first** — every push is preceded by `npm run lint && npm run typecheck && npm test && npm run build` all green.
+- **Visual gate for UI changes** — use Playwright MCP to navigate affected pages at 1440×900 and 390×844, capture screenshots into `.claude-screenshots/`, and review them before committing.
+- **Push → Vercel auto-deploys** to www.zokorp.com. After each push, watch the commit's GitHub status / Vercel dashboard until the deployment is green before declaring done.
+- **Never skip hooks** (`--no-verify`), **never force-push `main`**. Fix hook failures by creating a new commit, not by amending.
+- If another agent or session has left the working tree dirty, stash before starting — never silently discard or commit someone else's work.
 
 ## Product surfaces
 
