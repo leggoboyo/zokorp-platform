@@ -105,7 +105,7 @@ function getSoftwarePriceSummary(product: PricingProduct) {
     return amounts[0];
   }
 
-  return `${amounts[0]} to ${amounts[amounts.length - 1]}`;
+  return `From ${amounts[0]}`;
 }
 
 function getSoftwareRow(product: PricingProduct): PricingRow {
@@ -174,7 +174,7 @@ const tableColumns = {
 } as CSSProperties;
 
 export function PricingCatalogShell({ products, primaryOffers, secondaryOffers }: PricingCatalogShellProps) {
-  const [viewFilter, setViewFilter] = useState<ViewFilter>("SOFTWARE");
+  const [viewFilter, setViewFilter] = useState<ViewFilter>("ALL");
   const [accessFilter, setAccessFilter] = useState<AccessFilter>("ALL");
 
   const rows = useMemo(() => {

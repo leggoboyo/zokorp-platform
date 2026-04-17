@@ -69,11 +69,11 @@ describe("PricingCatalogShell", () => {
     vi.restoreAllMocks();
   });
 
-  it("defaults to software pricing and lets the user switch to service views", () => {
+  it("defaults to the unified All view showing both software and services, and narrows on filter click", () => {
     render(<PricingCatalogShell products={products} primaryOffers={primaryOffers} secondaryOffers={secondaryOffers} />);
 
     expect(screen.getByText(/Architecture Diagram Reviewer/i)).toBeTruthy();
-    expect(screen.queryByText(/^Architecture Review$/i)).toBeNull();
+    expect(screen.getByText(/^Architecture Review$/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Primary services/i }));
 
@@ -84,6 +84,9 @@ describe("PricingCatalogShell", () => {
   it("applies the software access filter while keeping the unified pricing layout", () => {
     render(<PricingCatalogShell products={products} primaryOffers={primaryOffers} secondaryOffers={secondaryOffers} />);
 
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /filter pricing by surface/i })).getByRole("button", { name: /^Software$/i }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /^Credit$/i }));
 
     expect(screen.getByText(/^ZoKorpValidator$/i)).toBeTruthy();

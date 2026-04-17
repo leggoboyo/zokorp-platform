@@ -82,8 +82,11 @@ export default async function AdminPricesPage() {
               </Select>
             </label>
             <label className="space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Amount (cents)</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Amount</span>
               <Input name="amount" type="number" required min={1} placeholder="5000" />
+              <span className="block text-xs leading-5 text-slate-500">
+                Stripe integer cents. 5000 = $50.00, 99 = $0.99.
+              </span>
             </label>
             <label className="space-y-2">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Credits granted</span>

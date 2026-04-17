@@ -30,11 +30,11 @@ export default function MediaPage() {
 
             <section className="plane-dark rounded-[2.2rem] border border-white/8 px-6 py-6 md:px-7">
               <div className="space-y-3">
-                <p className="enterprise-kicker text-white/72">Reading posture</p>
+                <p className="enterprise-kicker text-white/90">Reading posture</p>
                 <div className="grid gap-3">
-                  <div className="border-t border-white/12 pt-3 text-sm leading-7 text-white/78">Short reads only.</div>
-                  <div className="border-t border-white/12 pt-3 text-sm leading-7 text-white/78">Built for scanning.</div>
-                  <div className="border-t border-white/12 pt-3 text-sm leading-7 text-white/78">Action over theory.</div>
+                  <div className="border-t border-white/25 pt-3 text-sm leading-7 text-white">Short reads only.</div>
+                  <div className="border-t border-white/25 pt-3 text-sm leading-7 text-white">Built for scanning.</div>
+                  <div className="border-t border-white/25 pt-3 text-sm leading-7 text-white">Action over theory.</div>
                 </div>
               </div>
             </section>

@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { auth } from "@/lib/auth";
 import { getUserEmailPreferencesByToken } from "@/lib/email-preferences";
 import { buildAppPageMetadata, toMarketingSiteUrl } from "@/lib/site";
 
@@ -25,6 +27,13 @@ export default async function EmailPreferencesPage({
   const status = query.status ?? null;
   const updated = query.updated === "1";
   const resolved = await getUserEmailPreferencesByToken(token);
+
+  if (!resolved && !token) {
+    const session = await auth();
+    if (session?.user?.email) {
+      redirect("/account?tab=email-preferences");
+    }
+  }
 
   if (!resolved) {
     return (

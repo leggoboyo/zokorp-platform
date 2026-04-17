@@ -110,6 +110,8 @@ describe("ServiceRequestPanel", () => {
 
     render(<ServiceRequestPanel signedIn={false} currentEmail={null} />);
 
+    expect(screen.getByText(/already have an account\?/i)).toBeTruthy();
+
     fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "founder@zokorp.com" },
     });
@@ -129,8 +131,6 @@ describe("ServiceRequestPanel", () => {
 
     await waitFor(() => expect(screen.getByText(/request recorded/i)).toBeTruthy());
     expect(screen.getByRole("link", { name: /create account later/i }).getAttribute("href")).toBe("/register");
-    expect(screen.getByText(/no account is required for the first contact/i)).toBeTruthy();
-    expect(screen.getByText(/use the email address you want zokorp to reply to/i)).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/services/requests",
       expect.objectContaining({

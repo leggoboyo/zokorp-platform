@@ -158,19 +158,7 @@ export function ServiceRequestPanel({
             tracked service request as soon as you submit it.
           </p>
         </Alert>
-      ) : (
-        <Alert tone="info" className="mt-5">
-          <p>No account is required for the first contact. Use the email address you want ZoKorp to reply to.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link href={loginHref} className={buttonVariants({ size: "sm" })}>
-              Sign in instead
-            </Link>
-            <Link href={registerHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-              Create account
-            </Link>
-          </div>
-        </Alert>
-      )}
+      ) : null}
 
       {submittedRequest ? (
         <Alert tone="success" className="mt-5" aria-live="polite">
@@ -299,6 +287,16 @@ export function ServiceRequestPanel({
       )}
 
       {error ? <Alert tone="danger" className="mt-3">{error}</Alert> : null}
+
+      {!isSignedIn && !submittedRequest ? (
+        <p className="mt-4 text-xs leading-5 text-muted-foreground">
+          Already have an account?{" "}
+          <Link href={loginHref} className="font-medium text-foreground underline-offset-2 hover:underline">
+            Sign in
+          </Link>{" "}
+          to link this request to your history.
+        </p>
+      ) : null}
     </section>
   );
 }

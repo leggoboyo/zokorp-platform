@@ -795,14 +795,10 @@ export default async function AccountPage() {
       </Card>
 
       {isAdminAccount ? (
-        <Card tone="muted" className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5">
-          <CardContent className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Admin testing</p>
-            <p className="text-sm leading-6 text-slate-600">
-              This verified allowlisted account has admin-only workspace access and server-side paid-tool testing overrides where supported.
-            </p>
-          </CardContent>
-        </Card>
+        <p className="flex flex-wrap items-center gap-2 text-xs leading-5 text-slate-500">
+          <Badge variant="info" className="uppercase tracking-[0.14em]">Admin override</Badge>
+          Paid-tool checkout bypassed for this allowlisted account.
+        </p>
       ) : null}
 
       <section className="grid gap-3 md:grid-cols-4">

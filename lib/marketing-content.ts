@@ -250,6 +250,6 @@ export const SOFTWARE_PAGE_CONTENT = {
 
 export const CONTACT_PAGE_CONTENT = {
   eyebrow: "Contact",
-  title: "Use the form.",
+  title: "Tell me what you need.",
   lede: "Public requests go to consulting@zokorp.com. Initial response within one business day.",
 } as const;
