@@ -28,7 +28,7 @@ describe("HomePage", () => {
 
     const html = renderToStaticMarkup(await HomePage());
 
-    expect(html).toContain("Clear cloud help for SMB teams.");
+    expect(html).toContain("Scoped cloud reviews, starting at $249.");
     expect(html).toContain("Small practice. Clear scope. Direct follow-through.");
     expect(html).toContain("Selected background");
     expect(html).toContain(

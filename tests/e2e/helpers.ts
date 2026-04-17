@@ -6,7 +6,7 @@ export const apexBaseUrl = process.env.JOURNEY_APEX_BASE_URL ?? "https://zokorp.
 export const mutationMode = (process.env.E2E_MUTATION_MODE ?? "readonly").toLowerCase();
 
 export const requiredMarketingRoutes = [
-  { path: "/", heading: "Clear cloud help for SMB teams." },
+  { path: "/", heading: "Scoped cloud reviews, starting at $249." },
   { path: "/services", heading: "Choose one starting point." },
   { path: "/about", heading: "Founder-led cloud work, shown in public." },
   { path: "/contact", heading: "Use the form." },

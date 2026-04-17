@@ -2,7 +2,7 @@ export const MARKETING_ROUTE_EXPECTATIONS = [
   {
     path: "/",
     label: "Homepage",
-    marker: "Clear cloud help for SMB teams.",
+    marker: "Scoped cloud reviews, starting at $249.",
   },
   {
     path: "/services",

@@ -165,13 +165,13 @@ export const SOFTWARE_HIGHLIGHTS = [
 
 export const HOME_PAGE_CONTENT = {
   hero: {
-    eyebrow: "Founder-led cloud architecture",
-    title: "Clear cloud help for SMB teams.",
-    lede: "Reviews, setup, cost work, and practical follow-through. Start small. Decide with evidence.",
+    eyebrow: "Founder-led cloud consulting",
+    title: "Scoped cloud reviews, starting at $249.",
+    lede: "Architecture reviews, cost audits, and landing-zone setup — fixed scope, visible price, delivered by a certified founder. No retainers to unwind, no surprises at invoice time.",
     supportingBullets: [
-      "Clear next step",
-      "Visible pricing",
-      "Public product pages",
+      "Fixed price, before you commit",
+      "Initial response within one business day",
+      "Written handoff, not a deck",
     ],
   },
   founderTitle: "Founder-led",
