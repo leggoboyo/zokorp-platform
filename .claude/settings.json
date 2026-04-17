@@ -28,6 +28,12 @@
       "Bash(git show:*)",
       "Bash(git fetch)",
       "Bash(git fetch:*)",
+      "Bash(git push)",
+      "Bash(git push:*)",
+      "Bash(git push origin main)",
+      "Bash(git push origin main:*)",
+      "Bash(gh:*)",
+      "Bash(vercel:*)",
       "Bash(git rev-parse:*)",
       "Bash(git ls-files:*)",
       "Bash(git stash list)",
@@ -51,13 +57,6 @@
       "Bash(npm run journey:walkthrough:production)",
       "Bash(npm run soft-launch:audit:production)",
       "Bash(npm run test:e2e:production)",
-      "Bash(git push --force:*)",
-      "Bash(git push -f:*)",
-      "Bash(git push origin main:*)",
-      "Bash(git push origin main)",
-      "Bash(git reset --hard:*)",
-      "Bash(git clean -f:*)",
-      "Bash(git branch -D:*)",
       "Bash(rm -rf:*)"
     ]
   }

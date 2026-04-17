@@ -47,6 +47,7 @@ next-env.d.ts
 tests/e2e/.auth/
 /output/
 .claude-screenshots/
+.claude/settings.local.json
 
 # downloaded validator reference files (can be regenerated from manifest links)
 data/validator/references/files/
