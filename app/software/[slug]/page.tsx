@@ -509,7 +509,7 @@ export default async function SoftwareDetailPage({
       </Badge>
       {isValidator ? <Badge variant="outline">1 credit per run</Badge> : null}
       {isValidator && !isAdminTester ? <Badge variant="outline">FTR public launch</Badge> : null}
-      {isArchitectureReviewer ? <Badge variant="outline">Standard email or privacy-local review</Badge> : null}
+      {isArchitectureReviewer ? <Badge variant="outline">Email + privacy modes</Badge> : null}
       {isMLOpsPlatform ? <Badge variant="outline">Forecasting beta only</Badge> : null}
       {!isValidator && !isArchitectureReviewer && !isMLOpsPlatform ? (
         <Badge variant="outline">Account-linked access</Badge>

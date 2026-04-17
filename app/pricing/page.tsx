@@ -40,7 +40,7 @@ export default async function PricingPage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(26rem,32rem)] lg:items-start">
           <div className="space-y-4">
             <p className="enterprise-kicker">Pricing</p>
-            <h1 className="font-display max-w-[8ch] text-[clamp(2.9rem,5vw,4.6rem)] font-semibold leading-[0.92] tracking-[-0.055em] text-foreground">
+            <h1 className="font-display max-w-[14ch] text-[clamp(2.9rem,5vw,4.6rem)] font-semibold leading-[0.92] tracking-[-0.055em] text-foreground">
               See the prices first.
             </h1>
             <p className="max-w-[42ch] text-base leading-7 text-muted-foreground">

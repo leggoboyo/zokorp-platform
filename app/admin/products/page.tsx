@@ -43,10 +43,15 @@ function pricingSummary(accessModel: AccessModel, priceCount: number) {
   return "No Stripe prices attached yet";
 }
 
-export default async function AdminProductsPage() {
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | undefined>>;
+}) {
   await requireAdminPageAccess("/admin/products");
+  const query = ((await searchParams) ?? {}).q?.trim() ?? "";
 
-  const products = await db.product.findMany({
+  const allProducts = await db.product.findMany({
     include: {
       _count: {
         select: { prices: true },
@@ -54,6 +59,17 @@ export default async function AdminProductsPage() {
     },
     orderBy: { createdAt: "desc" },
   });
+
+  const products = query
+    ? allProducts.filter((p) => {
+        const needle = query.toLowerCase();
+        return (
+          p.name.toLowerCase().includes(needle) ||
+          p.slug.toLowerCase().includes(needle) ||
+          p.accessModel.toLowerCase().includes(needle)
+        );
+      })
+    : allProducts;
 
   return (
     <div className="space-y-6">
@@ -106,12 +122,38 @@ export default async function AdminProductsPage() {
       </Card>
 
       <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5">
-        <CardHeader>
-          <h2 className="font-display text-2xl font-semibold text-slate-900">Existing products</h2>
+        <CardHeader className="gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-2xl font-semibold text-slate-900">Existing products</h2>
+            <p className="text-xs text-slate-500">
+              {query ? `${products.length} of ${allProducts.length}` : `${allProducts.length}`} product
+              {allProducts.length === 1 ? "" : "s"}
+            </p>
+          </div>
+          <form method="GET" action="/admin/products" className="flex flex-wrap items-center gap-2">
+            <Input
+              name="q"
+              defaultValue={query}
+              placeholder="Search by name, slug, or access model"
+              aria-label="Search products"
+              className="max-w-sm"
+            />
+            <Button type="submit" variant="secondary" size="sm">Search</Button>
+            {query ? (
+              <a
+                href="/admin/products"
+                className="text-xs font-medium text-slate-500 underline-offset-2 hover:underline"
+              >
+                Clear
+              </a>
+            ) : null}
+          </form>
         </CardHeader>
         <CardContent>
           {products.length === 0 ? (
-            <p className="text-sm text-slate-600">No products found.</p>
+            <p className="text-sm text-slate-600">
+              {query ? `No products match "${query}".` : "No products found."}
+            </p>
           ) : (
             <div className="space-y-3">
               {products.map((product) => (

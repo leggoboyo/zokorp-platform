@@ -801,25 +801,40 @@ export default async function AccountPage() {
         </p>
       ) : null}
 
-      <section className="grid gap-3 md:grid-cols-4">
-        {[
-          { label: "Open Requests", value: openServiceRequests.length },
-          { label: "Active Subscriptions", value: activeSubscriptions.length },
-          { label: "Credit Wallets", value: activeCredits.length },
-          { label: "Credit Activity", value: creditLedgerEntries.length },
-          { label: "Recent Purchases", value: user.checkoutFulfillments.length },
-          { label: "Formal Estimates", value: estimateCompanions.length },
-          { label: "Tool Runs", value: toolRunEntries.length },
-        ].map((item) => (
-          <Card key={item.label} lift className="rounded-3xl p-4">
-            <CardHeader>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
-            </CardHeader>
-            <CardContent>
-              <p className="font-display text-3xl font-semibold text-slate-900">{item.value}</p>
-            </CardContent>
-          </Card>
-        ))}
+      <section className="space-y-3" aria-label="Account snapshot">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            { label: "Open Requests", value: openServiceRequests.length },
+            { label: "Active Subscriptions", value: activeSubscriptions.length },
+            { label: "Credit Wallets", value: activeCredits.length },
+          ].map((item) => (
+            <Card key={item.label} lift className="rounded-3xl p-4">
+              <CardHeader>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
+              </CardHeader>
+              <CardContent>
+                <p className="font-display text-3xl font-semibold text-slate-900">{item.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+          {[
+            { label: "Credit Activity", value: creditLedgerEntries.length },
+            { label: "Recent Purchases", value: user.checkoutFulfillments.length },
+            { label: "Formal Estimates", value: estimateCompanions.length },
+            { label: "Tool Runs", value: toolRunEntries.length },
+          ].map((item) => (
+            <Card key={item.label} lift className="rounded-3xl p-4">
+              <CardHeader>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
+              </CardHeader>
+              <CardContent>
+                <p className="font-display text-3xl font-semibold text-slate-900">{item.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </section>
 
       <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-6">
@@ -835,7 +850,10 @@ export default async function AccountPage() {
 
         <CardContent>
           <Tabs defaultValue="service-requests" className="space-y-5">
-            <TabsList className="w-full justify-start" aria-label="Account sections">
+            <TabsList
+              className="w-full justify-start flex-nowrap overflow-x-auto md:flex-wrap md:overflow-visible"
+              aria-label="Account sections"
+            >
               <TabsTrigger value="service-requests">Service Requests</TabsTrigger>
               <TabsTrigger value="follow-ups">Follow-ups</TabsTrigger>
               <TabsTrigger value="credits">Credits</TabsTrigger>

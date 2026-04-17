@@ -34,7 +34,7 @@ export default async function SoftwarePage() {
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,29rem)] lg:items-start">
           <div className="space-y-5">
             <p className="enterprise-kicker">Software</p>
-            <h1 className="font-display max-w-[10ch] text-[clamp(3rem,6vw,5.2rem)] font-semibold leading-[0.92] tracking-[-0.06em] text-foreground">
+            <h1 className="font-display max-w-[14ch] text-[clamp(3rem,6vw,5.2rem)] font-semibold leading-[0.92] tracking-[-0.06em] text-foreground">
               Public products first.
             </h1>
             <p className="marketing-section-copy max-w-[40ch] text-base leading-7 text-muted-foreground">

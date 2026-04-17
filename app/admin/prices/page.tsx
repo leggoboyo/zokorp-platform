@@ -15,10 +15,15 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPricesPage() {
+export default async function AdminPricesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | undefined>>;
+}) {
   await requireAdminPageAccess("/admin/prices");
+  const query = ((await searchParams) ?? {}).q?.trim() ?? "";
 
-  const [prices, products] = await Promise.all([
+  const [allPrices, products] = await Promise.all([
     db.price.findMany({
       include: { product: true },
       orderBy: { createdAt: "desc" },
@@ -28,6 +33,18 @@ export default async function AdminPricesPage() {
       orderBy: { name: "asc" },
     }),
   ]);
+
+  const prices = query
+    ? allPrices.filter((p) => {
+        const needle = query.toLowerCase();
+        return (
+          p.product.name.toLowerCase().includes(needle) ||
+          p.product.slug.toLowerCase().includes(needle) ||
+          p.stripePriceId.toLowerCase().includes(needle) ||
+          p.kind.toLowerCase().includes(needle)
+        );
+      })
+    : allPrices;
 
   return (
     <div className="space-y-6">
@@ -100,12 +117,38 @@ export default async function AdminPricesPage() {
       </Card>
 
       <Card className="rounded-[calc(var(--radius-xl)+0.25rem)] p-5">
-        <CardHeader>
-          <h2 className="font-display text-2xl font-semibold text-slate-900">Existing prices</h2>
+        <CardHeader className="gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-2xl font-semibold text-slate-900">Existing prices</h2>
+            <p className="text-xs text-slate-500">
+              {query ? `${prices.length} of ${allPrices.length}` : `${allPrices.length}`} price
+              {allPrices.length === 1 ? "" : "s"}
+            </p>
+          </div>
+          <form method="GET" action="/admin/prices" className="flex flex-wrap items-center gap-2">
+            <Input
+              name="q"
+              defaultValue={query}
+              placeholder="Search by product, Stripe ID, or kind"
+              aria-label="Search prices"
+              className="max-w-sm"
+            />
+            <Button type="submit" variant="secondary" size="sm">Search</Button>
+            {query ? (
+              <a
+                href="/admin/prices"
+                className="text-xs font-medium text-slate-500 underline-offset-2 hover:underline"
+              >
+                Clear
+              </a>
+            ) : null}
+          </form>
         </CardHeader>
         <CardContent>
           {prices.length === 0 ? (
-            <p className="text-sm text-slate-600">No prices found.</p>
+            <p className="text-sm text-slate-600">
+              {query ? `No prices match "${query}".` : "No prices found."}
+            </p>
           ) : (
             <div className="space-y-3">
               {prices.map((price) => (
