@@ -34,10 +34,6 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 isolate border-b border-[rgb(var(--z-border)/0.28)] bg-[rgba(247,250,253,0.82)] backdrop-blur-xl">
-      <div className="border-b border-white/6 bg-[rgb(var(--z-bg))] px-4 py-2 text-center text-[0.68rem] tracking-[0.16em] text-[rgb(var(--z-text))]">
-        Founder-led architecture and product guidance for SMB teams
-      </div>
-
       <div className="marketing-container px-4 py-4 md:px-6 xl:px-8">
         <div className="relative z-10 flex items-center justify-between gap-4 border-b border-border/70 py-3">
           <Link href="/" className="font-display inline-flex min-w-0 items-center gap-3 text-[rgb(var(--z-ink))]">
@@ -51,11 +47,6 @@ export async function SiteHeader() {
                 sizes="(max-width: 768px) 128px, 160px"
                 priority
               />
-            </span>
-            <span className="min-w-0">
-              <span className="hidden text-xs uppercase tracking-[0.18em] text-muted-foreground lg:block">
-                Clear scope. Less is more.
-              </span>
             </span>
           </Link>
 

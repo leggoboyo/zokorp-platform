@@ -98,7 +98,7 @@ export function SiteFooter() {
       <div className="section-divider mx-auto w-full max-w-[1440px]" />
       <div className="marketing-container flex flex-col gap-2 px-4 py-4 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between md:px-6 xl:px-8">
         <p>ZoKorp</p>
-        <p>(C) {new Date().getFullYear()} ZoKorp. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} ZoKorp. All rights reserved.</p>
       </div>
     </footer>
   );
