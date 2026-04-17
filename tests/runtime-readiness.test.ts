@@ -119,7 +119,7 @@ describe("runtime readiness report", () => {
       APP_SITE_URL: "https://app.zokorp.com",
       MARKETING_SITE_URL: "https://www.zokorp.com",
       AUTH_PASSWORD_ENABLED: "false",
-      STRIPE_SECRET_KEY: "sk_live_123",
+      STRIPE_SECRET_KEY: "stripe-secret-placeholder",
     });
 
     expect(findCheck(report, "stripe-core")).toMatchObject({
@@ -173,8 +173,8 @@ describe("runtime readiness report", () => {
       EMAIL_SERVER_USER: "user",
       EMAIL_SERVER_PASSWORD: "password",
       EMAIL_FROM: "hello@zokorp.com",
-      STRIPE_SECRET_KEY: "sk_live_123",
-      STRIPE_WEBHOOK_SECRET: "whsec_123",
+      STRIPE_SECRET_KEY: "stripe-secret-placeholder",
+      STRIPE_WEBHOOK_SECRET: "stripe-webhook-placeholder",
       STRIPE_PRICE_ID_FTR_SINGLE: "price_ftr",
       STRIPE_PRICE_ID_SDP_SRP_SINGLE: "price_sdp",
       STRIPE_PRICE_ID_COMPETENCY_REVIEW: "price_comp",

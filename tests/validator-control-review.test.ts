@@ -17,7 +17,7 @@ describe("validator control review", () => {
     sheet.addRow([
       "C-002",
       "Sanitize examples so credentials are never embedded in documentation.",
-      "AWS_ACCESS_KEY_ID=AKIA1234567890ABCDEF AWS_SECRET_ACCESS_KEY=abcd1234",
+      "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
     ]);
     sheet.addRow([
       "C-003",
