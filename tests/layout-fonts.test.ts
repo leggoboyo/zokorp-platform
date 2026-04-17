@@ -12,17 +12,16 @@ describe("root layout fonts", () => {
     expect(layoutSource).not.toContain('from "next/font/google"');
 
     for (const fontPath of [
-      "app/fonts/PlusJakartaSans-Regular.ttf",
-      "app/fonts/PlusJakartaSans-Medium.ttf",
-      "app/fonts/PlusJakartaSans-SemiBold.ttf",
-      "app/fonts/PlusJakartaSans-Bold.ttf",
-      "app/fonts/SpaceGrotesk-Regular.ttf",
-      "app/fonts/SpaceGrotesk-Medium.ttf",
-      "app/fonts/SpaceGrotesk-SemiBold.ttf",
-      "app/fonts/SpaceGrotesk-Bold.ttf",
-      "app/fonts/JetBrainsMono-Regular.ttf",
-      "app/fonts/JetBrainsMono-Medium.ttf",
-      "app/fonts/JetBrainsMono-Bold.ttf",
+      "app/fonts/PlusJakartaSans-Regular.woff2",
+      "app/fonts/PlusJakartaSans-Medium.woff2",
+      "app/fonts/PlusJakartaSans-SemiBold.woff2",
+      "app/fonts/PlusJakartaSans-Bold.woff2",
+      "app/fonts/SpaceGrotesk-Regular.woff2",
+      "app/fonts/SpaceGrotesk-Medium.woff2",
+      "app/fonts/SpaceGrotesk-SemiBold.woff2",
+      "app/fonts/SpaceGrotesk-Bold.woff2",
+      "app/fonts/JetBrainsMono-Regular.woff2",
+      "app/fonts/JetBrainsMono-Bold.woff2",
     ]) {
       expect(existsSync(path.join(process.cwd(), fontPath))).toBe(true);
     }

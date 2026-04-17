@@ -14,22 +14,22 @@ const plusJakarta = localFont({
   display: "swap",
   src: [
     {
-      path: "./fonts/PlusJakartaSans-Regular.ttf",
+      path: "./fonts/PlusJakartaSans-Regular.woff2",
       weight: "400",
       style: "normal",
     },
     {
-      path: "./fonts/PlusJakartaSans-Medium.ttf",
+      path: "./fonts/PlusJakartaSans-Medium.woff2",
       weight: "500",
       style: "normal",
     },
     {
-      path: "./fonts/PlusJakartaSans-SemiBold.ttf",
+      path: "./fonts/PlusJakartaSans-SemiBold.woff2",
       weight: "600",
       style: "normal",
     },
     {
-      path: "./fonts/PlusJakartaSans-Bold.ttf",
+      path: "./fonts/PlusJakartaSans-Bold.woff2",
       weight: "700",
       style: "normal",
     },
@@ -41,22 +41,22 @@ const spaceGrotesk = localFont({
   display: "swap",
   src: [
     {
-      path: "./fonts/SpaceGrotesk-Regular.ttf",
+      path: "./fonts/SpaceGrotesk-Regular.woff2",
       weight: "400",
       style: "normal",
     },
     {
-      path: "./fonts/SpaceGrotesk-Medium.ttf",
+      path: "./fonts/SpaceGrotesk-Medium.woff2",
       weight: "500",
       style: "normal",
     },
     {
-      path: "./fonts/SpaceGrotesk-SemiBold.ttf",
+      path: "./fonts/SpaceGrotesk-SemiBold.woff2",
       weight: "600",
       style: "normal",
     },
     {
-      path: "./fonts/SpaceGrotesk-Bold.ttf",
+      path: "./fonts/SpaceGrotesk-Bold.woff2",
       weight: "700",
       style: "normal",
     },
@@ -68,17 +68,12 @@ const jetBrainsMono = localFont({
   display: "swap",
   src: [
     {
-      path: "./fonts/JetBrainsMono-Regular.ttf",
+      path: "./fonts/JetBrainsMono-Regular.woff2",
       weight: "400",
       style: "normal",
     },
     {
-      path: "./fonts/JetBrainsMono-Medium.ttf",
-      weight: "500",
-      style: "normal",
-    },
-    {
-      path: "./fonts/JetBrainsMono-Bold.ttf",
+      path: "./fonts/JetBrainsMono-Bold.woff2",
       weight: "700",
       style: "normal",
     },
@@ -124,6 +119,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://js.stripe.com" crossOrigin="anonymous" />
+        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? (
+          <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
+        ) : null}
+      </head>
       <body
         className={`${plusJakarta.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} bg-background text-foreground antialiased`}
       >
