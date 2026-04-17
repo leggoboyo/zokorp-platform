@@ -8,11 +8,24 @@ Production Next.js 16 App Router SaaS for ZoKorp: marketing site, free diagnosti
 
 Stack: Next.js 16 + React 19 + TypeScript 5 strict, Prisma 6 + Postgres, NextAuth 4 credentials (business-email verified), Stripe 20, Zoho CRM/Invoice/WorkDrive, Sentry, Tailwind 4.
 
-## Branching
+## Branching & merge workflow (autonomous)
 
-- Develop on `claude/*` branches (current: `claude/review-zokorp-codebase-uOQsy`).
-- Never push to `main`.
-- One feature per branch. Never skip hooks or force-push without explicit ask.
+The owner has delegated full PR/merge authority to Claude. The workflow is:
+
+1. Develop on a fresh `claude/<short-description>` branch off `main`.
+2. Push the branch, open a PR against `main` via `mcp__github__create_pull_request`.
+3. Wait for CI (lint / typecheck / test / build). On green, squash-merge via `mcp__github__merge_pull_request`.
+4. If CI fails: investigate, push a fix commit, re-check. Only escalate to the owner if stuck.
+5. Never push directly to `main`. Never force-push. Never skip hooks.
+
+When to pause and ask the owner (`AskUserQuestion`):
+
+- Architectural changes that touch >1 of the large files listed below
+- Anything that changes pricing, billing, entitlements, or auth behavior
+- Migrations that alter existing columns or drop data
+- Any behavior change visible to end users on marketing pages
+
+Everything else (docs, config, refactors within a module, new tests, dependency bumps within semver) — just ship it.
 
 ## Product surfaces
 
