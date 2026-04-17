@@ -37,25 +37,40 @@ export function AboutReveal({
       return;
     }
 
+    const rect = node.getBoundingClientRect();
+    if (rect.top < window.innerHeight * 1.25) {
+      node.dataset.aboutRevealed = "true";
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             node.dataset.aboutRevealed = "true";
             observer.disconnect();
+            window.clearTimeout(fallbackTimer);
             break;
           }
         }
       },
       {
-        threshold: 0.12,
-        rootMargin: "0px 0px -8% 0px",
+        threshold: 0.08,
+        rootMargin: "0px 0px 40% 0px",
       },
     );
 
     observer.observe(node);
 
-    return () => observer.disconnect();
+    const fallbackTimer = window.setTimeout(() => {
+      node.dataset.aboutRevealed = "true";
+      observer.disconnect();
+    }, 1800);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(fallbackTimer);
+    };
   }, []);
 
   return (

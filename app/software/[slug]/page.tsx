@@ -596,20 +596,29 @@ export default async function SoftwareDetailPage({
           <CardHeader>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Default access</p>
             <h3 className="font-display text-3xl font-semibold text-slate-900">
-              {product.accessModel === AccessModel.FREE ? "Free access" : "Pricing availability"}
+              {product.accessModel === AccessModel.FREE ? "Free access" : "Launching soon"}
             </h3>
           </CardHeader>
           <CardContent>
             <p className="max-w-2xl text-sm leading-6 text-slate-600">
               {product.accessModel === AccessModel.FREE
                 ? "No purchase required. Sign in when you want history and account-linked access."
-                : "Pricing for this software item is still being finalized."}
+                : "We're finalizing pricing for this product. Leave a note and we'll email you when checkout opens."}
             </p>
           </CardContent>
           <CardFooter>
-            <Link href={toMarketingSiteUrl("/pricing")} className={buttonVariants({ variant: "secondary" })}>
-              View pricing overview
-            </Link>
+            {product.accessModel === AccessModel.FREE ? (
+              <Link href={toMarketingSiteUrl("/pricing")} className={buttonVariants({ variant: "secondary" })}>
+                View pricing overview
+              </Link>
+            ) : (
+              <Link
+                href={toMarketingSiteUrl(`/contact?topic=early-access&product=${product.slug}`)}
+                className={buttonVariants()}
+              >
+                Notify me when this launches
+              </Link>
+            )}
           </CardFooter>
         </Card>
       )}
@@ -681,11 +690,19 @@ export default async function SoftwareDetailPage({
       actions={
         <>
           {shouldShowSignInCta ? (
-            <Link href={`/login?callbackUrl=/software/${product.slug}`} className={buttonVariants()}>
+            <Link
+              href={`/login?callbackUrl=/software/${product.slug}`}
+              prefetch={false}
+              className={buttonVariants()}
+            >
               Sign in to continue
             </Link>
           ) : null}
-          <Link href="/account" className={buttonVariants({ variant: shouldShowSignInCta ? "secondary" : "primary" })}>
+          <Link
+            href="/account"
+            prefetch={false}
+            className={buttonVariants({ variant: shouldShowSignInCta ? "secondary" : "primary" })}
+          >
             {signedIn ? "Open account" : "View account access"}
           </Link>
         </>
@@ -742,7 +759,7 @@ export default async function SoftwareDetailPage({
             </p>
           </CardContent>
           <CardFooter>
-            <Link href="/account" className={buttonVariants()}>
+            <Link href="/account" prefetch={false} className={buttonVariants()}>
               Open account
             </Link>
           </CardFooter>

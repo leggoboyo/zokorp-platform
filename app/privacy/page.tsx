@@ -116,7 +116,7 @@ export default function PrivacyPage() {
           If you already have an account, use the email-preferences page to manage delivery preferences. If you need a privacy or retention clarification, contact ZoKorp directly and include the account email or request context you want reviewed.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/email-preferences" className={buttonVariants()}>
+          <Link href="/email-preferences" prefetch={false} className={buttonVariants()}>
             Email preferences
           </Link>
           <Link href="/support" className={buttonVariants({ variant: "secondary" })}>

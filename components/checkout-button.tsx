@@ -62,9 +62,14 @@ export function CheckoutButton({
   if (authUnavailable) {
     return (
       <div className="space-y-2">
-        <Button type="button" disabled fullWidth variant="secondary">
-          Checkout unavailable until login setup is complete
-        </Button>
+        <Link
+          href="/contact?topic=early-access"
+          prefetch={false}
+          className={cn(buttonVariants({ variant: "secondary", size: "md", fullWidth: true }))}
+        >
+          Notify me when this launches
+        </Link>
+        <p className="text-xs text-muted-foreground">Login setup is still in progress. Leave a note and we{"\u2019"}ll email you at launch.</p>
       </div>
     );
   }
@@ -72,9 +77,14 @@ export function CheckoutButton({
   if (billingUnavailable) {
     return (
       <div className="space-y-2">
-        <Button type="button" disabled fullWidth variant="secondary">
-          Checkout unavailable while billing setup is being finalized
-        </Button>
+        <Link
+          href="/contact?topic=early-access"
+          prefetch={false}
+          className={cn(buttonVariants({ variant: "secondary", size: "md", fullWidth: true }))}
+        >
+          Notify me when this launches
+        </Link>
+        <p className="text-xs text-muted-foreground">Launching soon. Drop your details and we{"\u2019"}ll reach out when checkout opens.</p>
       </div>
     );
   }

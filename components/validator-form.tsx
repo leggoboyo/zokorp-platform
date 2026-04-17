@@ -346,7 +346,11 @@ export function ValidatorForm({
           </Alert>
         </CardContent>
         <CardFooter>
-          <Link href="/login?callbackUrl=/software/zokorp-validator" className={buttonVariants()}>
+          <Link
+            href="/login?callbackUrl=/software/zokorp-validator"
+            prefetch={false}
+            className={buttonVariants()}
+          >
             Sign in to continue
           </Link>
         </CardFooter>

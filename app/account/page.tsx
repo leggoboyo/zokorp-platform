@@ -775,8 +775,8 @@ export default async function AccountPage() {
               </Link>
             ) : null}
             {isAdminAccount ? (
-              <Link href="/admin/billing" className={buttonVariants({ variant: "secondary" })}>
-                Admin billing
+              <Link href="/admin/architecture-catalog" className={buttonVariants({ variant: "secondary" })}>
+                Architecture catalog
               </Link>
             ) : null}
             {isAdminAccount ? (

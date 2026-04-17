@@ -1273,6 +1273,7 @@ export function ArchitectureDiagramReviewerForm({
           </Alert>
           <Link
             href="/login?callbackUrl=/software/architecture-diagram-reviewer"
+            prefetch={false}
             className={buttonVariants({ variant: "secondary" })}
           >
             Sign in to continue
