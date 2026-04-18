@@ -388,6 +388,13 @@ h3,
   gap: clamp(3.5rem, 5vw, 5.5rem);
 }
 
+/* Mobile guard: prevent any rogue child from producing horizontal scroll.
+ * Using `clip` instead of `hidden` so position: sticky / scrollIntoView still work. */
+html,
+body {
+  overflow-x: clip;
+}
+
 .measure-copy {
   max-width: 66ch;
 }

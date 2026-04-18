@@ -321,11 +321,11 @@ export default async function AboutPage() {
                 </Link>
               </div>
 
-              <dl className="flex flex-wrap gap-x-6 gap-y-3 border-t border-border/70 pt-4">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border/70 pt-4 sm:flex sm:flex-wrap">
                 {ABOUT_FACTS.map((fact) => (
                   <div
                     key={fact.label}
-                    className="min-w-[9.25rem] flex-1 space-y-1 sm:min-w-[11rem] lg:min-w-[7.5rem]"
+                    className="min-w-0 space-y-1 sm:min-w-[11rem] sm:flex-1 lg:min-w-[7.5rem]"
                   >
                     <dt className="table-kicker">{fact.label}</dt>
                     <dd className="text-sm leading-6 text-card-foreground">{fact.value}</dd>
