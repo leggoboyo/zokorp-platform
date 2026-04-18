@@ -292,7 +292,7 @@ export default async function AboutPage() {
     <div className="marketing-stack">
       <section className="hero-bleed hero-poster border-b border-border/70">
         <div className="marketing-container px-4 py-8 md:px-6 md:py-10 xl:px-8">
-          <div className="grid gap-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start">
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start">
             <AboutReveal
               variant="copy"
               className="space-y-6 lg:pt-8"
@@ -340,7 +340,7 @@ export default async function AboutPage() {
               className="lg:pt-8"
               data-about-hero-media=""
             >
-              <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(13.25rem,0.36fr)] md:items-stretch lg:grid-cols-[minmax(0,1fr)_minmax(14rem,0.34fr)]">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_minmax(13.25rem,0.36fr)] md:items-stretch lg:grid-cols-[minmax(0,1fr)_minmax(14rem,0.34fr)]">
                 <AboutMediaCard
                   role="heroCanvas"
                   src={ABOUT_PORTFOLIO_MEDIA.hero.src}
@@ -349,7 +349,7 @@ export default async function AboutPage() {
                   title={ABOUT_PORTFOLIO_MEDIA.hero.title}
                   caption={ABOUT_PORTFOLIO_MEDIA.hero.caption}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 68vw, 42vw"
-                mediaClassName="aspect-[14/11] min-h-[22rem] md:min-h-[31rem] lg:min-h-[32rem]"
+                mediaClassName="aspect-[14/11] md:min-h-[31rem] lg:min-h-[32rem]"
                 imageClassName={ABOUT_PORTFOLIO_MEDIA.hero.imageClassName}
                 priority
                 mediaMarker="hero-primary"
@@ -388,7 +388,7 @@ export default async function AboutPage() {
       <section className="marketing-container px-4 md:px-6 xl:px-8">
         <div className="band-divider" />
 
-        <div className="grid gap-10 pt-10 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1.16fr)] lg:items-start">
+        <div className="grid grid-cols-1 gap-10 pt-10 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1.16fr)] lg:items-start">
           <AboutReveal variant="copy" className="space-y-6" data-about-proof-copy="">
             <div className="space-y-3">
               <p className="enterprise-kicker">{FOUNDER_PROOF_PAGE_CONTENT.about.narrative.eyebrow}</p>
@@ -412,7 +412,7 @@ export default async function AboutPage() {
           </AboutReveal>
 
           <div
-            className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(12.5rem,0.38fr)] lg:items-center"
+            className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(12.5rem,0.38fr)] lg:items-center"
             data-about-proof-media=""
           >
             <AboutReveal variant="media" delay={90}>
@@ -463,7 +463,7 @@ export default async function AboutPage() {
           <div className="band-divider" />
         </div>
 
-        <div className="grid gap-10 pt-10 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start">
+        <div className="grid grid-cols-1 gap-10 pt-10 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start">
           <AboutReveal variant="copy" className="space-y-6" data-about-benefits-copy="">
             <div className="space-y-3">
               <p className="enterprise-kicker">{FOUNDER_PROOF_PAGE_CONTENT.about.whyItMatters.eyebrow}</p>
@@ -491,7 +491,7 @@ export default async function AboutPage() {
           </AboutReveal>
 
           <div
-            className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(12.5rem,0.38fr)] lg:items-start"
+            className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(12.5rem,0.38fr)] lg:items-start"
             data-about-benefits-media=""
           >
             <AboutReveal variant="media" delay={80}>
@@ -528,7 +528,7 @@ export default async function AboutPage() {
       <section className="marketing-container px-4 md:px-6 xl:px-8">
         <div className="band-divider" />
 
-        <div className="grid gap-8 pt-10 xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] xl:items-end">
+        <div className="grid grid-cols-1 gap-8 pt-10 xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] xl:items-end">
           <AboutReveal variant="copy" className="space-y-5">
             <p className="enterprise-kicker">Interview</p>
             <h2 className="font-display max-w-[12ch] text-balance text-[2rem] font-semibold leading-[1.02] tracking-[-0.04em] text-card-foreground md:text-[2.45rem]">
