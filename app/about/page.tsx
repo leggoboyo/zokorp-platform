@@ -355,7 +355,7 @@ export default async function AboutPage() {
                 mediaMarker="hero-primary"
               />
 
-                <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-1 md:grid-rows-[minmax(0,0.94fr)_minmax(0,1.06fr)] md:py-4 lg:py-5">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-1 md:grid-rows-[minmax(0,0.94fr)_minmax(0,1.06fr)] md:py-4 lg:py-5">
                   <AboutMediaCard
                     role="supportTile"
                     src={ABOUT_PORTFOLIO_MEDIA.summit.src}
@@ -364,7 +364,7 @@ export default async function AboutPage() {
                     title={ABOUT_PORTFOLIO_MEDIA.summit.title}
                     caption={ABOUT_PORTFOLIO_MEDIA.summit.caption}
                     sizes="(max-width: 768px) 48vw, (max-width: 1200px) 28vw, 20vw"
-                    mediaClassName="aspect-[4/4.5] min-h-[12.75rem] md:h-full md:min-h-0"
+                    mediaClassName="aspect-[4/4.5] sm:min-h-[12.75rem] md:h-full md:min-h-0"
                     imageClassName={ABOUT_PORTFOLIO_MEDIA.summit.imageClassName}
                   />
                   <AboutMediaCard
@@ -375,7 +375,7 @@ export default async function AboutPage() {
                     title={ABOUT_PORTFOLIO_MEDIA.nvidia.title}
                     caption={ABOUT_PORTFOLIO_MEDIA.nvidia.caption}
                     sizes="(max-width: 768px) 48vw, (max-width: 1200px) 28vw, 20vw"
-                    mediaClassName="aspect-[4/4.5] min-h-[12.75rem] md:h-full md:min-h-0"
+                    mediaClassName="aspect-[4/4.5] sm:min-h-[12.75rem] md:h-full md:min-h-0"
                     imageClassName={ABOUT_PORTFOLIO_MEDIA.nvidia.imageClassName}
                   />
                 </div>
@@ -424,7 +424,7 @@ export default async function AboutPage() {
                 title={ABOUT_PORTFOLIO_MEDIA.panel.title}
                 caption={ABOUT_PORTFOLIO_MEDIA.panel.caption}
                 sizes="(max-width: 1280px) 100vw, 42vw"
-                mediaClassName="aspect-[16/10] min-h-[18.5rem]"
+                mediaClassName="aspect-[16/10] sm:min-h-[18.5rem]"
                 imageClassName={ABOUT_PORTFOLIO_MEDIA.panel.imageClassName}
               />
             </AboutReveal>
@@ -438,7 +438,7 @@ export default async function AboutPage() {
                 title={ABOUT_PORTFOLIO_MEDIA.workshop.title}
                 caption={ABOUT_PORTFOLIO_MEDIA.workshop.caption}
                 sizes="(max-width: 1280px) 72vw, 24vw"
-                mediaClassName="aspect-[4/4.7] min-h-[16.5rem]"
+                mediaClassName="aspect-[4/4.7] sm:min-h-[16.5rem]"
               />
             </AboutReveal>
           </div>
@@ -503,7 +503,7 @@ export default async function AboutPage() {
                 title={ABOUT_PORTFOLIO_MEDIA.cloudathon.title}
                 caption={ABOUT_PORTFOLIO_MEDIA.cloudathon.caption}
                 sizes="(max-width: 1280px) 100vw, 42vw"
-                mediaClassName="aspect-[16/10] min-h-[18rem]"
+                mediaClassName="aspect-[16/10] sm:min-h-[18rem]"
                 imageClassName={ABOUT_PORTFOLIO_MEDIA.cloudathon.imageClassName}
               />
             </AboutReveal>
@@ -517,7 +517,7 @@ export default async function AboutPage() {
                 title={ABOUT_PORTFOLIO_MEDIA.hcc.title}
                 caption={ABOUT_PORTFOLIO_MEDIA.hcc.caption}
                 sizes="(max-width: 1280px) 72vw, 24vw"
-                mediaClassName="aspect-[5/5.8] min-h-[15rem] md:min-h-[18rem]"
+                mediaClassName="aspect-[5/5.8] sm:min-h-[15rem] md:min-h-[18rem]"
                 imageClassName={ABOUT_PORTFOLIO_MEDIA.hcc.imageClassName}
               />
             </AboutReveal>
